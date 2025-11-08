@@ -77,7 +77,6 @@ azd rest post https://httpbin.org/post --data '{"test":"data"}'
 ## Dependencies
 
 - [cobra](https://github.com/spf13/cobra) - CLI framework
-- [yaml.v3](https://gopkg.in/yaml.v3) - YAML parsing
 
 ## License
 

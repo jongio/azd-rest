@@ -1,6 +1,7 @@
 package formatter
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -70,9 +71,9 @@ func TestFormatResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FormatResponse(tt.body, tt.contentType)
 			if tt.shouldPretty {
-				// Should be prettified (contains newlines)
-				if len(result) <= len(string(tt.body)) {
-					t.Error("Expected prettified JSON output")
+				// Should be prettified (contains newlines and indentation)
+				if !strings.Contains(result, "\n") {
+					t.Error("Expected prettified JSON output with newlines")
 				}
 			} else {
 				// Should be unchanged

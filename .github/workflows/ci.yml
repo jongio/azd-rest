@@ -41,7 +41,7 @@ jobs:
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
       - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+        run: golangci-lint run --timeout=5m --config ../.golangci.yml
 
   test:
     name: Test
@@ -101,6 +101,7 @@ jobs:
         run: npm install -g cspell
 
       - name: Run spell check
+        working-directory: .
         run: cspell "**/*.{go,md,yaml,yml}" --no-progress
 
   security:

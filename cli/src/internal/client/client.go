@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -136,7 +135,7 @@ func ExecuteRequest(config RequestConfig) error {
 	output := formatter.FormatResponse(respBody, resp.Header.Get("Content-Type"))
 
 	if config.Output != "" {
-		if err := os.WriteFile(config.Output, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(config.Output, []byte(output), 0600); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 		if config.Verbose {
@@ -152,34 +151,4 @@ func ExecuteRequest(config RequestConfig) error {
 	}
 
 	return nil
-}
-
-// Response represents an HTTP response for JSON output
-type Response struct {
-	Status     string              `json:"status"`
-	StatusCode int                 `json:"statusCode"`
-	Headers    map[string][]string `json:"headers"`
-	Body       interface{}         `json:"body"`
-}
-
-// FormatJSONResponse formats the response as JSON
-func FormatJSONResponse(resp *http.Response, body []byte) (string, error) {
-	var bodyData interface{}
-	if err := json.Unmarshal(body, &bodyData); err != nil {
-		bodyData = string(body)
-	}
-
-	response := Response{
-		Status:     resp.Status,
-		StatusCode: resp.StatusCode,
-		Headers:    resp.Header,
-		Body:       bodyData,
-	}
-
-	output, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		return "", err
-	}
-
-	return string(output), nil
 }
