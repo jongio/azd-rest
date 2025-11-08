@@ -1,0 +1,40 @@
+---
+/**
+ * CodeBlock Component
+ * 
+ * Syntax-highlighted code block with copy button.
+ * Uses astro-expressive-code's Code component.
+ */
+import { Code } from 'astro-expressive-code/components';
+
+interface Props {
+  code: string;
+  language?: string;
+  showLanguage?: boolean;
+  showCopy?: boolean;
+  title?: string;
+}
+
+const {
+  code,
+  language = 'bash',
+  showLanguage = true,
+  showCopy = true,
+  title,
+} = Astro.props;
+---
+
+<div class="code-block-wrapper">
+  <Code 
+    code={code} 
+    lang={language}
+    title={title}
+    meta={showLanguage ? undefined : 'no-lang-badge'}
+  />
+</div>
+
+<style>
+  .code-block-wrapper {
+    margin: 1.5rem 0;
+  }
+</style>

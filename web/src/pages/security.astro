@@ -1,0 +1,546 @@
+---
+import Layout from '../components/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Security" description="Comprehensive security architecture of azd rest — SSRF protection, rate limiting, token security, and more">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Security Architecture</h1>
+      <p class="page-intro">
+        azd rest is built with defense-in-depth security. Every layer — from network access to token handling — is
+        hardened by default with zero-trust principles.
+      </p>
+    </div>
+
+    <div class="content">
+
+      <!-- At a Glance -->
+      <section class="section">
+        <h2>At a Glance</h2>
+        <div class="security-grid">
+          <div class="security-card">
+            <span class="card-icon">🛡️</span>
+            <h4>SSRF Protection</h4>
+            <p>Blocks cloud metadata endpoints, private IPs, and loopback addresses with DNS resolution validation.</p>
+          </div>
+          <div class="security-card">
+            <span class="card-icon">⏱️</span>
+            <h4>Rate Limiting</h4>
+            <p>Token bucket algorithm limits MCP requests to 10 burst / 1 per second sustained.</p>
+          </div>
+          <div class="security-card">
+            <span class="card-icon">🔐</span>
+            <h4>Token Security</h4>
+            <p>Tokens are never logged, automatically redacted, and short-lived with scope isolation.</p>
+          </div>
+          <div class="security-card">
+            <span class="card-icon">🚫</span>
+            <h4>Header Blocklist</h4>
+            <p>Prevents MCP clients from injecting Authorization, Host, Cookie, or Proxy-Authorization headers.</p>
+          </div>
+          <div class="security-card">
+            <span class="card-icon">📏</span>
+            <h4>Response Limits</h4>
+            <p>10 MB response cap for MCP server, 100 MB for CLI — prevents memory exhaustion attacks.</p>
+          </div>
+          <div class="security-card">
+            <span class="card-icon">🔗</span>
+            <h4>Scope Validation</h4>
+            <p>Validates that OAuth scope domains match request URL domains to prevent token exfiltration.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SSRF Protection -->
+      <section class="section">
+        <h2>SSRF Protection</h2>
+        <p>
+          The MCP server implements comprehensive Server-Side Request Forgery (SSRF) protection to prevent
+          AI agents from accessing internal infrastructure through azd rest.
+        </p>
+
+        <h3>Cloud Metadata Endpoint Blocklist</h3>
+        <p>Requests to cloud provider metadata services are unconditionally blocked:</p>
+        <CodeBlock code={`// Blocked metadata endpoints
+169.254.169.254      // AWS, Azure IMDS
+fd00:ec2::254       // AWS IPv6 IMDS
+metadata.google.internal  // GCP metadata
+100.100.100.200     // Alibaba Cloud metadata`} language="text" showCopy={false} />
+
+        <h3>Private Network CIDR Blocking</h3>
+        <p>All private and loopback IP ranges are blocked to prevent internal network access:</p>
+        <CodeBlock code={`// Blocked CIDR ranges
+127.0.0.0/8      // IPv4 loopback
+::1/128          // IPv6 loopback
+169.254.0.0/16   // IPv4 link-local
+fe80::/10        // IPv6 link-local
+10.0.0.0/8       // RFC 1918 private
+172.16.0.0/12    // RFC 1918 private
+192.168.0.0/16   // RFC 1918 private`} language="text" showCopy={false} />
+
+        <h3>DNS Resolution Validation</h3>
+        <p>
+          Hostnames are resolved to IP addresses <strong>before</strong> the request is sent. This prevents
+          bypass via DNS names that resolve to blocked addresses (e.g., a hostname that resolves to
+          <code>169.254.169.254</code>). If DNS resolution fails, the request is blocked by default.
+        </p>
+        <ul>
+          <li>✅ Resolves hostnames to IPs and checks each resolved address against blocklists</li>
+          <li>✅ Blocks hex/octal/decimal IP representation bypasses</li>
+          <li>✅ Fails closed — DNS resolution errors result in blocked requests</li>
+        </ul>
+      </section>
+
+      <!-- Rate Limiting -->
+      <section class="section">
+        <h2>Rate Limiting</h2>
+        <p>
+          The MCP server uses a token bucket algorithm to prevent runaway AI agents from flooding Azure
+          APIs with requests.
+        </p>
+        <ul>
+          <li><strong>Burst capacity:</strong> 10 requests</li>
+          <li><strong>Sustained rate:</strong> 1 request per second (~60 per minute)</li>
+          <li><strong>Scope:</strong> Applied per MCP server instance</li>
+        </ul>
+        <p>
+          When the rate limit is exceeded, the MCP tool returns a clear error message rather than
+          silently queuing or dropping requests.
+        </p>
+      </section>
+
+      <!-- Authentication Security -->
+      <section class="section">
+        <h2>Authentication Security</h2>
+
+        <h3>Automatic Scope Detection</h3>
+        <p>
+          azd rest automatically detects the correct OAuth scope for 20+ Azure services based on the
+          request URL. This ensures each request uses the minimum required permissions — no over-scoped
+          tokens.
+        </p>
+
+        <h3>Scope / URL Validation</h3>
+        <p>
+          When a custom scope override is provided, azd rest validates that the scope domain matches
+          the request URL domain. This prevents an attacker from tricking the tool into sending a token
+          scoped for one service to a different endpoint.
+        </p>
+        <ul>
+          <li>✅ Scope host must match request URL host (or be a parent domain)</li>
+          <li>✅ Single-label scope hosts (bare TLDs like <code>com</code>) are rejected</li>
+          <li>✅ Both scope and URL must have valid, non-empty hostnames</li>
+        </ul>
+
+        <h3>Automatic Auth Skip for HTTP</h3>
+        <p>
+          Authentication is automatically disabled for plain HTTP URLs to prevent sending bearer tokens
+          over unencrypted connections. This is enforced at the HTTP client level — no configuration needed.
+        </p>
+        <ul>
+          <li>✅ <code>http://</code> URLs → auth automatically skipped (no token sent)</li>
+          <li>✅ Existing <code>Authorization</code> header → Azure token injection skipped</li>
+          <li>✅ <code>--no-auth</code> flag → explicit opt-out for non-Azure endpoints</li>
+        </ul>
+
+        <h3>Token Caching</h3>
+        <p>
+          Tokens are cached per scope until 2 minutes before expiry. The cache is managed by azd-core
+          and supports the full Azure credential chain (Azure CLI, Managed Identity, Environment Variables).
+          For the MCP server, a single cached token provider is reused across requests to avoid repeated
+          credential creation.
+        </p>
+      </section>
+
+      <!-- Header Security -->
+      <section class="section">
+        <h2>Header Security</h2>
+
+        <h3>MCP Header Blocklist</h3>
+        <p>
+          The MCP server blocks sensitive headers from being set via custom header parameters. This prevents
+          AI agents from injecting credentials or routing requests to unintended hosts:
+        </p>
+        <CodeBlock code={`// Blocked headers (case-insensitive)
+authorization        // Prevents token injection
+host                 // Prevents request routing manipulation
+cookie               // Prevents session hijacking
+proxy-authorization  // Prevents proxy credential injection`} language="text" showCopy={false} />
+
+        <h3>Token Redaction</h3>
+        <p>
+          In verbose mode, sensitive headers are automatically redacted. Bearer tokens show only the first
+          and last 4 characters (e.g., <code>eyJ4...a2Bc</code>). This applies to both request and response
+          headers in CLI output.
+        </p>
+      </section>
+
+      <!-- Response & Request Limits -->
+      <section class="section">
+        <h2>Response &amp; Request Limits</h2>
+
+        <h3>Response Size Limits</h3>
+        <div class="comparison-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Context</th>
+                <th>Limit</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>MCP Server</td>
+                <td>10 MB</td>
+                <td>Prevents memory exhaustion from AI agent requests</td>
+              </tr>
+              <tr>
+                <td>CLI</td>
+                <td>100 MB</td>
+                <td>Handles large responses while preventing unbounded reads</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Timeout Control</h3>
+        <ul>
+          <li><strong>Default:</strong> 30 seconds per request</li>
+          <li><strong>Configurable:</strong> <code>--timeout</code> flag in CLI mode</li>
+          <li><strong>MCP Server:</strong> Fixed 30-second timeout per tool call</li>
+        </ul>
+
+        <h3>Redirect Control</h3>
+        <ul>
+          <li><strong>MCP Server:</strong> Redirects are <strong>disabled</strong> — prevents open redirect exploitation</li>
+          <li><strong>CLI:</strong> Redirects enabled by default, capped at 10 hops, controllable via <code>--follow-redirects</code> and <code>--max-redirects</code></li>
+        </ul>
+
+        <h3>Retry with Backoff</h3>
+        <p>
+          Configurable retry logic with exponential backoff handles transient failures and throttling
+          responses (HTTP 429, 503). Default: 3 retries. This prevents cascading failures while
+          respecting service rate limits.
+        </p>
+      </section>
+
+      <!-- TLS/HTTPS -->
+      <section class="section">
+        <h2>TLS / HTTPS</h2>
+        <ul>
+          <li>✅ <strong>HTTPS by default</strong> — all Azure endpoints use HTTPS</li>
+          <li>✅ <strong>Certificate validation</strong> — enabled by default, validates server certificates</li>
+          <li>✅ <strong>Auth auto-skip for HTTP</strong> — tokens are never sent over unencrypted connections</li>
+          <li>⚠️ <strong><code>--insecure</code> flag</strong> — disables TLS certificate validation (testing only)</li>
+        </ul>
+
+        <div class="alert-warning">
+          <strong>Warning:</strong> The <code>--insecure</code> flag disables TLS certificate validation.
+          Never use this in production or with sensitive data.
+        </div>
+      </section>
+
+      <!-- Audit & Observability -->
+      <section class="section">
+        <h2>Audit &amp; Observability</h2>
+
+        <h3>OpenTelemetry Tracing</h3>
+        <p>
+          azd rest propagates <code>TRACEPARENT</code> and <code>TRACESTATE</code> environment variables
+          into the request context, enabling distributed tracing across azd → extension → Azure service
+          call chains.
+        </p>
+
+        <h3>Telemetry Headers</h3>
+        <p>Every request includes metadata-only telemetry headers for diagnostics:</p>
+        <CodeBlock code={`User-Agent: azd-rest/{version} (azd extension)
+x-ms-client-request-id: {UUID}
+x-ms-command-name: azd rest`} language="text" showCopy={false} />
+        <p>
+          No tokens, request bodies, or response bodies are included in telemetry.
+        </p>
+
+        <h3>Verbose Mode</h3>
+        <p>
+          When using <code>--verbose</code>, azd rest displays request method, URL, headers (with token
+          redaction), response status, and timing. Request and response bodies are never logged.
+        </p>
+      </section>
+
+      <!-- CI Security Pipeline -->
+      <section class="section">
+        <h2>CI Security Pipeline</h2>
+        <p>
+          Every commit to azd rest runs through a comprehensive security pipeline in GitHub Actions
+          across Linux, Windows, and macOS:
+        </p>
+        <ul>
+          <li>🔍 <strong>gosec</strong> — static analysis for Go security vulnerabilities</li>
+          <li>🔍 <strong>govulncheck</strong> — checks dependencies against the Go vulnerability database</li>
+          <li>🔍 <strong>golangci-lint</strong> — runs 15+ linters including security-focused checks</li>
+          <li>🔍 <strong>go vet</strong> — catches common coding mistakes</li>
+          <li>📊 <strong>Test coverage</strong> — enforced minimum coverage with comprehensive test suite</li>
+          <li>📝 <strong>cspell</strong> — catches typos that could mask security issues</li>
+        </ul>
+      </section>
+
+      <!-- Threat Model -->
+      <section class="section">
+        <h2>Threat Model</h2>
+
+        <h3>Assets Protected</h3>
+        <ul>
+          <li><strong>Azure authentication tokens</strong> — short-lived, scope-isolated, never logged</li>
+          <li><strong>Request / response bodies</strong> — may contain sensitive data, never included in telemetry</li>
+          <li><strong>Internal infrastructure</strong> — protected by SSRF blocklists and CIDR filtering</li>
+          <li><strong>Cloud metadata services</strong> — unconditionally blocked</li>
+        </ul>
+
+        <h3>Threats &amp; Mitigations</h3>
+        <div class="comparison-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Threat</th>
+                <th>Mitigation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>SSRF via MCP agent</td>
+                <td>Blocked hosts, CIDR ranges, DNS resolution validation</td>
+              </tr>
+              <tr>
+                <td>Token exfiltration</td>
+                <td>Scope/URL validation, header blocklist, HTTP auto-skip</td>
+              </tr>
+              <tr>
+                <td>Token leakage in logs</td>
+                <td>Automatic redaction in verbose mode, tokens never logged</td>
+              </tr>
+              <tr>
+                <td>Man-in-the-middle</td>
+                <td>HTTPS enforcement, TLS certificate validation</td>
+              </tr>
+              <tr>
+                <td>Credential injection</td>
+                <td>Authorization, Cookie, Proxy-Authorization header blocklist</td>
+              </tr>
+              <tr>
+                <td>Resource exhaustion</td>
+                <td>Rate limiting, response size limits, request timeouts</td>
+              </tr>
+              <tr>
+                <td>Open redirect abuse</td>
+                <td>Redirects disabled in MCP server, capped at 10 in CLI</td>
+              </tr>
+              <tr>
+                <td>Dependency vulnerabilities</td>
+                <td>govulncheck + gosec in CI pipeline on every commit</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Best Practices -->
+      <section class="section">
+        <h2>Best Practices</h2>
+
+        <h3>✅ Recommended</h3>
+        <ul>
+          <li>Use HTTPS for all requests (default behavior)</li>
+          <li>Let scope auto-detection choose the correct OAuth scope</li>
+          <li>Review URLs before executing requests, especially in scripts</li>
+          <li>Store sensitive data in Azure Key Vault, not in request bodies</li>
+          <li>Use <code>--verbose</code> for debugging only (tokens are redacted but visible metadata increases surface area)</li>
+        </ul>
+
+        <h3>❌ Avoid</h3>
+        <ul>
+          <li>Don't use <code>--insecure</code> in production</li>
+          <li>Don't pipe untrusted URLs to azd rest</li>
+          <li>Don't override scopes without understanding the token scope implications</li>
+          <li>Don't use HTTP endpoints for anything with sensitive data</li>
+        </ul>
+      </section>
+
+      <!-- Reporting -->
+      <section class="section">
+        <h2>Reporting Security Issues</h2>
+        <p>
+          If you discover a security vulnerability, please report it responsibly:
+        </p>
+        <ul>
+          <li>🔒 Use <a href="https://github.com/jongio/azd-rest/security/advisories" target="_blank" rel="noopener noreferrer">GitHub Security Advisories</a> for responsible disclosure</li>
+          <li>📋 Include steps to reproduce and potential impact</li>
+        </ul>
+        <p>
+          <strong>Do not</strong> open public issues for security vulnerabilities.
+        </p>
+      </section>
+
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .content {
+    max-width: 900px;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section p {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+  }
+
+  .section ul {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .section li {
+    margin-bottom: 0.5rem;
+  }
+
+  .security-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+    margin: 1.5rem 0;
+  }
+
+  @media (min-width: 640px) {
+    .security-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (min-width: 900px) {
+    .security-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .security-card {
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    background: var(--color-bg-secondary, rgba(15, 23, 42, 0.5));
+    border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.08));
+    transition: border-color 0.2s ease;
+  }
+
+  .security-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+  }
+
+  .card-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .security-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .security-card p {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .comparison-table {
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  .comparison-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.08));
+    color: var(--color-text-secondary);
+  }
+
+  .comparison-table th {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary, rgba(15, 23, 42, 0.5));
+  }
+
+  .comparison-table tbody tr:hover {
+    background: var(--color-bg-secondary, rgba(15, 23, 42, 0.3));
+  }
+
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    color: #664d03;
+  }
+
+  .dark .alert-warning {
+    background-color: #664d03;
+    border-color: #997404;
+    color: #ffeaa7;
+  }
+</style>
