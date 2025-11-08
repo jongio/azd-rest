@@ -11,7 +11,7 @@ func FormatResponse(body []byte, contentType string) string {
 	if strings.Contains(contentType, "application/json") || isJSON(body) {
 		return formatJSON(body)
 	}
-	
+
 	// Otherwise return as-is
 	return string(body)
 }
@@ -28,11 +28,11 @@ func formatJSON(body []byte) string {
 	if err := json.Unmarshal(body, &data); err != nil {
 		return string(body)
 	}
-	
+
 	formatted, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return string(body)
 	}
-	
+
 	return string(formatted)
 }

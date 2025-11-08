@@ -117,18 +117,18 @@ func getAzdEnvironment() (string, error) {
 // GetEnvironmentVariables returns all azd-related environment variables
 func GetEnvironmentVariables() map[string]string {
 	vars := make(map[string]string)
-	
+
 	prefixes := []string{"AZURE_", "AZD_"}
-	
+
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		
+
 		key := parts[0]
 		value := parts[1]
-		
+
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(key, prefix) {
 				vars[key] = value
@@ -136,6 +136,6 @@ func GetEnvironmentVariables() map[string]string {
 			}
 		}
 	}
-	
+
 	return vars
 }

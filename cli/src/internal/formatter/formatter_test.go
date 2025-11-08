@@ -11,7 +11,7 @@ func TestFormatJSON(t *testing.T) {
   "name": "test",
   "value": 123
 }`
-	
+
 	result := formatJSON(input)
 	if result != expected {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s", expected, result)
@@ -29,7 +29,7 @@ func TestIsJSON(t *testing.T) {
 		{"invalid JSON", []byte(`not json`), false},
 		{"empty", []byte(``), false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := isJSON(tt.input)
@@ -42,31 +42,31 @@ func TestIsJSON(t *testing.T) {
 
 func TestFormatResponse(t *testing.T) {
 	tests := []struct {
-		name        string
-		body        []byte
-		contentType string
+		name         string
+		body         []byte
+		contentType  string
 		shouldPretty bool
 	}{
 		{
-			name:        "JSON content type",
-			body:        []byte(`{"key":"value"}`),
-			contentType: "application/json",
+			name:         "JSON content type",
+			body:         []byte(`{"key":"value"}`),
+			contentType:  "application/json",
 			shouldPretty: true,
 		},
 		{
-			name:        "text content type",
-			body:        []byte(`plain text`),
-			contentType: "text/plain",
+			name:         "text content type",
+			body:         []byte(`plain text`),
+			contentType:  "text/plain",
 			shouldPretty: false,
 		},
 		{
-			name:        "auto-detect JSON",
-			body:        []byte(`{"auto":"detect"}`),
-			contentType: "",
+			name:         "auto-detect JSON",
+			body:         []byte(`{"auto":"detect"}`),
+			contentType:  "",
 			shouldPretty: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FormatResponse(tt.body, tt.contentType)

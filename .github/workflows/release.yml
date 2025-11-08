@@ -1,22 +1,31 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release (e.g., v0.1.0)'
+      bump:
+        description: 'Version bump type'
         required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+defaults:
+  run:
+    shell: bash
+    working-directory: cli
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Release Binaries
+  preflight:
+    name: Preflight Checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -28,19 +37,147 @@ jobs:
           go-version: '1.23'
           cache-dependency-path: cli/go.sum
 
-      - name: Get version
-        id: version
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Check Go formatting
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          if [ -n "$(gofmt -s -l .)" ]; then
+            echo "Go files not formatted:"
+            gofmt -s -l .
+            exit 1
           fi
+
+      - name: Check Go mod tidy
+        run: |
+          go mod tidy
+          if ! git diff --exit-code go.mod go.sum; then
+            echo "go.mod or go.sum needs to be tidied"
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=5m --config ../.golangci.yml
+
+      - name: Run gosec
+        run: gosec -fmt=json -out=../security-report.json ./...
+        continue-on-error: true
+
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.23']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: cli/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        shell: bash
+        run: |
+          mkdir -p ../coverage
+          go test -short -v -race -coverprofile=../coverage/coverage.out ./...
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [preflight, test]
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: cli/go.sum
+
+      - name: Calculate next version
+        id: version
+        working-directory: cli
+        run: |
+          CURRENT=$(grep '^version:' extension.yaml | awk '{print $2}')
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+          
+          case "${{ inputs.bump }}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          
+          NEXT="$major.$minor.$patch"
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+          echo "tag=v$NEXT" >> $GITHUB_OUTPUT
+          echo "Bumping from $CURRENT to $NEXT"
+
+      - name: Update version files
+        working-directory: cli
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          
+          # Update extension.yaml
+          sed -i "s/^version: .*/version: $VERSION/" extension.yaml
+          
+          # Update CHANGELOG.md
+          PREV="${{ steps.version.outputs.current }}"
+          COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges v${PREV}..HEAD 2>/dev/null || git log --pretty=format:"- %s (%h)" --no-merges -n 10)
+          DATE=$(date +%Y-%m-%d)
+          
+          {
+            echo "## [$VERSION] - $DATE"
+            echo ""
+            echo "$COMMITS"
+            echo ""
+            cat CHANGELOG.md
+          } > CHANGELOG.new.md
+          mv CHANGELOG.new.md CHANGELOG.md
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cli/extension.yaml cli/CHANGELOG.md
+          git commit -m "chore: bump version to ${{ steps.version.outputs.next }}"
+          git tag ${{ steps.version.outputs.tag }}
+          git push
+          git push --tags
 
       - name: Build binaries
         working-directory: cli
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
+          VERSION=${{ steps.version.outputs.tag }}
           
           mkdir -p dist
           
@@ -80,46 +217,108 @@ jobs:
         working-directory: cli/dist
         run: |
           sha256sum *.zip *.tar.gz > checksums.txt
+          cat checksums.txt
 
-      - name: Create Release
+      - name: Extract release notes
+        id: release_notes
+        working-directory: cli
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          
+          # Extract only the section for this version from CHANGELOG.md
+          awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | \
+            sed '/^## \['"$VERSION"'\]/d' | \
+            sed '/^## \[/,$d' | \
+            sed '/^$/d' > /tmp/release-notes.md
+          
+          # Show what we extracted
+          echo "Release notes for v$VERSION:"
+          cat /tmp/release-notes.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: Release ${{ steps.version.outputs.VERSION }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
+          body_path: /tmp/release-notes.md
           files: |
             cli/dist/*.zip
             cli/dist/*.tar.gz
             cli/dist/checksums.txt
-          body: |
-            ## Installation
-            
-            Download the appropriate binary for your platform and add it to your PATH.
-            
-            ### Windows
-            ```powershell
-            # Download and extract
-            Invoke-WebRequest -Uri "https://github.com/jongio/azd-rest/releases/download/${{ steps.version.outputs.VERSION }}/rest-windows-amd64.zip" -OutFile rest.zip
-            Expand-Archive rest.zip -DestinationPath .
-            ```
-            
-            ### macOS
-            ```bash
-            # Download and extract
-            curl -L "https://github.com/jongio/azd-rest/releases/download/${{ steps.version.outputs.VERSION }}/rest-darwin-$(uname -m).tar.gz" | tar xz
-            ```
-            
-            ### Linux
-            ```bash
-            # Download and extract
-            curl -L "https://github.com/jongio/azd-rest/releases/download/${{ steps.version.outputs.VERSION }}/rest-linux-$(uname -m).tar.gz" | tar xz
-            ```
-            
-            ## Usage with azd
-            
-            After installing, you can use this extension with azd:
-            
-            ```bash
-            azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
-            ```
+
+      - name: Update registry
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          
+          # Read checksums
+          cd cli/dist
+          WIN_SHA=$(grep "rest-windows-amd64.zip" checksums.txt | awk '{print $1}')
+          LINUX_AMD64_SHA=$(grep "rest-linux-amd64.tar.gz" checksums.txt | awk '{print $1}')
+          LINUX_ARM64_SHA=$(grep "rest-linux-arm64.tar.gz" checksums.txt | awk '{print $1}')
+          DARWIN_AMD64_SHA=$(grep "rest-darwin-amd64.tar.gz" checksums.txt | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(grep "rest-darwin-arm64.tar.gz" checksums.txt | awk '{print $1}')
+          cd ../..
+          
+          # Update registry.json with actual checksums
+          cat > registry.json << EOF
+          {
+            "extensions": [
+              {
+                "id": "jongio.azd.rest",
+                "name": "rest",
+                "displayName": "REST API Extension",
+                "description": "Execute REST APIs with azd context and authentication",
+                "version": "$VERSION",
+                "author": "Jon Gallant",
+                "homepage": "https://github.com/jongio/azd-rest",
+                "repository": "https://github.com/jongio/azd-rest",
+                "license": "MIT",
+                "language": "go",
+                "platforms": {
+                  "windows-amd64": {
+                    "url": "https://github.com/jongio/azd-rest/releases/download/$TAG/rest-windows-amd64.zip",
+                    "sha256": "$WIN_SHA"
+                  },
+                  "linux-amd64": {
+                    "url": "https://github.com/jongio/azd-rest/releases/download/$TAG/rest-linux-amd64.tar.gz",
+                    "sha256": "$LINUX_AMD64_SHA"
+                  },
+                  "linux-arm64": {
+                    "url": "https://github.com/jongio/azd-rest/releases/download/$TAG/rest-linux-arm64.tar.gz",
+                    "sha256": "$LINUX_ARM64_SHA"
+                  },
+                  "darwin-amd64": {
+                    "url": "https://github.com/jongio/azd-rest/releases/download/$TAG/rest-darwin-amd64.tar.gz",
+                    "sha256": "$DARWIN_AMD64_SHA"
+                  },
+                  "darwin-arm64": {
+                    "url": "https://github.com/jongio/azd-rest/releases/download/$TAG/rest-darwin-arm64.tar.gz",
+                    "sha256": "$DARWIN_ARM64_SHA"
+                  }
+                },
+                "capabilities": [
+                  "custom-commands"
+                ],
+                "tags": [
+                  "rest",
+                  "api",
+                  "http",
+                  "developer"
+                ]
+              }
+            ]
+          }
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update registry for $TAG"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

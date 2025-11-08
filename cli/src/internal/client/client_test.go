@@ -36,12 +36,12 @@ func TestExecuteRequest_POST(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		
+
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
 			t.Errorf("Expected Content-Type application/json, got %s", contentType)
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"id":"123","status":"created"}`))
@@ -65,7 +65,7 @@ func TestExecuteRequest_POST(t *testing.T) {
 func TestExecuteRequest_CustomHeaders(t *testing.T) {
 	customHeader := "X-Custom-Header"
 	customValue := "custom-value"
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(customHeader) != customValue {
 			t.Errorf("Expected header %s: %s, got %s", customHeader, customValue, r.Header.Get(customHeader))
