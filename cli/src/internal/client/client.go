@@ -28,11 +28,38 @@ type RequestConfig struct {
 	UseAzdAuth  bool
 }
 
-// ExecuteRequest performs an HTTP request with the given configuration
+// ExecuteRequest performs an HTTP request with the given configuration.
+//
+// Behaviors:
+//   - Automatically formats JSON responses with pretty-printing
+//   - Returns errors for HTTP status codes >= 400
+//   - Writes response to stdout or file based on config.Output
+//   - Prints verbose information to stderr if config.Verbose is true
+//   - Reads request body from config.Data or config.DataFile
+//   - Adds Azure authentication headers if config.UseAzdAuth is true
+//   - Validates that both Data and DataFile are not set simultaneously
+//
+// Returns an error for:
+//   - Network failures
+//   - Invalid HTTP status codes (>= 400)
+//   - File read/write errors
+//   - Configuration errors
 func ExecuteRequest(config RequestConfig) error {
-	// Create HTTP client
+	// Validate configuration
+	if config.Data != "" && config.DataFile != "" {
+		return fmt.Errorf("cannot specify both --data and --data-file")
+	}
+
+	// Create HTTP client with configurable timeout
+	timeout := 30 * time.Second
+	if timeoutEnv := os.Getenv("AZD_REST_TIMEOUT"); timeoutEnv != "" {
+		if parsed, err := time.ParseDuration(timeoutEnv); err == nil {
+			timeout = parsed
+		}
+	}
+
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout,
 	}
 
 	if config.Insecure {
@@ -69,6 +96,10 @@ func ExecuteRequest(config RequestConfig) error {
 		parts := strings.SplitN(header, ":", 2)
 		if len(parts) == 2 {
 			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		} else {
+			if config.Verbose {
+				fmt.Fprintf(os.Stderr, "Warning: Malformed header ignored (missing colon): %q\n", header)
+			}
 		}
 	}
 
@@ -131,7 +162,27 @@ func ExecuteRequest(config RequestConfig) error {
 		fmt.Fprintln(os.Stderr, "<")
 	}
 
-	// Format and output response
+	// Check for error status before formatting/displaying
+	if resp.StatusCode >= 400 {
+		// Still format the error response for readability
+		output := formatter.FormatResponse(respBody, resp.Header.Get("Content-Type"))
+
+		if config.Output != "" {
+			if err := os.WriteFile(config.Output, []byte(output), 0600); err != nil {
+				return fmt.Errorf("failed to write output file: %w", err)
+			}
+			if config.Verbose {
+				fmt.Fprintf(os.Stderr, "Error response written to %s\n", config.Output)
+			}
+		} else {
+			// Print error response to stderr instead of stdout
+			fmt.Fprintln(os.Stderr, output)
+		}
+
+		return fmt.Errorf("request failed with status: %s", resp.Status)
+	}
+
+	// Format and output successful response
 	output := formatter.FormatResponse(respBody, resp.Header.Get("Content-Type"))
 
 	if config.Output != "" {
@@ -143,11 +194,6 @@ func ExecuteRequest(config RequestConfig) error {
 		}
 	} else {
 		fmt.Println(output)
-	}
-
-	// Return error if status is not successful
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("request failed with status: %s", resp.Status)
 	}
 
 	return nil

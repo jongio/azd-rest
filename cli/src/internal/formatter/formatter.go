@@ -7,8 +7,8 @@ import (
 
 // FormatResponse formats the response body based on content type
 func FormatResponse(body []byte, contentType string) string {
-	// If it's JSON, pretty print it
-	if strings.Contains(contentType, "application/json") || isJSON(body) {
+	// If it's JSON by content type or appears to be JSON, pretty print it
+	if strings.Contains(contentType, "application/json") || looksLikeJSON(body) {
 		return formatJSON(body)
 	}
 
@@ -16,13 +16,21 @@ func FormatResponse(body []byte, contentType string) string {
 	return string(body)
 }
 
-// isJSON checks if the body is valid JSON
-func isJSON(body []byte) bool {
-	var js interface{}
-	return json.Unmarshal(body, &js) == nil
+// looksLikeJSON checks if the body starts with '{' or '[' after skipping whitespace
+// This is more efficient than unmarshaling for large bodies
+func looksLikeJSON(body []byte) bool {
+	// Skip leading whitespace
+	for _, b := range body {
+		if b == ' ' || b == '\t' || b == '\r' || b == '\n' {
+			continue
+		}
+		// Check if first non-whitespace character is { or [
+		return b == '{' || b == '['
+	}
+	return false
 }
 
-// formatJSON pretty-prints JSON
+// formatJSON pretty-prints JSON (only unmarshals once)
 func formatJSON(body []byte) string {
 	var data interface{}
 	if err := json.Unmarshal(body, &data); err != nil {

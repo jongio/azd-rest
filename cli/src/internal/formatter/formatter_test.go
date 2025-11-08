@@ -18,7 +18,7 @@ func TestFormatJSON(t *testing.T) {
 	}
 }
 
-func TestIsJSON(t *testing.T) {
+func TestLooksLikeJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []byte
@@ -26,13 +26,16 @@ func TestIsJSON(t *testing.T) {
 	}{
 		{"valid JSON object", []byte(`{"key":"value"}`), true},
 		{"valid JSON array", []byte(`[1,2,3]`), true},
+		{"JSON with leading whitespace", []byte(`  {"key":"value"}`), true},
+		{"array with leading whitespace", []byte("\n\t[1,2,3]"), true},
 		{"invalid JSON", []byte(`not json`), false},
 		{"empty", []byte(``), false},
+		{"string starting with letter", []byte(`text`), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isJSON(tt.input)
+			result := looksLikeJSON(tt.input)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v for input: %s", tt.expected, result, string(tt.input))
 			}

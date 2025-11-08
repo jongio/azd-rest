@@ -16,7 +16,15 @@ var (
 	data        string
 	dataFile    string
 	contentType string
+
+	// appVersion is set by main package
+	appVersion = "dev"
 )
+
+// SetVersion sets the application version
+func SetVersion(v string) {
+	appVersion = v
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "rest",
@@ -64,6 +72,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("azd-rest version 0.1.0")
+		fmt.Printf("azd-rest version %s\n", appVersion)
 	},
 }
