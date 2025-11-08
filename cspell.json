@@ -1,0 +1,33 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "azd",
+    "azdev",
+    "codecov",
+    "cspell",
+    "golangci",
+    "gosec",
+    "httptest",
+    "jongio",
+    "runnable",
+    "struct",
+    "structs",
+    "unmarshal",
+    "marshaling",
+    "unmarshaling",
+    "uname",
+    "subcommands",
+    "cmdline",
+    "respBody"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "bin/**",
+    "coverage/**",
+    "*.sum",
+    "go.sum"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "extensions": [
+    {
+      "id": "jongio.azd.rest",
+      "name": "rest",
+      "displayName": "REST API Extension",
+      "description": "Execute REST APIs with azd context and authentication",
+      "version": "0.1.0",
+      "author": "Jon Gallant",
+      "homepage": "https://github.com/jongio/azd-rest",
+      "repository": "https://github.com/jongio/azd-rest",
+      "license": "MIT",
+      "language": "go",
+      "platforms": {
+        "windows-amd64": {
+          "url": "https://github.com/jongio/azd-rest/releases/download/v0.1.0/rest-windows-amd64.zip",
+          "sha256": ""
+        },
+        "linux-amd64": {
+          "url": "https://github.com/jongio/azd-rest/releases/download/v0.1.0/rest-linux-amd64.tar.gz",
+          "sha256": ""
+        },
+        "linux-arm64": {
+          "url": "https://github.com/jongio/azd-rest/releases/download/v0.1.0/rest-linux-arm64.tar.gz",
+          "sha256": ""
+        },
+        "darwin-amd64": {
+          "url": "https://github.com/jongio/azd-rest/releases/download/v0.1.0/rest-darwin-amd64.tar.gz",
+          "sha256": ""
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/jongio/azd-rest/releases/download/v0.1.0/rest-darwin-arm64.tar.gz",
+          "sha256": ""
+        }
+      },
+      "capabilities": [
+        "custom-commands"
+      ],
+      "tags": [
+        "rest",
+        "api",
+        "http",
+        "developer"
+      ]
+    }
+  ]
+}

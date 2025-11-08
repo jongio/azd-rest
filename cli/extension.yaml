@@ -1,0 +1,21 @@
+id: jongio.azd.rest
+namespace: rest
+displayName: REST API Extension
+description: Execute REST APIs with azd context and authentication
+usage: azd rest <method> <url> [options]
+version: 0.1.0
+language: go
+capabilities:
+  - custom-commands
+examples:
+  - name: get
+    description: Execute GET request
+    usage: azd rest get https://api.example.com/resource
+  - name: post
+    description: Execute POST request with JSON body
+    usage: azd rest post https://api.example.com/resource --data '{"key":"value"}'
+tags:
+  - rest
+  - api
+  - http
+  - developer
