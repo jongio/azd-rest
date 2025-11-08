@@ -1,0 +1,14 @@
+{
+  "name": "azd-rest",
+  "version": "0.1.0",
+  "description": "Azure REST API Extension",
+  "scripts": {
+    "test": "go test ./... -v -cover",
+    "test:unit": "go test ./src/internal/... -v -cover",
+    "test:integration": "go test ./tests/integration/... -v",
+    "test:e2e": "go test ./tests/e2e/... -v",
+    "test:coverage": "go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html",
+    "build": "sh build.sh",
+    "lint": "golangci-lint run"
+  }
+}

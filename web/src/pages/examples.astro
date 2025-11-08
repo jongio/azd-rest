@@ -1,0 +1,214 @@
+---
+import Layout from '../components/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Examples" description="Real-world examples of using azd rest for various Azure services">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Examples</h1>
+      <p class="page-intro">
+        Learn how to use azd rest with real-world examples for different Azure services.
+      </p>
+    </div>
+
+    <div class="content">
+      <section class="example">
+        <div class="example-header">
+          <h2>📊 Management API (ARM)</h2>
+          <p>Interact with Azure Resource Manager APIs to manage your Azure resources.</p>
+        </div>
+
+        <h3>List Subscriptions</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
+
+        <h3>Get Resource Group</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}?api-version=2021-04-01`} language="bash" />
+
+        <h3>Create Storage Account</h3>
+        <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}?api-version=2021-04-01 \\
+  --data '{"location":"eastus","sku":{"name":"Standard_LRS"},"kind":"StorageV2"}'`} language="bash" />
+
+        <h3>Delete Resource</h3>
+        <CodeBlock code={`azd rest delete https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}?api-version=2021-04-01 \\
+  --verbose`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>🔐 Key Vault</h2>
+          <p>Access secrets, keys, and certificates from Azure Key Vault.</p>
+        </div>
+
+        <h3>Get Secret</h3>
+        <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets/my-secret?api-version=7.4`} language="bash" />
+
+        <h3>List Secrets</h3>
+        <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets?api-version=7.4`} language="bash" />
+
+        <h3>Set Secret</h3>
+        <CodeBlock code={`azd rest put https://myvault.vault.azure.net/secrets/my-secret?api-version=7.4 \\
+  --data '{"value":"my-secret-value"}'`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>💾 Storage</h2>
+          <p>Interact with Azure Storage services (Blob, Queue, Table, File).</p>
+        </div>
+
+        <h3>List Containers</h3>
+        <CodeBlock code={`azd rest get https://mystorageacct.blob.core.windows.net/?comp=list`} language="bash" />
+
+        <h3>Get Blob</h3>
+        <CodeBlock code={`azd rest get https://mystorageacct.blob.core.windows.net/container/blob \\
+  --output-file ./downloaded-blob.txt`} language="bash" />
+
+        <h3>List Queue Messages</h3>
+        <CodeBlock code={`azd rest get https://mystorageacct.queue.core.windows.net/myqueue/messages?numofmessages=10`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>👤 Microsoft Graph</h2>
+          <p>Access Microsoft Graph API to work with users, groups, and other Microsoft 365 resources.</p>
+        </div>
+
+        <h3>Get Current User</h3>
+        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
+
+        <h3>List Users</h3>
+        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/users?\\$top=10`} language="bash" />
+
+        <h3>Get User Profile</h3>
+        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/users/{userId}`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>🔧 Custom Scopes</h2>
+          <p>Use custom OAuth scopes for non-Azure endpoints or special cases.</p>
+        </div>
+
+        <h3>Custom Scope</h3>
+        <CodeBlock code={`azd rest get https://api.myservice.com/data \\
+  --scope https://myservice.com/.default`} language="bash" />
+
+        <h3>No Authentication</h3>
+        <CodeBlock code={`azd rest get https://api.github.com/repos/Azure/azure-dev \\
+  --no-auth \\
+  --header "Accept: application/vnd.github.v3+json"`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>📤 POST Requests</h2>
+          <p>Send data with POST requests using inline JSON or files.</p>
+        </div>
+
+        <h3>POST with Inline JSON</h3>
+        <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
+  --data '{"location":"eastus","sku":{"name":"Standard_LRS"},"kind":"StorageV2"}'`} language="bash" />
+
+        <h3>POST with File</h3>
+        <CodeBlock code={`azd rest post https://api.example.com/resource \\
+  --data-file ./payload.json \\
+  --header "Content-Type: application/json"`} language="bash" />
+
+        <h3>POST with @&#123;file&#125; Shorthand</h3>
+        <CodeBlock code={`azd rest post https://api.example.com/resource \\
+  --data-file @./payload.json`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>🎨 Output Formatting</h2>
+          <p>Control how responses are formatted and displayed.</p>
+        </div>
+
+        <h3>Pretty Print JSON</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --format json`} language="bash" />
+
+        <h3>Raw Output</h3>
+        <CodeBlock code={`azd rest get https://api.example.com/data \\
+  --format raw`} language="bash" />
+
+        <h3>Save to File</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --output-file subscriptions.json`} language="bash" />
+
+        <h3>Verbose Mode</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --verbose`} language="bash" />
+      </section>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .content {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .example {
+    margin-bottom: 4rem;
+    padding-bottom: 4rem;
+    border-bottom: 1px solid var(--color-border-default);
+  }
+
+  .example:last-child {
+    border-bottom: none;
+  }
+
+  .example-header {
+    margin-bottom: 2rem;
+  }
+
+  .example-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .example-header p {
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .example h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2rem 0 1rem;
+    color: var(--color-text-primary);
+  }
+</style>

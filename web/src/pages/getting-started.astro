@@ -1,0 +1,177 @@
+---
+import Layout from '../components/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import InstallTabs from '../components/InstallTabs.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Getting Started" description="Step-by-step guide to install and use azd rest extension">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Getting Started</h1>
+      <p class="page-intro">
+        Follow these steps to install azd rest and make your first authenticated REST API call.
+      </p>
+    </div>
+
+    <div class="content">
+      <section class="section">
+        <h2>Prerequisites</h2>
+        <p>Before installing azd rest, make sure you have:</p>
+        <ul>
+          <li><strong>Azure Developer CLI (azd)</strong> installed on your system</li>
+          <li><strong>Azure subscription</strong> and appropriate permissions</li>
+          <li><strong>Azure authentication</strong> configured (via <code>az login</code> or managed identity)</li>
+        </ul>
+        <p>If you don't have azd installed, visit the <a href="https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd" target="_blank" rel="noopener noreferrer">official installation guide</a>.</p>
+      </section>
+
+      <section class="section">
+        <h2>Install azd rest</h2>
+        <p>Install the azd rest extension using the following commands for your platform:</p>
+        <InstallTabs />
+      </section>
+
+      <section class="section">
+        <h2>Verify Installation</h2>
+        <p>Confirm that azd rest is installed correctly:</p>
+        <CodeBlock code={`azd rest version`} language="bash" />
+        <p>You should see output similar to:</p>
+        <CodeBlock code={`azd rest version 0.1.0`} language="text" showCopy={false} />
+      </section>
+
+      <section class="section">
+        <h2>Make Your First Request</h2>
+        <p>Try a simple GET request to the Azure Management API:</p>
+        <CodeBlock code={`# List your Azure subscriptions
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
+        
+        <p>This command will:</p>
+        <ul>
+          <li>✅ Automatically detect the Management API scope</li>
+          <li>✅ Use your Azure credentials (from <code>az login</code>)</li>
+          <li>✅ Add the authentication token to the request</li>
+          <li>✅ Pretty-print the JSON response</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>Security Best Practices</h2>
+        <div class="alert-warning">
+          <strong>⚠️ Important:</strong> azd rest uses your Azure credentials to authenticate REST API calls.
+        </div>
+        
+        <h3>Always Follow These Practices:</h3>
+        <ul class="checklist">
+          <li>✅ Only use with trusted Azure endpoints</li>
+          <li>✅ Review URLs before executing requests</li>
+          <li>✅ Use HTTPS for all requests (enforced by default)</li>
+          <li>✅ Never share tokens or credentials</li>
+          <li>✅ Use <code>--verbose</code> mode carefully (tokens are redacted)</li>
+          <li>❌ Don't use <code>--insecure</code> flag in production</li>
+          <li>❌ Don't pipe untrusted URLs to azd rest</li>
+        </ul>
+
+        <p>For comprehensive security information, see the <a href={`${base}security/`}>Security Guidelines</a>.</p>
+      </section>
+
+      <section class="section">
+        <h2>Next Steps</h2>
+        <ul>
+          <li>📚 Explore <a href={`${base}examples/`}>Usage Examples</a> for different Azure services</li>
+          <li>📖 Read the <a href={`${base}reference/cli/`}>CLI Reference</a> for all available options</li>
+          <li>🔐 Review <a href={`${base}security/`}>Security Guidelines</a> for best practices</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .content {
+    max-width: 900px;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section p {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+  }
+
+  .section ul {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .section li {
+    margin-bottom: 0.5rem;
+  }
+
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    color: #664d03;
+  }
+
+  .dark .alert-warning {
+    background-color: #664d03;
+    border-color: #997404;
+    color: #ffeaa7;
+  }
+
+  .checklist {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .checklist li {
+    padding: 0.5rem 0;
+  }
+</style>

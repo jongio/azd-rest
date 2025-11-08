@@ -1,0 +1,113 @@
+# azd-rest - Ignore files
+
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Mage generated files
+mage_output_file.go
+
+# Coverage
+*.out
+*.coverprofile
+coverage.txt
+coverage.html
+coverage/
+coverage-*
+coverage_*
+coverage_report.txt
+*-coverage
+*-cov
+*_cover
+*_coverage
+*_coverage.html
+*_coverage.out
+cov/
+cov
+coverdata/
+
+# Go workspace files (local dev only, not for CI)
+go.work
+go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/cli/bin/
+/cli/dist/
+/cli/build/
+dist/
+*.tgz
+*.tar.gz
+*.zip
+
+# Dependencies
+vendor/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Preserve cli lockfile
+!cli/package-lock.json
+
+# Website - preserve lockfile for reproducible builds
+!web/pnpm-lock.yaml
+
+# Astro
+.astro/
+
+# Website build output
+web/dist/
+
+# Generated CLI reference pages (regenerated at build time)
+web/src/pages/reference/cli/
+
+# Local configuration
+*.local
+.env
+.env.local
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
+
+# Extension builds
+/azd-rest
+/azd-rest.exe
+/rest
+/rest.exe
+
+# Test artifacts
+testdata/tmp/
+cli/final
+cli/build-debug.txt
+
+# Playwright
+.playwright-mcp
+playwright-report/
+test-results/
+
+# Runtime state files
+ports.json
+services.json
+
+# Backup files
+*.backup.*
