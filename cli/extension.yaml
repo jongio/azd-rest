@@ -1,0 +1,24 @@
+author: jongio
+id: jongio.azd.rest
+namespace: rest
+displayName: Azure REST API Client
+description: Execute REST API calls with automatic Azure authentication
+usage: azd rest <method> <url> [options]
+version: 0.1.0
+language: go
+author: jongio
+homepage: https://github.com/jongio/azd-rest
+license: MIT
+minAzdVersion: 1.10.0
+capabilities:
+  - custom-commands
+commands:
+  - name: rest
+    description: Execute REST API calls with Azure authentication
+    type: executable
+    path: ./bin/azd-rest
+tags:
+  - rest
+  - api
+  - http
+  - developer-tools

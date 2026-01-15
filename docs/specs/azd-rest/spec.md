@@ -120,19 +120,41 @@ azd-rest/
 
 ### Dependencies
 
-- **azd-core** (v0.3.0+): Authentication, Azure context, shared utilities
+- **azd-core** (target v0.3.0 once helper surface lands; temporary `replace ../azd-core` during development): Authentication, Azure context, shared utilities
 - **cobra**: CLI framework (same as azd-exec)
 - **Azure SDK for Go**: `azcore`, `azidentity` for authentication
 - **Standard library**: `net/http` for REST calls
 
-### Required azd-core Enhancements
+### Required azd-core Enhancements (v0.3.0 target)
 
-- **Token acquisition helper**: Stable API to fetch raw access tokens by scope for extensions, returning token plus expires-on to support retries/pagination without repeated calls.
-- **Context accessors**: Public helpers to retrieve current subscription ID and default resource group for placeholder substitution in URLs.
-- **Cloud endpoint map**: Expose resolved cloud endpoints (public/sovereign) for host/scope inference without duplicating constants in extensions.
-- **User-Agent/telemetry hook**: Builder to append extension name/version and command info while keeping telemetry metadata-only (no bodies/headers/tokens).
-- **Header redaction utilities**: Shared redaction for verbose logging (Authorization first/last 4 chars) to avoid duplicated logic.
-- **Version contract**: Pin minimum azd-core version in this extension and enforce via CI to catch breaking changes early.
+- **Token acquisition helper**: Provide a stable `GetToken(ctx, scope) (azcore.AccessToken, error)` surface that returns the bearer value plus `ExpiresOn` for retry/pagination reuse, backed by azd's credential chain and cache.
+- **Context accessors**: Public helpers to retrieve active subscription ID and default resource group (from azd login/context) for ARM placeholder substitution; must no-op gracefully when unset.
+- **Cloud endpoint map**: Expose a map of public and sovereign endpoints (management/resource manager host + audience) so extensions do not duplicate constants when inferring scopes.
+- **User-Agent/telemetry hook**: Policy/builder to append extension name/version and command metadata to the User-Agent plus telemetry envelope while guaranteeing metadata-only collection (no headers/bodies/tokens).
+- **Header redaction utilities**: Shared helpers to redact sensitive headers (Authorization first/last 4 chars) and body snippets for verbose logging so extensions do not reimplement.
+- **Version contract and guardrails**: azd-rest pins to `github.com/jongio/azd-core v0.3.0` (with local `replace` to `../../azd-core` until the release is cut) and enforces the pin via `cli/src/internal/azdcore/version_test.go`; CI should fail when go.mod drifts.
+- **Tracking item**: Create an azd-core issue titled “Expose extension helper surface for azd-rest (token w/ expiry, context accessors, endpoints, UA/telemetry hook, redaction)” containing the above acceptance criteria and the planned version pin to v0.3.0.
+
+### azd-core tracking issue (draft)
+
+File this in the azd-core repository (github.com/jongio/azd-core) with the exact title **“Expose extension helper surface for azd-rest (token w/ expiry, context accessors, endpoints, UA/telemetry hook, redaction)”** and body:
+
+```
+## Summary
+Expose helper surface needed by the azd-rest extension so it can rely on azd-core for tokens, context, endpoints, telemetry, and redaction instead of duplicating logic. Target release: azd-core v0.3.0 (azd-rest pins to this version with a guardrail test).
+
+## Acceptance Criteria
+- [ ] Token helper: public function that returns `azcore.AccessToken` with `ExpiresOn` for a given scope using azd credential chain (cache respected, retries for transient failures).
+- [ ] Context accessors: helpers to fetch active subscription ID and default resource group from azd context; safe no-op/default behavior when unset.
+- [ ] Cloud endpoint map: exported map for public and sovereign clouds that includes resource manager host + audience values (used for scope and placeholder substitution) so extensions do not hardcode constants.
+- [ ] User-Agent/telemetry hook: policy/builder to append extension name/version and command metadata to UA + telemetry envelope; metadata-only collection (no tokens/headers/bodies), opt-in friendly.
+- [ ] Redaction utilities: helpers to redact sensitive headers (Authorization first/last 4 chars) and body snippets for verbose logging; reusable across extensions.
+- [ ] Version pin: deliver in v0.3.0; azd-rest will stay pinned to `github.com/jongio/azd-core v0.3.0` and CI enforces the pin.
+
+## Notes
+- Please link the azd-rest spec section “Required azd-core Enhancements (v0.3.0 target)” for context.
+- azd-rest currently uses a local replace to the azd-core repo during development.
+```
 
 ### Azure Scope Detection
 
@@ -485,6 +507,28 @@ Based on `azd-exec` workflows:
 - **CodeQL** (`codeql.yml`): Security analysis on push to main
 - **Release** (`release.yml`): Automated releases with multi-platform binaries
 - **PR Build** (`pr-build.yml`): PR validation with all checks
+
+### Current Test Status
+
+**Status**: Not yet implemented (project in planning phase)
+
+| Category | Target Coverage | Current Coverage | Status |
+|----------|----------------|------------------|--------|
+| Unit Tests | 80%+ | 0% | ❌ Not started |
+| Integration Tests | Key scenarios | 0% | ❌ Not started |
+| E2E Tests | Critical paths | 0% | ❌ Not started |
+| Security Tests | All auth flows | 0% | ❌ Not started |
+
+**Next Steps**:
+1. Set up test infrastructure (test files, mocks, fixtures)
+2. Implement scope detection unit tests
+3. Implement auth flow unit tests
+4. Implement HTTP client unit tests
+5. Add integration tests for Azure services (requires test resources)
+6. Add E2E tests for command execution
+7. Configure CI pipeline for automated testing
+
+**Blockers**: None (awaiting implementation start)
 
 ## Documentation Requirements
 

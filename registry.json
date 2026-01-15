@@ -1,0 +1,38 @@
+{
+  "extensions": [
+    {
+      "id": "jongio.azd.rest",
+      "namespace": "rest",
+      "displayName": "REST API Extension",
+      "description": "Execute REST API calls with Azure authentication and scope detection.",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "capabilities": [
+            "custom-commands"
+          ],
+          "usage": "azd rest <method> <url> [options]",
+          "examples": [
+            {
+              "name": "get",
+              "description": "Execute GET request",
+              "usage": "azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01"
+            },
+            {
+              "name": "version",
+              "description": "Display extension version",
+              "usage": "azd rest version"
+            }
+          ],
+          "artifacts": {}
+        }
+      ],
+      "tags": [
+        "rest",
+        "api",
+        "http",
+        "developer-tools"
+      ]
+    }
+  ]
+}

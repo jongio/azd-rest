@@ -6,80 +6,16 @@ status: active
 type: feature
 category: documentation
 author: azd-rest team
-percentComplete: 0
+percentComplete: 20
 related: []
 tags: [rest, planning, tasks]
 ---
 
 # azd-rest: REST API Extension with Azure Authentication - Tasks
 
-<!-- NEXT: 37 -->
+<!-- NEXT: 4 -->
 
 ## TODO
-
-### 1. Project Foundation & Scaffolding
-
-**Priority**: P0  
-**Size**: M  
-**Dependencies**: None  
-**Description**: Set up initial project structure following azd-exec patterns
-
-**Acceptance Criteria**:
-- [ ] Directory structure created (`cli/`, `docs/`, `.github/workflows/`, etc.)
-- [ ] `cli/go.mod` with dependencies (azd-core v0.3.0+, cobra, Azure SDK)
-- [ ] `cli/extension.yaml` with metadata (id: jongio.azd.rest, namespace: rest)
-- [ ] Root `package.json` for test orchestration (similar to azd-exec)
-- [ ] `.gitignore`, `LICENSE` (MIT), `cspell.json`
-- [ ] Basic `README.md` with project description and installation instructions
-- [ ] `CHANGELOG.md` initialized with v0.1.0
-- [ ] `CONTRIBUTING.md` copied from azd-exec
-- [ ] `registry.json` initialized
-
-**Notes**: Use azd-exec as template reference.
-
----
-
-### 2. Azure Scope Detection Module
-
-**Priority**: P0  
-**Size**: M  
-**Dependencies**: Task 1  
-**Description**: Implement scope detection algorithm for all Azure services
-
-**Acceptance Criteria**:
-- [ ] `cli/src/internal/auth/scope.go` with `DetectScope(url string) (string, error)`
-- [ ] Support for all services in spec: Management, Storage, Key Vault, Graph, DevOps, Kusto, ACR, Event Hubs, Service Bus, Cosmos, App Config, Batch, OSSRDBMS, SQL, Synapse, Data Lake, Media, Log Analytics
-- [ ] Exact match patterns (management.azure.com, graph.microsoft.com, etc.)
-- [ ] Suffix match patterns (*.vault.azure.net, *.blob.core.windows.net, etc.)
-- [ ] Special cases (Kusto with cluster-specific scope, DevOps GUID)
-- [ ] Unit tests `cli/src/internal/auth/scope_test.go` with 100% coverage
-- [ ] Test all URL patterns from spec table
-- [ ] Test edge cases (http vs https, port numbers, query strings)
-- [ ] Returns empty string for non-Azure URLs
-
-**Notes**: This is the core intelligence of the extension. Must be exhaustively tested.
-
----
-
-### 3. Authentication Module with azd-core
-
-**Priority**: P0  
-**Size**: M  
-**Dependencies**: Task 2  
-**Description**: Implement Azure token acquisition using azd-core library
-
-**Acceptance Criteria**:
-- [ ] `cli/src/internal/auth/auth.go` with `GetAzureToken(scope string) (string, error)`
-- [ ] Integration with azd-core's authentication (DefaultAzureCredential pattern)
-- [ ] Token caching via azd-core
-- [ ] Error handling for auth failures (not logged in, insufficient permissions)
-- [ ] Unit tests with mocked azd-core calls
-- [ ] Integration tests with real Azure authentication (tagged `integration`)
-- [ ] Supports all credential types: Azure CLI, Managed Identity, Environment Variables
-
-**Notes**: Leverage azd-core security module. Don't reinvent authentication.
-
----
 
 ### 4. HTTP Client Module
 
@@ -732,21 +668,6 @@ tags: [rest, planning, tasks]
 
 ---
 
-### 37. azd-core Alignment for azd-rest
-
-**Priority**: P0  
-**Size**: M  
-**Dependencies**: Task 36  
-**Description**: Specify and coordinate any azd-core updates required to support azd-rest features.
-
-**Acceptance Criteria**:
-- [ ] Document required azd-core surface in spec (token helper with expires-on, subscription/resource group accessors, cloud endpoint map, user-agent/telemetry hook, redaction utilities, version pin)
-- [ ] Open tracking item/PR in azd-core (or cross-repo task) for these changes
-- [ ] Update dependency/pinning in azd-rest to minimum azd-core version once available
-- [ ] Tests/CI in azd-rest enforce the pinned azd-core version
-
----
-
 ### 38. Remove summary.md Doc
 
 **Priority**: P2  
@@ -763,10 +684,102 @@ tags: [rest, planning, tasks]
 
 ## IN PROGRESS
 
-(No tasks in progress)
+_No active tasks._
+
+### 3. Authentication Module with azd-core
+
+**Priority**: P0  
+**Size**: M  
+**Dependencies**: Task 2  
+**Description**: Implement Azure token acquisition using azd-core library
+
+**Acceptance Criteria**:
+- [ ] `cli/src/internal/auth/auth.go` with `GetAzureToken(scope string) (string, error)`
+- [ ] Integration with azd-core's authentication (DefaultAzureCredential pattern)
+- [ ] Token caching via azd-core
+- [ ] Error handling for auth failures (not logged in, insufficient permissions)
+- [ ] Unit tests with mocked azd-core calls
+- [ ] Integration tests with real Azure authentication (tagged `integration`)
+- [ ] Supports all credential types: Azure CLI, Managed Identity, Environment Variables
+
+**Notes**: Leverage azd-core security module. Don't reinvent authentication.
+
+**Status (In Progress)**:
+- Kickoff: handoff to Developer to wire `GetAzureToken` via azd-core credentials + caching; preserve azd-core v0.3.0 pin and Go 1.25.5 guard.
+
+---
+
+---
 
 ---
 
 ## DONE
 
-(No tasks completed yet)
+### 1. Project Foundation & Scaffolding
+
+**Priority**: P0  
+**Size**: M  
+**Dependencies**: None  
+**Description**: Set up initial project structure following azd-exec patterns
+
+**Acceptance Criteria**:
+- [x] Directory structure created (`cli/`, `docs/`, `.github/workflows/`, etc.)
+- [x] `cli/go.mod` with dependencies (azd-core v0.3.0+, cobra, Azure SDK)
+- [x] `cli/extension.yaml` with metadata (id: jongio.azd.rest, namespace: rest)
+- [x] Root `package.json` for test orchestration (similar to azd-exec)
+- [x] `.gitignore`, `LICENSE` (MIT), `cspell.json`
+- [x] Basic `README.md` with project description and installation instructions
+- [x] `CHANGELOG.md` initialized with v0.1.0
+- [x] `CONTRIBUTING.md` copied from azd-exec
+- [x] `registry.json` initialized
+
+**Progress (2026-01-15)**:
+- [x] Added scaffolding files aligned to azd-exec baseline (gitignore, license, cspell, package, README, changelog, contributing, registry) and advanced NEXT to Task 2.
+- [x] Updated extension metadata with id/namespace and preserved go.mod dependencies on azd-core v0.3.0, Azure SDK, and Cobra.
+
+---
+
+### 2. Azure Scope Detection Module
+
+**Priority**: P0  
+**Size**: M  
+**Dependencies**: Task 1  
+**Description**: Implement scope detection algorithm for all Azure services
+
+**Acceptance Criteria**:
+- [x] `cli/src/internal/auth/scope.go` with `DetectScope(url string) (string, error)`
+- [x] Support for all services in spec: Management, Storage, Key Vault, Graph, DevOps, Kusto, ACR, Event Hubs, Service Bus, Cosmos, App Config, Batch, OSSRDBMS, SQL, Synapse, Data Lake, Media, Log Analytics
+- [x] Exact match patterns (management.azure.com, graph.microsoft.com, etc.)
+- [x] Suffix match patterns (*.vault.azure.net, *.blob.core.windows.net, etc.)
+- [x] Special cases (Kusto with cluster-specific scope, DevOps GUID)
+- [x] Unit tests `cli/src/internal/auth/scope_test.go` with 100% coverage
+- [x] Test all URL patterns from spec table
+- [x] Test edge cases (http vs https, port numbers, query strings)
+- [x] Returns empty string for non-Azure URLs
+
+**Progress (2026-01-15)**:
+- Implemented scope detection covering management, storage variants, Key Vault, Graph, DevOps GUID, Kusto cluster-aware scopes, ACR, Event Hubs vs Service Bus queue paths, Cosmos, App Config, Batch, OSSRDBMS, SQL, Synapse, Data Lake, Media, and Log Analytics in [cli/src/internal/auth/scope.go](cli/src/internal/auth/scope.go#L1-L108).
+- Added exhaustive table-driven tests (edge cases include HTTP scheme, ports, query strings, relative URLs, malformed URLs) with 100% coverage in [cli/src/internal/auth/scope_test.go](cli/src/internal/auth/scope_test.go#L1-L354); validated with `GOWORK=off GOFLAGS=-mod=mod go test ./src/internal/auth/...`.
+
+---
+
+### 37. azd-core Alignment for azd-rest
+
+### 37. azd-core Alignment for azd-rest
+
+**Priority**: P0  
+**Size**: M  
+**Dependencies**: Task 36  
+**Description**: Specify and coordinate any azd-core updates required to support azd-rest features.
+
+**Acceptance Criteria**:
+- [x] Document required azd-core surface in spec (token helper with expires-on, subscription/resource group accessors, cloud endpoint map, user-agent/telemetry hook, redaction utilities, version pin)
+- [x] Open tracking item/PR in azd-core (or cross-repo task) for these changes
+- [x] Update dependency/pinning in azd-rest to minimum azd-core version once available
+- [x] Tests/CI in azd-rest enforce the pinned azd-core version
+
+**Progress (2026-01-15)**:
+- [x] Tracking issue content ready to file in `jongio/azd-core` (title “Expose extension helper surface for azd-rest (token w/ expiry, context accessors, endpoints, UA/telemetry hook, redaction)”) with body documented in [docs/specs/azd-rest/spec.md](docs/specs/azd-rest/spec.md#L138-L156); needs manual filing due to repo access.
+- [x] go.mod remains pinned to `github.com/jongio/azd-core v0.3.0` with local replace; guard test location is `cli/src/internal/azdcore/version_test.go`.
+- [x] Version guard workflow now uses Go 1.25.5 with `GOWORK=off` and azd-core v0.3.0 checkout so the pin stays enforced in CI ([.github/workflows/version-guard.yml](.github/workflows/version-guard.yml)).
+- [x] Guard test passes locally with `GOWORK=off GOFLAGS=-mod=mod go test ./src/internal/azdcore/...`.
