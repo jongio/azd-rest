@@ -1,0 +1,141 @@
+---
+/**
+ * Footer Component
+ * 
+ * Bottom section with links and copyright.
+ */
+
+const currentYear = new Date().getFullYear();
+const base = import.meta.env.BASE_URL;
+---
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-grid">
+      <div class="footer-section">
+        <h3 class="footer-heading">Documentation</h3>
+        <ul class="footer-links">
+          <li><a href={`${base}getting-started`}>Getting Started</a></li>
+          <li><a href={`${base}examples`}>Examples</a></li>
+          <li><a href={`${base}reference/cli/`}>CLI Reference</a></li>
+          <li><a href={`${base}security`}>Security</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h3 class="footer-heading">Resources</h3>
+        <ul class="footer-links">
+          <li><a href="https://github.com/jongio/azd-rest" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/jongio/azd-rest/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="https://github.com/jongio/azd-rest/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://learn.microsoft.com/azure/developer/azure-developer-cli/" target="_blank" rel="noopener noreferrer">Azure Developer CLI</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h3 class="footer-heading">Community</h3>
+        <ul class="footer-links">
+          <li><a href="https://github.com/jongio/azd-rest/issues" target="_blank" rel="noopener noreferrer">Report Issue</a></li>
+          <li><a href="https://github.com/jongio/azd-rest/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href={`${base}reference/changelog/`}>Changelog</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copyright">
+        © {currentYear} azd rest. MIT License.
+      </p>
+      <p class="footer-built-with">
+        Built with <a href="https://astro.build" target="_blank" rel="noopener noreferrer">Astro</a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background-color: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border-default);
+    margin-top: 4rem;
+  }
+
+  .footer-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 2rem;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .footer-section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .footer-heading {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .footer-links a {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover {
+    color: var(--color-interactive-default);
+  }
+
+  .footer-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border-default);
+    text-align: center;
+  }
+
+  @media (min-width: 640px) {
+    .footer-bottom {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+
+  .footer-copyright,
+  .footer-built-with {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+  }
+
+  .footer-built-with a {
+    color: var(--color-text-tertiary);
+    font-weight: 500;
+  }
+
+  .footer-built-with a:hover {
+    color: var(--color-interactive-default);
+  }
+</style>

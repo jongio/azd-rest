@@ -8,7 +8,8 @@
     "test:cli": "pnpm run test:cli:unit && pnpm run test:cli:integration",
     "test:cli:unit": "cd cli && go test -v -short ./src/...",
     "test:cli:integration": "cd cli && go test -v -tags=integration -timeout=10m ./src/...",
-    "test:all": "pnpm run test"
+    "test:web": "pnpm --filter @jongio/azd-rest-docs test",
+    "test:all": "pnpm run test:cli && pnpm run test:web"
   },
   "devDependencies": {}
 }

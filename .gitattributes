@@ -1,0 +1,54 @@
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Explicitly set line endings for text files
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.toml text eol=lf
+
+# Shell scripts should always use LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows scripts should use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.o binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.pdf binary
+
+# Go specific
+go.mod text eol=lf
+go.sum text eol=lf
+
+# Git files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.gitmodules text eol=lf
+
+# GitHub files
+LICENSE text eol=lf
+CONTRIBUTING.md text eol=lf
+README.md text eol=lf

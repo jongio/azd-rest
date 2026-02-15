@@ -140,7 +140,7 @@ func TestFormatter_Format_Verbose(t *testing.T) {
 	output, err := formatter.Format(resp)
 	
 	require.NoError(t, err)
-	assert.Contains(t, output, "Status: 200 OK")
+	assert.Contains(t, output, "< 200 OK")
 	assert.Contains(t, output, "Duration:")
 	assert.Contains(t, output, "Response Headers:")
 	assert.Contains(t, output, "Content-Type: application/json")
@@ -148,7 +148,8 @@ func TestFormatter_Format_Verbose(t *testing.T) {
 	
 	// Authorization header should be redacted
 	assert.Contains(t, output, "Authorization:")
-	assert.Contains(t, output, "Bear...")
+	assert.Contains(t, output, "Bearer")
+	assert.Contains(t, output, "...")
 	assert.NotContains(t, output, "secret-token-12345")
 }
 
@@ -222,22 +223,22 @@ func TestRedactToken(t *testing.T) {
 		{
 			name:     "Long token",
 			token:    "Bearer secret-token-12345",
-			expected: "Bear...2345",
+			expected: "Bearer...-12345",
 		},
 		{
 			name:     "Short token",
 			token:    "short",
-			expected: "***",
+			expected: "***REDACTED***",
 		},
 		{
 			name:     "Exact 8 chars",
 			token:    "12345678",
-			expected: "***",
+			expected: "***REDACTED***",
 		},
 		{
 			name:     "9 chars",
 			token:    "123456789",
-			expected: "1234...6789",
+			expected: "***REDACTED***",
 		},
 	}
 

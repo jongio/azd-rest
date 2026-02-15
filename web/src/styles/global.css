@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/* ============================================
+   azd-web-core Design System
+   Shared tokens and utilities from the design system
+   ============================================ */
+@import "@jongio/azd-web-core-tokens/dist/tokens.css";
+@import "@jongio/azd-web-core-tailwind/base.css";
+
+/* Configure dark mode to use data-theme attribute */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* Font families (from azd-web-core tokens) */
+  --font-sans: var(--azd-font-sans);
+  --font-mono: var(--azd-font-mono);
+}
+
+/* ============================================
+   Semantic Aliases
+   Map azd-web-core tokens to local shorthand vars
+   consumed by existing component styles
+   ============================================ */
+
+:root {
+  /* Surface */
+  --color-bg-primary: var(--azd-color-surface-canvas);
+  --color-bg-secondary: var(--azd-color-surface-raised);
+  --color-bg-tertiary: var(--azd-color-surface-subtle);
+  --color-bg-accent: var(--azd-color-accent-primary-muted);
+
+  /* Text */
+  --color-text-primary: var(--azd-color-text-primary);
+  --color-text-secondary: var(--azd-color-text-secondary);
+  --color-text-tertiary: var(--azd-color-text-muted);
+  --color-text-muted: var(--azd-color-text-muted);
+  --color-text-inverse: var(--azd-color-text-inverse);
+
+  /* Borders */
+  --color-border-default: var(--azd-color-border-default);
+  --color-border-strong: var(--azd-color-border-strong);
+  --color-border-focus: var(--azd-color-border-focus);
+
+  /* Interactive */
+  --color-interactive-default: var(--azd-color-accent-primary-default);
+  --color-interactive-hover: var(--azd-color-accent-primary-hover);
+  --color-interactive-active: var(--azd-color-accent-primary-active);
+
+  /* State */
+  --color-success: var(--azd-color-status-success-icon);
+  --color-warning: var(--azd-color-status-warn-icon);
+  --color-error: var(--azd-color-status-danger-icon);
+  --color-info: var(--azd-color-status-info-icon);
+
+  /* Shadows */
+  --shadow-sm: var(--azd-shadow-sm);
+  --shadow-md: var(--azd-shadow-md);
+  --shadow-lg: var(--azd-shadow-lg);
+  --shadow-xl: var(--azd-shadow-xl);
+
+  /* Component Tokens */
+  --header-height: 4rem;
+  --header-height-mobile: 3.5rem;
+  --sidebar-width: 16rem;
+  --sidebar-width-collapsed: 4rem;
+  --nav-item-height: 2.5rem;
+  --footer-padding-y: 3rem;
+
+  /* Code Block */
+  --code-block-bg: var(--azd-color-code-background);
+  --code-header-bg: var(--azd-color-code-gutter);
+  --code-header-border: var(--azd-color-border-default);
+  --code-filename-color: var(--azd-color-text-muted);
+
+  /* Terminal */
+  --terminal-bg: var(--azd-color-terminal-background);
+  --terminal-text-color: var(--azd-color-terminal-text);
+
+  /* Syntax */
+  --syntax-text: var(--azd-color-code-text);
+  --syntax-comment: var(--azd-color-code-comment);
+  --syntax-keyword: var(--azd-color-code-keyword);
+  --syntax-function: var(--azd-color-code-function);
+  --syntax-string: var(--azd-color-code-string);
+  --syntax-number: var(--azd-color-code-number);
+  --syntax-variable: var(--azd-color-code-variable);
+
+  /* Transitions */
+  --duration-fast: var(--azd-motion-duration-fast);
+  --duration-normal: var(--azd-motion-duration-normal);
+  --duration-slow: var(--azd-motion-duration-slow);
+  --ease-out: var(--azd-motion-easing-out);
+  --ease-in-out: var(--azd-motion-easing-in-out);
+
+  /* Z-index */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--azd-color-border-strong);
+  border-radius: 6px;
+  border: 2px solid var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* ============================================
+   Animation aliases (delegate to azd-web-core)
+   ============================================ */
+
+.animate-float { animation: azd-float 6s ease-in-out infinite; }
+.animate-float-delayed { animation: azd-float 8s ease-in-out infinite; animation-delay: 2s; }
+.animate-pulse-glow { animation: azd-pulse-glow 4s ease-in-out infinite; }
+.animate-gradient { background-size: 200% 200%; animation: azd-gradient-shift 8s ease infinite; }
+.animate-fade-up { animation: azd-fade-up 0.8s ease-out forwards; }
+.animate-shimmer { background-size: 200% auto; animation: azd-shimmer 3s linear infinite; }
+
+/* ============================================
+   Component Styles (powered by azd-web-core tokens)
+   ============================================ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, var(--azd-color-accent-primary-default), var(--azd-color-accent-secondary-default));
+  color: white;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.4);
+  text-decoration: none;
+}
+
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(16px);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+}
+
+.btn-secondary:hover {
+  border-color: var(--azd-color-accent-primary-default);
+  background: rgba(6, 182, 212, 0.1);
+  text-decoration: none;
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s;
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border-default);
+}
+
+.feature-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.terminal-code {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  background: var(--azd-color-code-background);
+  border: 1px solid var(--color-border-default);
+}
+
+.terminal-code:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, var(--azd-color-glow-cyan), var(--azd-color-glow-violet));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-animated {
+  background: linear-gradient(90deg, var(--azd-color-glow-cyan), var(--azd-color-glow-violet), var(--azd-color-glow-emerald), var(--azd-color-glow-cyan));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: azd-gradient-shift 6s ease infinite;
+}

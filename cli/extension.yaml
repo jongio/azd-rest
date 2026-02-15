@@ -1,8 +1,9 @@
-author: jongio
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/refs/heads/main/cli/azd/extensions/extension.schema.json
+
 id: jongio.azd.rest
 namespace: rest
-displayName: Azure REST API Client
-description: Execute REST API calls with automatic Azure authentication
+displayName: REST API Extension
+description: Execute REST API calls with Azure authentication and scope detection.
 usage: azd rest <method> <url> [options]
 version: 0.1.0
 language: go
@@ -10,13 +11,29 @@ author: jongio
 homepage: https://github.com/jongio/azd-rest
 license: MIT
 minAzdVersion: 1.10.0
+
 capabilities:
   - custom-commands
+
+examples:
+  - name: get
+    description: Execute a GET request against Azure Resource Manager
+    usage: azd rest get https://management.azure.com/subscriptions?api-version=2022-12-01
+
+  - name: post
+    description: Execute a POST request with a JSON body
+    usage: azd rest post <url> --body '{"key": "value"}'
+
+  - name: version
+    description: Display extension version
+    usage: azd rest version
+
 commands:
   - name: rest
     description: Execute REST API calls with Azure authentication
     type: executable
     path: ./bin/azd-rest
+
 tags:
   - rest
   - api

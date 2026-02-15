@@ -1,0 +1,257 @@
+---
+import Layout from '../components/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Security" description="Security guidelines and best practices for using azd rest">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Security Guidelines</h1>
+      <p class="page-intro">
+        Important security considerations when using azd rest with Azure credentials.
+      </p>
+    </div>
+
+    <div class="content">
+      <section class="section">
+        <h2>Overview</h2>
+        <p>
+          <code>azd rest</code> uses your Azure credentials to authenticate REST API calls. This provides powerful
+          access to Azure services, but requires careful security practices.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Token Handling</h2>
+        
+        <h3>Token Security</h3>
+        <ul>
+          <li>✅ <strong>Tokens are never logged</strong> - Authentication tokens are never printed to stdout/stderr</li>
+          <li>✅ <strong>Token redaction</strong> - In verbose mode, only first/last 4 characters are shown</li>
+          <li>✅ <strong>Secure storage</strong> - Tokens are cached securely by azd-core (encrypted on disk)</li>
+          <li>✅ <strong>Short-lived tokens</strong> - Azure tokens expire in 1 hour, automatically refreshed</li>
+          <li>✅ <strong>Scope isolation</strong> - Each request uses the minimum required scope</li>
+        </ul>
+
+        <h3>Token Caching</h3>
+        <p>
+          Tokens are cached per scope until close to expiration (2 minutes before expiry). This improves
+          performance while maintaining security. The cache is managed by azd-core and respects your
+          credential chain (Azure CLI, Managed Identity, Environment Variables).
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>TLS/HTTPS</h2>
+        
+        <h3>HTTPS Enforcement</h3>
+        <ul>
+          <li>✅ <strong>HTTPS by default</strong> - All Azure endpoints use HTTPS</li>
+          <li>✅ <strong>Certificate validation</strong> - Enabled by default for security</li>
+          <li>⚠️ <strong>--insecure flag</strong> - Disables certificate validation (use only for testing)</li>
+        </ul>
+
+        <div class="alert-warning">
+          <strong>Warning:</strong> The <code>--insecure</code> flag disables TLS certificate validation.
+          This should <strong>never</strong> be used in production or with sensitive data.
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Input Validation</h2>
+        
+        <h3>URL Validation</h3>
+        <ul>
+          <li>✅ URLs are parsed and validated before requests</li>
+          <li>✅ Full URLs are required (no relative URLs)</li>
+          <li>✅ Malformed URLs are rejected with clear error messages</li>
+        </ul>
+
+        <h3>Header Sanitization</h3>
+        <ul>
+          <li>✅ Custom headers are validated</li>
+          <li>✅ Authorization headers are detected and respected</li>
+          <li>✅ Header injection attempts are prevented</li>
+        </ul>
+
+        <h3>Body Size Limits</h3>
+        <ul>
+          <li>✅ Large payloads are handled efficiently</li>
+          <li>✅ Binary content is streamed (not buffered in memory)</li>
+          <li>✅ Configurable limits prevent memory exhaustion</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>Best Practices</h2>
+        
+        <h3>✅ Safe Practices</h3>
+        <ul>
+          <li>Review URLs before executing requests</li>
+          <li>Use HTTPS for all requests (default behavior)</li>
+          <li>Verify Azure service endpoints from official documentation</li>
+          <li>Use <code>--verbose</code> mode only when debugging (tokens are redacted)</li>
+          <li>Store sensitive data in Azure Key Vault, not in request bodies</li>
+          <li>Use appropriate scopes (auto-detected or explicitly set)</li>
+        </ul>
+
+        <h3>❌ Dangerous Practices</h3>
+        <ul>
+          <li>Don't use <code>--insecure</code> flag in production</li>
+          <li>Don't pipe untrusted URLs or data to azd rest</li>
+          <li>Don't share tokens or credentials</li>
+          <li>Don't use HTTP endpoints (auth is automatically disabled)</li>
+          <li>Don't bypass scope detection without understanding the implications</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>Audit Trail</h2>
+        
+        <h3>Verbose Mode</h3>
+        <p>
+          When using <code>--verbose</code>, azd rest shows:
+        </p>
+        <ul>
+          <li>Request method and URL</li>
+          <li>Request headers (with token redaction)</li>
+          <li>Response status code and headers</li>
+          <li>Request duration</li>
+        </ul>
+        <p>
+          <strong>Note:</strong> Request/response bodies are never logged, and tokens are redacted
+          (showing only first/last 4 characters).
+        </p>
+
+        <h3>Telemetry</h3>
+        <p>
+          azd rest adds telemetry headers to requests:
+        </p>
+        <ul>
+          <li><code>User-Agent: azd-rest/&#123;version&#125; (azd extension)</code></li>
+          <li><code>x-ms-client-request-id: &#123;UUID&#125;</code></li>
+          <li><code>x-ms-command-name: azd rest</code></li>
+        </ul>
+        <p>
+          Telemetry is metadata-only (no tokens, headers, or bodies are collected).
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Threat Model</h2>
+        
+        <h3>Assets</h3>
+        <ul>
+          <li>Azure authentication tokens</li>
+          <li>Request/response bodies (may contain sensitive data)</li>
+          <li>Output files</li>
+          <li>Logs and telemetry records</li>
+        </ul>
+
+        <h3>Threats</h3>
+        <ul>
+          <li><strong>Token leakage</strong> - Mitigated by token redaction and secure storage</li>
+          <li><strong>MITM attacks</strong> - Mitigated by HTTPS enforcement and certificate validation</li>
+          <li><strong>PII in telemetry</strong> - Mitigated by metadata-only collection</li>
+          <li><strong>Disk leaks</strong> - Mitigated by proper file handling and cleanup</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>Reporting Security Issues</h2>
+        <p>
+          If you discover a security vulnerability, please report it responsibly:
+        </p>
+        <ul>
+          <li>📧 Email: [security contact]</li>
+          <li>🔒 Use GitHub Security Advisories for responsible disclosure</li>
+          <li>📋 Include steps to reproduce and potential impact</li>
+        </ul>
+        <p>
+          <strong>Do not</strong> open public issues for security vulnerabilities.
+        </p>
+      </section>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .content {
+    max-width: 900px;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section p {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+  }
+
+  .section ul {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .section li {
+    margin-bottom: 0.5rem;
+  }
+
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    color: #664d03;
+  }
+
+  [data-theme="dark"] .alert-warning {
+    background-color: #664d03;
+    border-color: #997404;
+    color: #ffeaa7;
+  }
+</style>

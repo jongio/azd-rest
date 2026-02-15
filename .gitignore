@@ -1,48 +1,84 @@
-# Binaries for programs and plugins
+# azd-rest - Ignore files
+
+# Binaries
+bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
+# Test binaries
 *.test
 
-# Output of the go coverage tool
+# Mage generated files
+mage_output_file.go
+
+# Coverage
 *.out
 *.coverprofile
 coverage.txt
 coverage.html
 coverage/
-*coverage*
-cov
-cov-*
-test-cov*
+coverage-*
+*-coverage
+*-cov
+*_cover
+*_coverage
+*_coverage.html
+*_coverage.out
+coverdata/
 
-# Go workspace file
-go.work
-go.work.sum
+# Go workspace files are committed (needed for module resolution)
+# go.work
+# go.work.sum
 
-# Dependency directories
-vendor/
-node_modules/
-
-# Build artifacts
-/cli/bin/
-/cli/dist/
-/cli/build/
-*.tgz
-*.tar.gz
-*.zip
-
-# IDE specific files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Build artifacts
+/cli/bin/
+/cli/dist/
+/cli/build/
+dist/
+*.tgz
+*.tar.gz
+*.zip
+
+# Dependencies
+vendor/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Preserve cli lockfile
+!cli/package-lock.json
+
+# Website - preserve lockfile for reproducible builds
+!web/pnpm-lock.yaml
+
+# Astro
+.astro/
+
+# Website build output
+web/dist/
+
+# Generated CLI reference pages (regenerated at build time)
+web/src/pages/reference/cli/
+
+# Local configuration
+*.local
+.env
+.env.local
 
 # Temporary files
 /tmp/
@@ -56,8 +92,17 @@ Thumbs.db
 /rest.exe
 
 # Test artifacts
-*.test
 testdata/tmp/
 cli/build-debug.txt
 
+# Playwright
 .playwright-mcp
+playwright-report/
+test-results/
+
+# Runtime state files
+ports.json
+services.json
+
+# Backup files
+*.backup.*
