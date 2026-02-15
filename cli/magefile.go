@@ -34,7 +34,7 @@ func All() error {
 
 // Build compiles the CLI binary using azd x build.
 func Build() error {
-	// Ensure azd extensions are set up (enables extensions + installs azd x if needed)
+	// Ensure azd extensions are set up (installs azd x if needed)
 	if err := ensureAzdExtensions(); err != nil {
 		return err
 	}
