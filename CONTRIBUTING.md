@@ -48,10 +48,7 @@ go mod download
 # Install mage (build tool)
 go install github.com/magefile/mage@latest
 
-# Enable azd extensions
-azd config set alpha.extension.enabled on
-
-# Build and install (will mirror azd-exec flow)
+# Buildand install (will mirror azd-exec flow)
 mage install
 
 # Verify installation

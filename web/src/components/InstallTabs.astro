@@ -28,9 +28,6 @@ const platforms = [
     commands: `# Install Azure Developer CLI
 winget install microsoft.azd
 
-# Enable extensions
-azd config set alpha.extension.enabled on
-
 # Add extension source
 azd extension source add -n azd-rest -t url -l https://raw.githubusercontent.com/jongio/azd-rest/main/registry.json
 
@@ -46,9 +43,6 @@ azd extension install jongio.azd.rest`,
     commands: `# Install Azure Developer CLI
 brew tap azure/azd && brew install azd
 
-# Enable extensions
-azd config set alpha.extension.enabled on
-
 # Add extension source
 azd extension source add -n azd-rest -t url -l https://raw.githubusercontent.com/jongio/azd-rest/main/registry.json
 
@@ -63,9 +57,6 @@ azd extension install jongio.azd.rest`,
     </svg>`,
     commands: `# Install Azure Developer CLI
 curl -fsSL https://aka.ms/install-azd.sh | bash
-
-# Enable extensions
-azd config set alpha.extension.enabled on
 
 # Add extension source
 azd extension source add -n azd-rest -t url -l https://raw.githubusercontent.com/jongio/azd-rest/main/registry.json

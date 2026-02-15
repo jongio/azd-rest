@@ -16,9 +16,6 @@ The `azd rest` extension allows you to execute REST API calls with automatic Azu
 ## Installation
 
 ```bash
-# Enable azd extensions
-azd config set alpha.extension.enabled on
-
 # Add the extension registry
 azd extension source add -n azd-rest -t url -l https://raw.githubusercontent.com/jongio/azd-rest/main/registry.json
 
@@ -568,16 +565,13 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
 ### First Time Setup
 
 ```bash
-# 1. Enable extensions
-azd config set alpha.extension.enabled on
-
-# 2. Add registry
+# 1. Add registry
 azd extension source add -n azd-rest -t url -l https://raw.githubusercontent.com/jongio/azd-rest/main/registry.json
 
-# 3. Install extension
+# 2. Install extension
 azd extension install jongio.azd.rest
 
-# 4. Verify
+# 3. Verify
 azd rest version
 ```
 

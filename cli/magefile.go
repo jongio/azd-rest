@@ -328,17 +328,8 @@ func Watch() error {
 	return sh.RunWithV(env, "azd", "x", "watch")
 }
 
-// ensureAzdExtensions ensures azd extensions are enabled and azd x is installed.
+// ensureAzdExtensions ensures azd extensions tooling is installed.
 func ensureAzdExtensions() error {
-	// Check if extensions are enabled
-	output, err := sh.Output("azd", "config", "get", "alpha.extension.enabled")
-	if err != nil || strings.TrimSpace(output) != "on" {
-		fmt.Println("Enabling azd extensions...")
-		if err := sh.RunV("azd", "config", "set", "alpha.extension.enabled", "on"); err != nil {
-			return fmt.Errorf("failed to enable extensions: %w", err)
-		}
-	}
-
 	// Check if azd x is available (it's part of microsoft.azd.extensions)
 	// If not, try to install it
 	if err := sh.Run("azd", "x", "version"); err != nil {
