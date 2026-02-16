@@ -1,0 +1,152 @@
+name: Update azd-core
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'azd-core version to update to (e.g., v0.5.0)'
+        required: true
+        type: string
+      pr_number:
+        description: 'PR number to update (pushes a commit to the PR branch)'
+        required: true
+        type: number
+  repository_dispatch:
+    types: [azd-core-released]
+
+defaults:
+  run:
+    working-directory: cli
+
+env:
+  GO_VERSION: '1.26.0'
+
+jobs:
+  update:
+    name: Update azd-core dependency
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Resolve inputs
+        id: inputs
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "version=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ github.event.client_payload.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+          fi
+        working-directory: .
+
+      - name: Validate inputs
+        run: |
+          VERSION="${{ steps.inputs.outputs.version }}"
+          PR_NUMBER="${{ steps.inputs.outputs.pr_number }}"
+
+          if [ -z "$VERSION" ] || [ -z "$PR_NUMBER" ]; then
+            echo "ERROR: Both version and pr_number are required"
+            exit 1
+          fi
+
+          # Ensure version starts with 'v'
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            echo "ERROR: Version must start with 'v' (e.g., v0.5.0)"
+            exit 1
+          fi
+
+          echo "Updating PR #${PR_NUMBER} to azd-core ${VERSION}"
+        working-directory: .
+
+      - name: Get PR branch
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: ${{ steps.inputs.outputs.pr_number }}
+            });
+
+            if (pr.data.state !== 'open') {
+              core.setFailed(`PR #${{ steps.inputs.outputs.pr_number }} is ${pr.data.state}, not open`);
+              return;
+            }
+
+            core.setOutput('branch', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            console.log(`PR #${{ steps.inputs.outputs.pr_number }}: branch=${pr.data.head.ref}`);
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Set up Go (bootstrap)
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
+      - name: Install Go ${{ env.GO_VERSION }}
+        run: |
+          go install golang.org/dl/go${{ env.GO_VERSION }}@latest
+          go${{ env.GO_VERSION }} download
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          ln -sf $(which go${{ env.GO_VERSION }}) $(go env GOPATH)/bin/go
+
+      - name: Update azd-core
+        run: |
+          VERSION="${{ steps.inputs.outputs.version }}"
+          echo "Updating azd-core to ${VERSION}..."
+
+          # Show current version
+          CURRENT=$(grep 'github.com/jongio/azd-core' go.mod | awk '{print $2}')
+          echo "Current: ${CURRENT}"
+          echo "Target:  ${VERSION}"
+
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "Already at ${VERSION}, nothing to do"
+            exit 0
+          fi
+
+          # Update the dependency
+          GOWORK=off go get "github.com/jongio/azd-core@${VERSION}"
+          GOWORK=off go mod tidy
+
+          echo "Updated azd-core: ${CURRENT} → ${VERSION}"
+
+      - name: Commit and push
+        run: |
+          VERSION="${{ steps.inputs.outputs.version }}"
+
+          # Check if there are changes
+          if git diff --quiet HEAD -- go.mod go.sum; then
+            echo "No changes to commit (already up to date)"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add go.mod go.sum
+          git commit -m "chore: update azd-core to ${VERSION}"
+          git push
+
+          echo "✅ Pushed azd-core ${VERSION} update to branch ${{ steps.pr.outputs.branch }}"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.inputs.outputs.version }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.inputs.outputs.pr_number }},
+              body: `🔄 Updated \`azd-core\` to \`${version}\`. CI will run automatically on the updated branch.`
+            });

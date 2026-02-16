@@ -221,7 +221,7 @@ tags: [rest, planning, tasks]
 - [ ] Build: multi-platform binaries (Windows/Linux/macOS, x64/ARM64)
 - [ ] Integration: integration tests on Linux only
 - [ ] Runs on PR to main, workflow_dispatch
-- [ ] Uses Go 1.25.5
+- [ ] Uses Go 1.26.0
 - [ ] Artifacts uploaded for binaries
 - [ ] Coverage report in PR summary
 
@@ -629,7 +629,7 @@ tags: [rest, planning, tasks]
 **Description**: Enforce Go/toolchain and azd-core compatibility; ensure rollback/install safety in release flow
 
 **Acceptance Criteria**:
-- [ ] CI workflows pin Go 1.25.5 and validate azd-core >= v0.3.0
+- [ ] CI workflows pin Go 1.26.0 and validate azd-core >= v0.3.0
 - [ ] Compatibility matrix documented (OS/arch) and validated in CI job matrix
 - [ ] Release workflow retains prior version in registry.json for rollback; README/TESTING describe rollback steps
 - [ ] Checks fail fast if tooling versions drift from pinned values
@@ -705,7 +705,7 @@ _No active tasks._
 **Notes**: Leverage azd-core security module. Don't reinvent authentication.
 
 **Status (In Progress)**:
-- Kickoff: handoff to Developer to wire `GetAzureToken` via azd-core credentials + caching; preserve azd-core v0.3.0 pin and Go 1.25.5 guard.
+- Kickoff: handoff to Developer to wire `GetAzureToken` via azd-core credentials + caching; preserve azd-core v0.3.0 pin and Go 1.26.0 guard.
 
 ---
 
@@ -781,5 +781,5 @@ _No active tasks._
 **Progress (2026-01-15)**:
 - [x] Tracking issue content ready to file in `jongio/azd-core` (title “Expose extension helper surface for azd-rest (token w/ expiry, context accessors, endpoints, UA/telemetry hook, redaction)”) with body documented in [docs/specs/azd-rest/spec.md](docs/specs/azd-rest/spec.md#L138-L156); needs manual filing due to repo access.
 - [x] go.mod remains pinned to `github.com/jongio/azd-core v0.3.0` with local replace; guard test location is `cli/src/internal/azdcore/version_test.go`.
-- [x] Version guard workflow now uses Go 1.25.5 with `GOWORK=off` and azd-core v0.3.0 checkout so the pin stays enforced in CI ([.github/workflows/version-guard.yml](.github/workflows/version-guard.yml)).
+- [x] Version guard workflow now uses Go 1.26.0 with `GOWORK=off` and azd-core v0.3.0 checkout so the pin stays enforced in CI ([.github/workflows/version-guard.yml](.github/workflows/version-guard.yml)).
 - [x] Guard test passes locally with `GOWORK=off GOFLAGS=-mod=mod go test ./src/internal/azdcore/...`.

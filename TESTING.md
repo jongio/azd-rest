@@ -114,7 +114,7 @@ pnpm exec playwright test --project=chromium
 ## Prerequisites
 
 ### CLI Tests
-- Go 1.25.5 or later
+- Go 1.26.0 or later
 - Optional: `golangci-lint` for linting
 
 ### Web Tests

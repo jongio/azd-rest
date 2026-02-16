@@ -80,7 +80,7 @@ cspell "**/*.{go,md,yaml,yml}" --config cspell.json  # Spell check
 
 ## Key Dependencies
 
-- **Go 1.25.5+** with Mage build tool
+- **Go 1.26.0+** with Mage build tool
 - **Cobra** for CLI command framework
 - **Azure Identity SDK** (`azidentity`) for authentication
 - **Node.js 20+** for cspell and web tooling

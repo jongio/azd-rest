@@ -567,7 +567,7 @@ Based on `azd-exec` workflows:
 
 Following `azd-exec` automated release pattern:
 
-- Tooling baseline: Go 1.25.5, azd-core >= v0.3.0; workflows enforce these versions.
+- Tooling baseline: Go 1.26.0, azd-core >= v0.3.0; workflows enforce these versions.
 - Compatibility: maintain a matrix for supported OS/arch (Windows/Linux/macOS; x64/ARM64) and validate in CI.
 - Rollback safety: releases remain installable via previous version in registry.json; document rollback steps in README/TESTING.
 

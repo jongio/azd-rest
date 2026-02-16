@@ -30,7 +30,7 @@ We use GitHub to host code, to track issues and feature requests, as well as acc
 
 ### Prerequisites
 
-- Go 1.25.5 or later
+- Go 1.26.0 or later
 - golangci-lint
 - Node.js 20+ (for cspell)
 - Git
