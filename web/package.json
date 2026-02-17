@@ -1,0 +1,38 @@
+{
+  "name": "@jongio/azd-rest-docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "generate:cli": "tsx scripts/generate-cli-reference.ts",
+    "prebuild": "pnpm generate:cli",
+    "build": "astro build && pagefind --site dist",
+    "preview": "astro preview",
+    "generate:changelog": "tsx scripts/generate-changelog.ts",
+    "generate:og-image": "tsx scripts/generate-og-image.ts",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.13",
+    "@jongio/azd-web-core-tailwind": "link:C:/code/azd-web-core/packages/azd-web-core-tailwind",
+    "@jongio/azd-web-core-tokens": "link:C:/code/azd-web-core/packages/azd-web-core-tokens",
+    "astro": "^5.17.1",
+    "astro-expressive-code": "^0.41.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^25.0.5",
+    "autoprefixer": "^10.4.23",
+    "pagefind": "^1.4.0",
+    "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

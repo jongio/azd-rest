@@ -1,0 +1,41 @@
+name: Version Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version-guard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout azd-rest
+        uses: actions/checkout@v4
+
+      - name: Checkout azd-core v0.3.0
+        uses: actions/checkout@v4
+        with:
+          repository: jongio/azd-core
+          ref: v0.3.0
+          path: ../azd-core
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+
+      - name: Download dependencies
+        env:
+          GOWORK: off
+        run: go mod download
+
+      - name: Run azd-core version guard
+        env:
+          GOWORK: off
+        run: go test ./src/internal/azdcore/...

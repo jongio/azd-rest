@@ -1,0 +1,63 @@
+---
+import Layout from '../../../components/Layout.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Changelog" description="Release history and changelog for azd rest">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Changelog</h1>
+      <p class="page-intro">
+        Release history and changes for azd rest extension.
+      </p>
+    </div>
+
+    <div class="content">
+      <section class="section">
+        <p>
+          View the complete changelog on <a href="https://github.com/jongio/azd-rest/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">GitHub</a>.
+        </p>
+      </section>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .content {
+    max-width: 900px;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section p {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+  }
+</style>
