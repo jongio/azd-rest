@@ -14,16 +14,16 @@ const requiredAzdCoreVersion = "github.com/jongio/azd-core v0.3.0"
 
 // Fails fast when go.mod drifts from the pinned azd-core version.
 func TestAzdCoreVersionPinned(t *testing.T) {
-    _, filename, _, ok := runtime.Caller(0)
-    require.True(t, ok, "runtime.Caller failed")
+	_, filename, _, ok := runtime.Caller(0)
+	require.True(t, ok, "runtime.Caller failed")
 
-    dir := filepath.Dir(filename)
-    moduleRoot := filepath.Dir(filepath.Dir(filepath.Dir(dir)))
-    modPath := filepath.Join(moduleRoot, "go.mod")
+	dir := filepath.Dir(filename)
+	moduleRoot := filepath.Dir(filepath.Dir(filepath.Dir(dir)))
+	modPath := filepath.Join(moduleRoot, "go.mod")
 
-    data, err := os.ReadFile(modPath)
-    require.NoError(t, err, "go.mod should be readable")
+	data, err := os.ReadFile(modPath)
+	require.NoError(t, err, "go.mod should be readable")
 
-    contents := string(data)
-    require.True(t, strings.Contains(contents, requiredAzdCoreVersion), "azd-core version must stay pinned to %s", requiredAzdCoreVersion)
+	contents := string(data)
+	require.True(t, strings.Contains(contents, requiredAzdCoreVersion), "azd-core version must stay pinned to %s", requiredAzdCoreVersion)
 }

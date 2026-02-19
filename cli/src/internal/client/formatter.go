@@ -8,9 +8,9 @@ type Formatter = httpclient.Formatter
 
 // Re-export constants
 const (
-FormatAuto = httpclient.FormatAuto
-FormatJSON = httpclient.FormatJSON
-FormatRaw  = httpclient.FormatRaw
+	FormatAuto = httpclient.FormatAuto
+	FormatJSON = httpclient.FormatJSON
+	FormatRaw  = httpclient.FormatRaw
 )
 
 // Re-export functions

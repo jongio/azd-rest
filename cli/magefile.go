@@ -119,7 +119,7 @@ func Publish() error {
 func Setup() error {
 	fmt.Println("Setting up extension for local development...")
 	mg.Deps(Build, Pack, Publish)
-	
+
 	fmt.Println("\n✅ Setup complete! Extension is ready for local testing.")
 	fmt.Println("   Install with: azd extension install jongio.azd.rest --source local")
 	return nil
@@ -225,14 +225,14 @@ func Lint() error {
 // Clean removes build artifacts.
 func Clean() error {
 	fmt.Println("Cleaning build artifacts...")
-	
+
 	dirs := []string{binDir, coverageDir}
 	for _, dir := range dirs {
 		if err := os.RemoveAll(dir); err != nil {
 			fmt.Printf("⚠️  Failed to remove %s: %v\n", dir, err)
 		}
 	}
-	
+
 	fmt.Println("✅ Clean complete!")
 	return nil
 }

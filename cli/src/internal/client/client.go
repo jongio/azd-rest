@@ -3,14 +3,14 @@
 package client
 
 import (
-"fmt"
+	"fmt"
 
-"github.com/jongio/azd-core/httpclient"
-"github.com/jongio/azd-rest/src/internal/version"
+	"github.com/jongio/azd-core/httpclient"
+	"github.com/jongio/azd-rest/src/internal/version"
 )
 
 func init() {
-httpclient.UserAgent = fmt.Sprintf("azd-rest/%s (azd extension)", version.Version)
+	httpclient.UserAgent = fmt.Sprintf("azd-rest/%s (azd extension)", version.Version)
 }
 
 // Re-export types from httpclient
