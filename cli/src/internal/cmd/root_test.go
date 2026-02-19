@@ -98,6 +98,11 @@ func TestBuildRequestOptions_DataFile(t *testing.T) {
 	
 	require.NoError(t, err)
 	assert.NotNil(t, opts.Body)
+	defer func() {
+		if f, ok := opts.Body.(*os.File); ok {
+			f.Close()
+		}
+	}()
 	
 	// Read the body to verify it's the file content
 	bodyBytes, err := io.ReadAll(opts.Body)
@@ -120,6 +125,9 @@ func TestBuildRequestOptions_DataFileWithAtPrefix(t *testing.T) {
 	
 	require.NoError(t, err)
 	assert.NotNil(t, opts.Body)
+	if f, ok := opts.Body.(*os.File); ok {
+		f.Close()
+	}
 }
 
 func TestBuildRequestOptions_DataFileNotFound(t *testing.T) {
@@ -258,8 +266,11 @@ func TestExecuteRequest_WithFileBody(t *testing.T) {
 	// Should get an error, but file should be closed
 	assert.Error(t, err)
 	// File should be closed (tested by checking it can be opened again)
-	_, err = os.Open(tmpFile)
+	f, err := os.Open(tmpFile)
 	assert.NoError(t, err, "File should still exist and be readable")
+	if f != nil {
+		f.Close()
+	}
 }
 
 func TestExecuteRequest_BinaryOutput(t *testing.T) {
