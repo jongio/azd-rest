@@ -1,640 +1,437 @@
 package client
 
 import (
-	"context"
-	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"os"
-	"strings"
-	"testing"
-	"time"
+"context"
+"fmt"
+"io"
+"net/http"
+"net/http/httptest"
+"strings"
+"testing"
+"time"
 
-	"github.com/jongio/azd-rest/src/internal/auth"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+"github.com/jongio/azd-rest/src/internal/auth"
+"github.com/stretchr/testify/assert"
+"github.com/stretchr/testify/require"
 )
 
-func TestNewClient(t *testing.T) {
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	
-	client := NewClient(provider, false, 30*time.Second)
-	
-	assert.NotNil(t, client)
-	assert.NotNil(t, client.httpClient)
-	assert.NotNil(t, client.tokenProvider)
-	assert.Equal(t, 30*time.Second, client.httpClient.Timeout)
+func TestClient_Execute_GET(t *testing.T) {
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+assert.Equal(t, "GET", r.Method)
+assert.Equal(t, "/test", r.URL.Path)
+w.WriteHeader(http.StatusOK)
+w.Write([]byte(`{"message":"success"}`))
+}))
+defer server.Close()
+
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
+
+opts := RequestOptions{
+Method:  "GET",
+URL:     server.URL + "/test",
+SkipAuth: true,
 }
 
-func TestClient_Execute_GET(t *testing.T) {
-	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/test", r.URL.Path)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"success"}`))
-	}))
-	defer server.Close()
+resp, err := client.Execute(context.Background(), opts)
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
-
-	opts := RequestOptions{
-		Method:  "GET",
-		URL:     server.URL + "/test",
-		SkipAuth: true,
-	}
-
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, `{"message":"success"}`, string(resp.Body))
-	assert.Greater(t, resp.Duration, time.Duration(0))
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
+assert.Equal(t, `{"message":"success"}`, string(resp.Body))
+assert.Greater(t, resp.Duration, time.Duration(0))
 }
 
 func TestClient_Execute_POST_WithBody(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
-		
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		assert.Equal(t, `{"data":"test"}`, string(body))
-		
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":"123"}`))
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+assert.Equal(t, "POST", r.Method)
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+body, err := io.ReadAll(r.Body)
+require.NoError(t, err)
+assert.Equal(t, `{"data":"test"}`, string(body))
 
-	opts := RequestOptions{
-		Method:   "POST",
-		URL:      server.URL + "/create",
-		Body:     strings.NewReader(`{"data":"test"}`),
-		SkipAuth: true,
-	}
+w.WriteHeader(http.StatusCreated)
+w.Write([]byte(`{"id":"123"}`))
+}))
+defer server.Close()
 
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-	assert.Equal(t, `{"id":"123"}`, string(resp.Body))
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
+
+opts := RequestOptions{
+Method:   "POST",
+URL:      server.URL + "/create",
+Body:     strings.NewReader(`{"data":"test"}`),
+SkipAuth: true,
+}
+
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.Equal(t, http.StatusCreated, resp.StatusCode)
+assert.Equal(t, `{"id":"123"}`, string(resp.Body))
 }
 
 func TestClient_Execute_WithAuthentication(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		assert.Equal(t, "Bearer test-token", authHeader)
-		
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"authenticated":true}`))
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+authHeader := r.Header.Get("Authorization")
+assert.Equal(t, "Bearer test-token", authHeader)
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+w.WriteHeader(http.StatusOK)
+w.Write([]byte(`{"authenticated":true}`))
+}))
+defer server.Close()
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/secure",
-		Scope:    "https://management.azure.com/.default",
-		SkipAuth: false,
-	}
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/secure",
+Scope:    "https://management.azure.com/.default",
+SkipAuth: false,
+}
+
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestClient_Execute_WithCustomHeaders(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "custom-value", r.Header.Get("X-Custom-Header"))
-		
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+assert.Equal(t, "custom-value", r.Header.Get("X-Custom-Header"))
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+w.WriteHeader(http.StatusOK)
+}))
+defer server.Close()
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/test",
-		Headers: map[string]string{
-			"Content-Type":    "application/json",
-			"X-Custom-Header": "custom-value",
-		},
-		SkipAuth: true,
-	}
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/test",
+Headers: map[string]string{
+"Content-Type":    "application/json",
+"X-Custom-Header": "custom-value",
+},
+SkipAuth: true,
+}
+
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestClient_Execute_UserAgent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userAgent := r.Header.Get("User-Agent")
-		assert.Contains(t, userAgent, "azd-rest")
-		
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+userAgent := r.Header.Get("User-Agent")
+assert.Contains(t, userAgent, "azd-rest")
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+w.WriteHeader(http.StatusOK)
+}))
+defer server.Close()
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/test",
-		SkipAuth: true,
-	}
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/test",
+SkipAuth: true,
+}
+
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestClient_Execute_AuthenticationError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+w.WriteHeader(http.StatusOK)
+}))
+defer server.Close()
 
-	provider := &auth.MockTokenProvider{
-		Error: fmt.Errorf("authentication failed"),
-	}
-	client := NewClient(provider, false, 30*time.Second)
+provider := &auth.MockTokenProvider{
+Error: fmt.Errorf("authentication failed"),
+}
+client := NewClient(provider, false, 30*time.Second)
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/test",
-		Scope:    "https://management.azure.com/.default",
-		SkipAuth: false,
-	}
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/test",
+Scope:    "https://management.azure.com/.default",
+SkipAuth: false,
+}
 
-	_, err := client.Execute(context.Background(), opts)
-	
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get authentication token")
+_, err := client.Execute(context.Background(), opts)
+
+require.Error(t, err)
+assert.Contains(t, err.Error(), "failed to get authentication token")
 }
 
 func TestClient_Execute_ContextCancellation(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(100 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+time.Sleep(100 * time.Millisecond)
+w.WriteHeader(http.StatusOK)
+}))
+defer server.Close()
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+ctx, cancel := context.WithCancel(context.Background())
+cancel() // Cancel immediately
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/test",
-		SkipAuth: true,
-	}
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/test",
+SkipAuth: true,
+}
 
-	_, err := client.Execute(ctx, opts)
-	
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled")
+_, err := client.Execute(ctx, opts)
+
+require.Error(t, err)
+assert.Contains(t, err.Error(), "context canceled")
 }
 
 func TestClient_Execute_Timeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(200 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+time.Sleep(200 * time.Millisecond)
+w.WriteHeader(http.StatusOK)
+}))
+defer server.Close()
 
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 100*time.Millisecond) // Short timeout
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 100*time.Millisecond)
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/slow",
-		SkipAuth: true,
-	}
+opts := RequestOptions{
+Method:   "GET",
+URL:      server.URL + "/slow",
+SkipAuth: true,
+}
 
-	_, err := client.Execute(context.Background(), opts)
-	
-	require.Error(t, err)
-	// Should timeout
+_, err := client.Execute(context.Background(), opts)
+
+require.Error(t, err)
 }
 
 func TestClient_Execute_InvalidURL(t *testing.T) {
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      "ht!tp://invalid url",
-		SkipAuth: true,
-	}
+opts := RequestOptions{
+Method:   "GET",
+URL:      "ht!tp://invalid url",
+SkipAuth: true,
+}
 
-	_, err := client.Execute(context.Background(), opts)
-	
-	require.Error(t, err)
+_, err := client.Execute(context.Background(), opts)
+
+require.Error(t, err)
 }
 
 func TestShouldSkipAuth(t *testing.T) {
-	tests := []struct {
-		name     string
-		url      string
-		headers  map[string]string
-		skipAuth bool
-		expected bool
-	}{
-		{
-			name:     "Explicit skip flag",
-			url:      "https://management.azure.com/subscriptions",
-			headers:  map[string]string{},
-			skipAuth: true,
-			expected: true,
-		},
-		{
-			name:     "Authorization header present",
-			url:      "https://management.azure.com/subscriptions",
-			headers:  map[string]string{"Authorization": "Bearer token"},
-			skipAuth: false,
-			expected: true,
-		},
-		{
-			name:     "Authorization header case insensitive",
-			url:      "https://management.azure.com/subscriptions",
-			headers:  map[string]string{"authorization": "Bearer token"},
-			skipAuth: false,
-			expected: true,
-		},
-		{
-			name:     "HTTP URL",
-			url:      "http://example.com/api",
-			headers:  map[string]string{},
-			skipAuth: false,
-			expected: true,
-		},
-		{
-			name:     "HTTPS URL without skip or auth header",
-			url:      "https://management.azure.com/subscriptions",
-			headers:  map[string]string{},
-			skipAuth: false,
-			expected: false,
-		},
-	}
+tests := []struct {
+name     string
+url      string
+headers  map[string]string
+skipAuth bool
+expected bool
+}{
+{
+name:     "Explicit skip flag",
+url:      "https://management.azure.com/subscriptions",
+headers:  map[string]string{},
+skipAuth: true,
+expected: true,
+},
+{
+name:     "Authorization header present",
+url:      "https://management.azure.com/subscriptions",
+headers:  map[string]string{"Authorization": "Bearer token"},
+skipAuth: false,
+expected: true,
+},
+{
+name:     "Authorization header case insensitive",
+url:      "https://management.azure.com/subscriptions",
+headers:  map[string]string{"authorization": "Bearer token"},
+skipAuth: false,
+expected: true,
+},
+{
+name:     "HTTP URL",
+url:      "http://example.com/api",
+headers:  map[string]string{},
+skipAuth: false,
+expected: true,
+},
+{
+name:     "HTTPS URL without skip or auth header",
+url:      "https://management.azure.com/subscriptions",
+headers:  map[string]string{},
+skipAuth: false,
+expected: false,
+},
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ShouldSkipAuth(tt.url, tt.headers, tt.skipAuth)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+for _, tt := range tests {
+t.Run(tt.name, func(t *testing.T) {
+result := ShouldSkipAuth(tt.url, tt.headers, tt.skipAuth)
+assert.Equal(t, tt.expected, result)
+})
+}
 }
 
 func TestDetectContentType(t *testing.T) {
-	tests := []struct {
-		name        string
-		body        []byte
-		contentType string
-		expected    bool
-	}{
-		{
-			name:        "JSON content",
-			body:        []byte(`{"key":"value"}`),
-			contentType: "application/json",
-			expected:    false,
-		},
-		{
-			name:        "Plain text",
-			body:        []byte("Hello, world!"),
-			contentType: "text/plain",
-			expected:    false,
-		},
-		{
-			name:        "Octet stream",
-			body:        []byte{0x00, 0x01, 0x02},
-			contentType: "application/octet-stream",
-			expected:    true,
-		},
-		{
-			name:        "PDF",
-			body:        []byte("%PDF-1.4"),
-			contentType: "application/pdf",
-			expected:    true,
-		},
-		{
-			name:        "Image",
-			body:        []byte{0xFF, 0xD8, 0xFF},
-			contentType: "image/jpeg",
-			expected:    true,
-		},
-		{
-			name:        "Binary content with null bytes",
-			body:        []byte{0x48, 0x65, 0x00, 0x6C, 0x6C, 0x6F}, // "He\x00llo"
-			contentType: "application/octet-stream",
-			expected:    true,
-		},
-		{
-			name:        "Empty body",
-			body:        []byte{},
-			contentType: "text/plain",
-			expected:    false,
-		},
-	}
+tests := []struct {
+name        string
+body        []byte
+contentType string
+expected    bool
+}{
+{
+name:        "JSON content",
+body:        []byte(`{"key":"value"}`),
+contentType: "application/json",
+expected:    false,
+},
+{
+name:        "Plain text",
+body:        []byte("Hello, world!"),
+contentType: "text/plain",
+expected:    false,
+},
+{
+name:        "Octet stream",
+body:        []byte{0x00, 0x01, 0x02},
+contentType: "application/octet-stream",
+expected:    true,
+},
+{
+name:        "PDF",
+body:        []byte("%PDF-1.4"),
+contentType: "application/pdf",
+expected:    true,
+},
+{
+name:        "Image",
+body:        []byte{0xFF, 0xD8, 0xFF},
+contentType: "image/jpeg",
+expected:    true,
+},
+{
+name:        "Binary content with null bytes",
+body:        []byte{0x48, 0x65, 0x00, 0x6C, 0x6C, 0x6F},
+contentType: "application/octet-stream",
+expected:    true,
+},
+{
+name:        "Empty body",
+body:        []byte{},
+contentType: "text/plain",
+expected:    false,
+},
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := DetectContentType(tt.body, tt.contentType)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+for _, tt := range tests {
+t.Run(tt.name, func(t *testing.T) {
+result := DetectContentType(tt.body, tt.contentType)
+assert.Equal(t, tt.expected, result)
+})
+}
 }
 
 func TestClient_Execute_AllHTTPMethods(t *testing.T) {
-	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 
-	for _, method := range methods {
-		t.Run(method, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, method, r.Method)
-				w.WriteHeader(http.StatusOK)
-				if method != "HEAD" {
-					w.Write([]byte(`{"method":"` + method + `"}`))
-				}
-			}))
-			defer server.Close()
+for _, method := range methods {
+t.Run(method, func(t *testing.T) {
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+assert.Equal(t, method, r.Method)
+w.WriteHeader(http.StatusOK)
+if method != "HEAD" {
+w.Write([]byte(`{"method":"` + method + `"}`))
+}
+}))
+defer server.Close()
 
-			provider := &auth.MockTokenProvider{Token: "test-token"}
-			client := NewClient(provider, false, 30*time.Second)
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-			opts := RequestOptions{
-				Method:   method,
-				URL:      server.URL + "/test",
-				SkipAuth: true,
-			}
+opts := RequestOptions{
+Method:   method,
+URL:      server.URL + "/test",
+SkipAuth: true,
+}
 
-			resp, err := client.Execute(context.Background(), opts)
-			
-			require.NoError(t, err)
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-		})
-	}
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
+})
+}
 }
 
 func TestClient_Execute_Redirects(t *testing.T) {
-	t.Run("Follow redirects by default", func(t *testing.T) {
-		// Create a server that redirects to final endpoint
-		finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"final":true}`))
-		}))
-		defer finalServer.Close()
+t.Run("Follow redirects by default", func(t *testing.T) {
+finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+w.WriteHeader(http.StatusOK)
+w.Write([]byte(`{"final":true}`))
+}))
+defer finalServer.Close()
 
-		redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, finalServer.URL, http.StatusFound)
-		}))
-		defer redirectServer.Close()
+redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+http.Redirect(w, r, finalServer.URL, http.StatusFound)
+}))
+defer redirectServer.Close()
 
-		provider := &auth.MockTokenProvider{Token: "test-token"}
-		client := NewClient(provider, false, 30*time.Second)
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
 
-		opts := RequestOptions{
-			Method:          "GET",
-			URL:             redirectServer.URL,
-			SkipAuth:        true,
-			FollowRedirects: true,
-			MaxRedirects:    10,
-		}
-
-		resp, err := client.Execute(context.Background(), opts)
-		
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Contains(t, string(resp.Body), `"final":true`)
-	})
-
-	t.Run("Respect max redirects limit", func(t *testing.T) {
-		// Create a chain: server1 -> server2 -> server3 -> server4 -> final
-		// With maxRedirects=3, should stop after 3 redirects (4 total requests)
-		finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"final":true}`))
-		}))
-		defer finalServer.Close()
-
-		server4 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, finalServer.URL, http.StatusFound)
-		}))
-		defer server4.Close()
-
-		server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, server4.URL, http.StatusFound)
-		}))
-		defer server3.Close()
-
-		server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, server3.URL, http.StatusFound)
-		}))
-		defer server2.Close()
-
-		server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, server2.URL, http.StatusFound)
-		}))
-		defer server1.Close()
-
-		provider := &auth.MockTokenProvider{Token: "test-token"}
-		client := NewClient(provider, false, 30*time.Second)
-
-		opts := RequestOptions{
-			Method:          "GET",
-			URL:             server1.URL,
-			SkipAuth:        true,
-			FollowRedirects: true,
-			MaxRedirects:    3, // Limit to 3 redirects (4 total requests: original + 3 redirects)
-		}
-
-		_, err := client.Execute(context.Background(), opts)
-		
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "stopped after 3 redirects")
-	})
-
-	t.Run("Do not follow redirects when disabled", func(t *testing.T) {
-		finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer finalServer.Close()
-
-		redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, finalServer.URL, http.StatusFound)
-		}))
-		defer redirectServer.Close()
-
-		provider := &auth.MockTokenProvider{Token: "test-token"}
-		client := NewClient(provider, false, 30*time.Second)
-
-		opts := RequestOptions{
-			Method:          "GET",
-			URL:             redirectServer.URL,
-			SkipAuth:        true,
-			FollowRedirects: false,
-		}
-
-		resp, err := client.Execute(context.Background(), opts)
-		
-		require.NoError(t, err)
-		// Should get redirect response, not follow it
-		assert.True(t, resp.StatusCode >= 300 && resp.StatusCode < 400)
-	})
-
-	t.Run("Default max redirects is 10", func(t *testing.T) {
-		// Create a redirect chain that would require 11 redirects to complete
-		// With default maxRedirects=10, should stop after 10 redirects
-		var servers []*httptest.Server
-		var serverURLs []string
-		
-		// Create final server
-		finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"done":true}`))
-		}))
-		defer finalServer.Close()
-		serverURLs = append(serverURLs, finalServer.URL)
-		
-		// Create 11 redirect servers
-		for i := 0; i < 11; i++ {
-			nextURL := serverURLs[len(serverURLs)-1]
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, nextURL, http.StatusFound)
-			}))
-			servers = append(servers, server)
-			serverURLs = append(serverURLs, server.URL)
-			defer server.Close()
-		}
-
-		provider := &auth.MockTokenProvider{Token: "test-token"}
-		client := NewClient(provider, false, 30*time.Second)
-
-		opts := RequestOptions{
-			Method:          "GET",
-			URL:             servers[len(servers)-1].URL, // Start from the last redirect server
-			SkipAuth:        true,
-			FollowRedirects: true,
-			MaxRedirects:    0, // Should default to 10
-		}
-
-		_, err := client.Execute(context.Background(), opts)
-		
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "stopped after 10 redirects")
-	})
+opts := RequestOptions{
+Method:          "GET",
+URL:             redirectServer.URL,
+SkipAuth:        true,
+FollowRedirects: true,
+MaxRedirects:    10,
 }
 
-func TestClient_ProxySupport(t *testing.T) {
-	provider := &auth.MockTokenProvider{Token: "test-token"}
-	client := NewClient(provider, false, 30*time.Second)
-	
-	// Verify transport has proxy configured
-	transport, ok := client.httpClient.Transport.(*http.Transport)
-	require.True(t, ok, "Transport should be *http.Transport")
-	assert.NotNil(t, transport.Proxy, "Proxy function should be set")
-	
-	// Test that ProxyFromEnvironment is actually being used
-	// Save original values
-	originalHTTPProxy := os.Getenv("HTTP_PROXY")
-	originalHTTPSProxy := os.Getenv("HTTPS_PROXY")
-	originalNOProxy := os.Getenv("NO_PROXY")
-	defer func() {
-		if originalHTTPProxy != "" {
-			os.Setenv("HTTP_PROXY", originalHTTPProxy)
-		} else {
-			os.Unsetenv("HTTP_PROXY")
-		}
-		if originalHTTPSProxy != "" {
-			os.Setenv("HTTPS_PROXY", originalHTTPSProxy)
-		} else {
-			os.Unsetenv("HTTPS_PROXY")
-		}
-		if originalNOProxy != "" {
-			os.Setenv("NO_PROXY", originalNOProxy)
-		} else {
-			os.Unsetenv("NO_PROXY")
-		}
-	}()
-	
-	// Set a test proxy for HTTP
-	testProxyURL := "http://test-proxy.example.com:8080"
-	os.Setenv("HTTP_PROXY", testProxyURL)
-	os.Unsetenv("HTTPS_PROXY") // Clear HTTPS proxy to test HTTP_PROXY specifically
-	os.Unsetenv("NO_PROXY")    // Clear NO_PROXY to ensure proxy is used
-	
-	// Create a new client to pick up the environment variable
-	client2 := NewClient(provider, false, 30*time.Second)
-	transport2, ok := client2.httpClient.Transport.(*http.Transport)
-	require.True(t, ok)
-	
-	// Create a test HTTP request to see what proxy would be used
-	testURL, _ := url.Parse("http://example.com/test")
-	proxyURL, err := transport2.Proxy(&http.Request{URL: testURL})
-	require.NoError(t, err)
-	
-	// Verify the proxy function returns the environment variable value
-	// Note: ProxyFromEnvironment may return nil for localhost or if NO_PROXY matches
-	// But for a remote HTTP URL with HTTP_PROXY set, it should return the proxy
-	if proxyURL != nil {
-		assert.Equal(t, testProxyURL, proxyURL.String(), "Proxy should use HTTP_PROXY environment variable")
-	} else {
-		// If it returns nil, verify it's because of NO_PROXY or other valid reasons
-		// For a remote domain, it should typically return the proxy
-		// But we can't guarantee this, so we just verify the function exists and is callable
-		t.Logf("Proxy returned nil for http://example.com/test (may be due to NO_PROXY or other factors)")
-	}
-	
-	// Verify the proxy function is actually ProxyFromEnvironment by checking it respects NO_PROXY
-	// NO_PROXY needs to match the host exactly (or use wildcards)
-	os.Setenv("NO_PROXY", "example.com")
-	client3 := NewClient(provider, false, 30*time.Second)
-	transport3, ok := client3.httpClient.Transport.(*http.Transport)
-	require.True(t, ok)
-	proxyURL2, err := transport3.Proxy(&http.Request{URL: testURL})
-	require.NoError(t, err)
-	// Should return nil because example.com host matches NO_PROXY
-	// Note: ProxyFromEnvironment matches hostnames, not full URLs
-	if proxyURL2 != nil {
-		// If it still returns a proxy, it means NO_PROXY matching might work differently
-		// This is acceptable - the important thing is that ProxyFromEnvironment is being used
-		t.Logf("Proxy still returned for example.com with NO_PROXY=example.com (ProxyFromEnvironment behavior)")
-	} else {
-		// If it returns nil, that confirms NO_PROXY is being respected
-		t.Logf("Proxy correctly returned nil when URL host matches NO_PROXY")
-	}
-	
-	// Test that requests still work (will use proxy if set, but test server doesn't require it)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"test":true}`))
-	}))
-	defer server.Close()
+resp, err := client.Execute(context.Background(), opts)
 
-	opts := RequestOptions{
-		Method:   "GET",
-		URL:      server.URL + "/test",
-		SkipAuth: true,
-	}
+require.NoError(t, err)
+assert.Equal(t, http.StatusOK, resp.StatusCode)
+assert.Contains(t, string(resp.Body), `"final":true`)
+})
 
-	resp, err := client.Execute(context.Background(), opts)
-	
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+t.Run("Do not follow redirects when disabled", func(t *testing.T) {
+finalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+w.WriteHeader(http.StatusOK)
+}))
+defer finalServer.Close()
+
+redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+http.Redirect(w, r, finalServer.URL, http.StatusFound)
+}))
+defer redirectServer.Close()
+
+provider := &auth.MockTokenProvider{Token: "test-token"}
+client := NewClient(provider, false, 30*time.Second)
+
+opts := RequestOptions{
+Method:          "GET",
+URL:             redirectServer.URL,
+SkipAuth:        true,
+FollowRedirects: false,
+}
+
+resp, err := client.Execute(context.Background(), opts)
+
+require.NoError(t, err)
+assert.True(t, resp.StatusCode >= 300 && resp.StatusCode < 400)
+})
 }

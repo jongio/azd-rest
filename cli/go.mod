@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
+	github.com/jongio/azd-core v0.3.0
 	github.com/magefile/mage v1.15.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.11.1
