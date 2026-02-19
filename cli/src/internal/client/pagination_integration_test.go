@@ -11,7 +11,7 @@ import (
 "testing"
 "time"
 
-"github.com/jongio/azd-rest/src/internal/auth"
+"github.com/jongio/azd-core/auth"
 "github.com/stretchr/testify/assert"
 "github.com/stretchr/testify/require"
 )

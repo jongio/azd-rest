@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jongio/azd-rest/src/internal/auth"
+	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/spf13/cobra"
 )
