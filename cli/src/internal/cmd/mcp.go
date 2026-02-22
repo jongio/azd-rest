@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 	"sync"
@@ -60,12 +61,21 @@ func getOrCreateTokenProvider() (auth.TokenProvider, error) {
 }
 
 // isBlockedURL returns true if the URL targets a cloud metadata endpoint.
+// Handles IPv6-mapped IPv4 addresses to prevent bypass.
 func isBlockedURL(rawURL string) bool {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return true
 	}
 	host := strings.ToLower(u.Hostname())
+
+	// Normalize IPv6-mapped IPv4 (e.g., ::ffff:169.254.169.254 → 169.254.169.254)
+	if ip := net.ParseIP(host); ip != nil {
+		if v4 := ip.To4(); v4 != nil {
+			host = v4.String()
+		}
+	}
+
 	for _, b := range blockedHosts {
 		if host == b {
 			return true
@@ -117,7 +127,7 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		URL:             reqURL,
 		Headers:         make(map[string]string),
 		Timeout:         30 * time.Second,
-		FollowRedirects: true,
+		FollowRedirects: false,
 		MaxRedirects:    10,
 		Retry:           3,
 		MaxResponseSize: 10 * 1024 * 1024,
