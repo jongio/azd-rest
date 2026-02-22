@@ -83,6 +83,7 @@ Examples:
 		NewHeadCommand(),
 		NewOptionsCommand(),
 		NewVersionCommand(),
+		NewMetadataCommand(),
 	)
 
 	return rootCmd
