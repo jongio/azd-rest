@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jongio/azd-rest/src/internal/auth"
+	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -93,7 +93,7 @@ func buildRequestOptions(method string, url string) (client.RequestOptions, erro
 	opts := client.RequestOptions{
 		Method:          method,
 		URL:             url,
-		Headers:        make(map[string]string),
+		Headers:         make(map[string]string),
 		Scope:           scope,
 		SkipAuth:        noAuth,
 		Verbose:         verbose,
@@ -180,7 +180,7 @@ func executeRequest(cmd *cobra.Command, method string, url string) error {
 	// Ensure file is closed even on error
 	defer func() {
 		if fileToClose != nil {
-			fileToClose.Close()
+			_ = fileToClose.Close()
 		}
 	}()
 

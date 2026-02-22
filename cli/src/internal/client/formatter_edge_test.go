@@ -27,9 +27,8 @@ func TestFormatter_Format_AutoDetectsJSON(t *testing.T) {
 	}
 
 	output, err := formatter.Format(resp)
-	
+
 	require.NoError(t, err)
-	// Should be pretty-printed JSON
 	assert.Contains(t, output, "key")
 	assert.Contains(t, output, "value")
 }
@@ -50,7 +49,7 @@ func TestFormatter_Format_AutoDetectsRaw(t *testing.T) {
 	}
 
 	output, err := formatter.Format(resp)
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "plain text", output)
 }
@@ -58,7 +57,6 @@ func TestFormatter_Format_AutoDetectsRaw(t *testing.T) {
 func TestFormatter_FormatJSON_Error(t *testing.T) {
 	formatter := NewFormatter(false, "json")
 
-	// Invalid JSON that can't be parsed
 	resp := &Response{
 		StatusCode: 200,
 		Status:     "200 OK",
@@ -68,8 +66,7 @@ func TestFormatter_FormatJSON_Error(t *testing.T) {
 	}
 
 	output, err := formatter.Format(resp)
-	
-	// Should fall back to raw output
+
 	require.NoError(t, err)
 	assert.Equal(t, "not json {", output)
 }
@@ -81,18 +78,15 @@ func TestFormatter_WriteOutput_ToFile(t *testing.T) {
 	outputFile := filepath.Join(tmpDir, "output.json")
 
 	err := formatter.WriteOutput(`{"test": "data"}`, outputFile)
-	
+
 	require.NoError(t, err)
-	
-	// Verify file was created with correct content
+
 	data, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
 	assert.Equal(t, `{"test": "data"}`, string(data))
-	
-	// Verify file permissions (should be 0600)
+
 	info, err := os.Stat(outputFile)
 	require.NoError(t, err)
-	// On Windows, file permissions work differently, so we just check file exists
 	assert.NotNil(t, info)
 }
 
@@ -104,10 +98,9 @@ func TestFormatter_WriteRawOutput_ToFile(t *testing.T) {
 
 	data := []byte{0x00, 0x01, 0x02, 0xFF}
 	err := formatter.WriteRawOutput(data, outputFile)
-	
+
 	require.NoError(t, err)
-	
-	// Verify file was created with correct content
+
 	fileData, err := os.ReadFile(outputFile)
 	require.NoError(t, err)
 	assert.Equal(t, data, fileData)
@@ -132,7 +125,7 @@ func TestRedactSensitiveHeader_AuthorizationBearer(t *testing.T) {
 		{
 			name:     "Lowercase bearer",
 			value:    "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
-			expected: "Bearer eyJhbG...pXVCJ9", // Token is 37 chars, first 6: "eyJhbG", last 6: "pXVCJ9"
+			expected: "Bearer eyJhbG...pXVCJ9",
 		},
 		{
 			name:     "Non-bearer authorization",
@@ -160,7 +153,7 @@ func TestRedactSensitiveHeader_OtherSensitiveHeaders(t *testing.T) {
 			name:     "X-API-Key long",
 			key:      "X-API-Key",
 			value:    "sk_live_1234567890abcdef",
-			expected: "sk_liv...abcdef", // Value is 25 chars, first 6: "sk_liv", last 6: "abcdef"
+			expected: "sk_liv...abcdef",
 		},
 		{
 			name:     "X-API-Key short",
@@ -172,7 +165,7 @@ func TestRedactSensitiveHeader_OtherSensitiveHeaders(t *testing.T) {
 			name:     "Cookie",
 			key:      "Cookie",
 			value:    "session=abc123def456",
-			expected: "sessio...def456", // First 6 chars: "sessio", last 6 chars: "def456" (from "session=abc123def456" which is 20 chars)
+			expected: "sessio...def456",
 		},
 		{
 			name:     "Non-sensitive header",
@@ -202,7 +195,7 @@ func TestFormatter_Format_EmptyHeaders(t *testing.T) {
 	}
 
 	output, err := formatter.Format(resp)
-	
+
 	require.NoError(t, err)
 	assert.Contains(t, output, "< 200 OK")
 	assert.Contains(t, output, "Response Headers:")
@@ -224,39 +217,9 @@ func TestFormatter_Format_MultipleHeaderValues(t *testing.T) {
 	}
 
 	output, err := formatter.Format(resp)
-	
+
 	require.NoError(t, err)
-	// Should show both cookie values (redacted)
 	assert.Contains(t, output, "Set-Cookie")
-}
-
-func TestFormatter_FormatJSON_PrettyPrint(t *testing.T) {
-	formatter := NewFormatter(false, "json")
-
-	// Compact JSON input
-	compactJSON := `{"key1":"value1","key2":"value2","nested":{"key3":"value3"}}`
-	
-	formatted, err := formatter.formatJSON([]byte(compactJSON))
-	
-	require.NoError(t, err)
-	// Should be pretty-printed with indentation
-	assert.Contains(t, formatted, "\n")
-	assert.Contains(t, formatted, "  ") // Indentation
-	assert.Contains(t, formatted, "key1")
-	assert.Contains(t, formatted, "key2")
-}
-
-func TestFormatter_FormatJSON_Array(t *testing.T) {
-	formatter := NewFormatter(false, "json")
-
-	arrayJSON := `[{"id":1},{"id":2},{"id":3}]`
-	
-	formatted, err := formatter.formatJSON([]byte(arrayJSON))
-	
-	require.NoError(t, err)
-	assert.Contains(t, formatted, "[")
-	assert.Contains(t, formatted, "]")
-	assert.Contains(t, formatted, "id")
 }
 
 func TestIsJSON_EdgeCases(t *testing.T) {

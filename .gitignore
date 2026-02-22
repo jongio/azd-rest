@@ -29,9 +29,9 @@ coverage-*
 *_coverage.out
 coverdata/
 
-# Go workspace files are committed (needed for module resolution)
-# go.work
-# go.work.sum
+# Go workspace files (local dev only, not for CI)
+go.work
+go.work.sum
 
 # IDE
 .vscode/
