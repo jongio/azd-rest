@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/jongio/azd-core/auth"
-	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // Global flags
@@ -56,8 +56,19 @@ Examples:
   azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`,
 		Version: "0.1.0",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Hydrate context with TRACEPARENT for distributed trace correlation
-			cmd.SetContext(azdext.NewContext())
+			// Inject OTel trace context from env vars while preserving cobra's signal handling
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			if parent := os.Getenv("TRACEPARENT"); parent != "" {
+				tc := propagation.TraceContext{}
+				ctx = tc.Extract(ctx, propagation.MapCarrier{
+					"traceparent": parent,
+					"tracestate":  os.Getenv("TRACESTATE"),
+				})
+			}
+			cmd.SetContext(ctx)
 		},
 	}
 

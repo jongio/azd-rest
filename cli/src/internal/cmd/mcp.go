@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jongio/azd-core/auth"
@@ -18,6 +19,14 @@ import (
 // limiter uses the shared azdextutil token bucket.
 // 10 burst tokens, refills at 1 token/second (≈60/min).
 var limiter = azdextutil.NewRateLimiter(10, 1.0)
+
+// cachedTokenProvider is reused across MCP requests to avoid
+// creating a new Azure credential on every call.
+var (
+	cachedTokenProvider auth.TokenProvider
+	tokenProviderOnce  sync.Once
+	tokenProviderErr   error
+)
 
 // mcpResponse is the JSON structure returned by MCP tool handlers.
 type mcpResponse struct {
@@ -64,11 +73,13 @@ func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride str
 
 	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, false)
 
-	tokenProvider, err := auth.NewAzureTokenProvider()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token provider: %w", err)
+	tokenProviderOnce.Do(func() {
+		cachedTokenProvider, tokenProviderErr = auth.NewAzureTokenProvider()
+	})
+	if tokenProviderErr != nil {
+		return nil, fmt.Errorf("failed to create token provider: %w", tokenProviderErr)
 	}
-	opts.TokenProvider = tokenProvider
+	opts.TokenProvider = cachedTokenProvider
 
 	httpClient := client.NewClient(opts.TokenProvider, false, opts.Timeout)
 
