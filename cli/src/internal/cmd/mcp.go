@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -165,8 +164,9 @@ func handleHead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	scopeOverride := request.GetString("scope", "")
+	headers := parseHeaders(request)
 
-	resp, err := executeMCPRequest(ctx, "HEAD", url, "", scopeOverride, nil)
+	resp, err := executeMCPRequest(ctx, "HEAD", url, "", scopeOverride, headers)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -188,6 +188,7 @@ func newMCPServer() *server.MCPServer {
 		"azd-rest",
 		"0.1.0",
 		server.WithInstructions(mcpInstructions),
+		server.WithToolCapabilities(true),
 	)
 
 	// URL + scope + headers options (for GET, DELETE)
@@ -227,6 +228,7 @@ func newMCPServer() *server.MCPServer {
 	s.AddTool(
 		mcp.NewTool("rest_post", urlBodyScopeHeaderOpts(
 			"Execute an authenticated POST request against an Azure or REST API endpoint",
+			mcp.WithDestructiveHintAnnotation(true),
 		)...),
 		handleBodyMethod("POST"),
 	)
@@ -244,6 +246,7 @@ func newMCPServer() *server.MCPServer {
 	s.AddTool(
 		mcp.NewTool("rest_patch", urlBodyScopeHeaderOpts(
 			"Execute an authenticated PATCH request against an Azure or REST API endpoint",
+			mcp.WithDestructiveHintAnnotation(true),
 		)...),
 		handleBodyMethod("PATCH"),
 	)
@@ -285,8 +288,7 @@ func NewMCPCommand() *cobra.Command {
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := newMCPServer()
-			stdioServer := server.NewStdioServer(s)
-			return stdioServer.Listen(cmd.Context(), os.Stdin, os.Stdout)
+			return server.ServeStdio(s)
 		},
 	}
 
