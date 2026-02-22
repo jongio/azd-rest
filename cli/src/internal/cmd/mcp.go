@@ -6,54 +6,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/jongio/azd-core/auth"
+	"github.com/jongio/azd-core/azdextutil"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
 )
 
-// rateLimiter implements a simple token bucket rate limiter.
-type rateLimiter struct {
-	mu         sync.Mutex
-	tokens     float64
-	maxTokens  float64
-	refillRate float64 // tokens per second
-	lastRefill time.Time
-}
-
-func newRateLimiter(perMinute int, burst int) *rateLimiter {
-	return &rateLimiter{
-		tokens:     float64(burst),
-		maxTokens:  float64(burst),
-		refillRate: float64(perMinute) / 60.0,
-		lastRefill: time.Now(),
-	}
-}
-
-func (rl *rateLimiter) allow() bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	elapsed := now.Sub(rl.lastRefill).Seconds()
-	rl.tokens += elapsed * rl.refillRate
-	if rl.tokens > rl.maxTokens {
-		rl.tokens = rl.maxTokens
-	}
-	rl.lastRefill = now
-
-	if rl.tokens >= 1 {
-		rl.tokens--
-		return true
-	}
-	return false
-}
-
-var limiter = newRateLimiter(60, 10)
+// limiter uses the shared azdextutil token bucket.
+// 10 burst tokens, refills at 1 token/second (≈60/min).
+var limiter = azdextutil.NewRateLimiter(10, 1.0)
 
 // mcpResponse is the JSON structure returned by MCP tool handlers.
 type mcpResponse struct {
@@ -64,7 +29,7 @@ type mcpResponse struct {
 
 // executeMCPRequest performs an authenticated HTTP request for MCP tools.
 func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride string, customHeaders map[string]string) (*mcpResponse, error) {
-	if !limiter.allow() {
+	if !limiter.Allow() {
 		return nil, fmt.Errorf("rate limit exceeded (60 requests/minute)")
 	}
 

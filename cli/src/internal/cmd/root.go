@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jongio/azd-core/auth"
+	"github.com/jongio/azd-core/azdextutil"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -54,6 +55,10 @@ Examples:
   # Non-Azure endpoint without auth
   azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`,
 		Version: "0.1.0",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// Hydrate context with TRACEPARENT for distributed trace correlation
+			cmd.SetContext(azdextutil.SetupTracingFromEnv(cmd.Context()))
+		},
 	}
 
 	// Global flags
