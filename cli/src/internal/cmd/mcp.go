@@ -1,0 +1,330 @@
+package cmd
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/jongio/azd-core/auth"
+	"github.com/jongio/azd-rest/src/internal/client"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+	"github.com/spf13/cobra"
+)
+
+// rateLimiter implements a simple token bucket rate limiter.
+type rateLimiter struct {
+	mu         sync.Mutex
+	tokens     float64
+	maxTokens  float64
+	refillRate float64 // tokens per second
+	lastRefill time.Time
+}
+
+func newRateLimiter(perMinute int, burst int) *rateLimiter {
+	return &rateLimiter{
+		tokens:     float64(burst),
+		maxTokens:  float64(burst),
+		refillRate: float64(perMinute) / 60.0,
+		lastRefill: time.Now(),
+	}
+}
+
+func (rl *rateLimiter) allow() bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(rl.lastRefill).Seconds()
+	rl.tokens += elapsed * rl.refillRate
+	if rl.tokens > rl.maxTokens {
+		rl.tokens = rl.maxTokens
+	}
+	rl.lastRefill = now
+
+	if rl.tokens >= 1 {
+		rl.tokens--
+		return true
+	}
+	return false
+}
+
+var limiter = newRateLimiter(60, 10)
+
+// mcpResponse is the JSON structure returned by MCP tool handlers.
+type mcpResponse struct {
+	StatusCode int               `json:"statusCode"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Body       string            `json:"body,omitempty"`
+}
+
+// executeMCPRequest performs an authenticated HTTP request for MCP tools.
+func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride string, customHeaders map[string]string) (*mcpResponse, error) {
+	if !limiter.allow() {
+		return nil, fmt.Errorf("rate limit exceeded (60 requests/minute)")
+	}
+
+	opts := client.RequestOptions{
+		Method:          method,
+		URL:             url,
+		Headers:         make(map[string]string),
+		Timeout:         30 * time.Second,
+		FollowRedirects: true,
+		MaxRedirects:    10,
+		Retry:           3,
+		MaxResponseSize: 100 * 1024 * 1024,
+	}
+
+	for k, v := range customHeaders {
+		opts.Headers[k] = v
+	}
+
+	if body != "" {
+		opts.Body = strings.NewReader(body)
+	}
+
+	// Determine scope
+	detectedScope := scopeOverride
+	if detectedScope == "" {
+		s, err := auth.DetectScope(url)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect scope: %w", err)
+		}
+		detectedScope = s
+	}
+	opts.Scope = detectedScope
+
+	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, false)
+
+	tokenProvider, err := auth.NewAzureTokenProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token provider: %w", err)
+	}
+	opts.TokenProvider = tokenProvider
+
+	httpClient := client.NewClient(opts.TokenProvider, false, opts.Timeout)
+
+	resp, err := httpClient.Execute(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	respHeaders := make(map[string]string)
+	for key, values := range resp.Headers {
+		if len(values) > 0 {
+			respHeaders[key] = values[0]
+		}
+	}
+
+	return &mcpResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       string(resp.Body),
+	}, nil
+}
+
+// parseHeaders extracts custom headers from MCP tool arguments.
+func parseHeaders(request mcp.CallToolRequest) map[string]string {
+	headers := make(map[string]string)
+	args := request.GetArguments()
+	if h, ok := args["headers"]; ok {
+		if hMap, ok := h.(map[string]any); ok {
+			for k, v := range hMap {
+				if s, ok := v.(string); ok {
+					headers[k] = s
+				}
+			}
+		}
+	}
+	return headers
+}
+
+func formatResponse(resp *mcpResponse) string {
+	data, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"statusCode":%d,"error":"failed to marshal response"}`, resp.StatusCode)
+	}
+	return string(data)
+}
+
+// Tool handler for methods with a body (POST, PUT, PATCH)
+func handleBodyMethod(method string) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		url, err := request.RequireString("url")
+		if err != nil {
+			return mcp.NewToolResultError("missing required argument: url"), nil
+		}
+
+		body := request.GetString("body", "")
+		scopeOverride := request.GetString("scope", "")
+		headers := parseHeaders(request)
+
+		resp, err := executeMCPRequest(ctx, method, url, body, scopeOverride, headers)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(formatResponse(resp)), nil
+	}
+}
+
+// Tool handler for methods without a body (GET, DELETE)
+func handleNoBodyMethod(method string) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		url, err := request.RequireString("url")
+		if err != nil {
+			return mcp.NewToolResultError("missing required argument: url"), nil
+		}
+
+		scopeOverride := request.GetString("scope", "")
+		headers := parseHeaders(request)
+
+		resp, err := executeMCPRequest(ctx, method, url, "", scopeOverride, headers)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(formatResponse(resp)), nil
+	}
+}
+
+// handleHead handles HEAD requests (returns status + headers only).
+func handleHead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	url, err := request.RequireString("url")
+	if err != nil {
+		return mcp.NewToolResultError("missing required argument: url"), nil
+	}
+
+	scopeOverride := request.GetString("scope", "")
+
+	resp, err := executeMCPRequest(ctx, "HEAD", url, "", scopeOverride, nil)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// HEAD responses omit body
+	resp.Body = ""
+	return mcp.NewToolResultText(formatResponse(resp)), nil
+}
+
+const mcpInstructions = `You are an Azure REST API assistant powered by the azd-rest extension.
+You can execute authenticated HTTP requests against Azure and other REST APIs.
+OAuth scopes are automatically detected from the URL for known Azure services
+(management.azure.com, graph.microsoft.com, etc.). Use the scope parameter
+to override when needed. All requests include Azure bearer token authentication
+by default.`
+
+func newMCPServer() *server.MCPServer {
+	s := server.NewMCPServer(
+		"azd-rest",
+		"0.1.0",
+		server.WithInstructions(mcpInstructions),
+	)
+
+	// URL + scope + headers options (for GET, DELETE)
+	urlScopeHeaderOpts := func(desc string, annotations ...mcp.ToolOption) []mcp.ToolOption {
+		opts := []mcp.ToolOption{
+			mcp.WithDescription(desc),
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		}
+		return append(opts, annotations...)
+	}
+
+	// URL + body + scope + headers options (for POST, PUT, PATCH)
+	urlBodyScopeHeaderOpts := func(desc string, annotations ...mcp.ToolOption) []mcp.ToolOption {
+		opts := []mcp.ToolOption{
+			mcp.WithDescription(desc),
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("body", mcp.Description("Request body (JSON string)")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		}
+		return append(opts, annotations...)
+	}
+
+	// GET - readonly
+	s.AddTool(
+		mcp.NewTool("rest_get", urlScopeHeaderOpts(
+			"Execute an authenticated GET request against an Azure or REST API endpoint",
+			mcp.WithReadOnlyHintAnnotation(true),
+			mcp.WithDestructiveHintAnnotation(false),
+		)...),
+		handleNoBodyMethod("GET"),
+	)
+
+	// POST
+	s.AddTool(
+		mcp.NewTool("rest_post", urlBodyScopeHeaderOpts(
+			"Execute an authenticated POST request against an Azure or REST API endpoint",
+		)...),
+		handleBodyMethod("POST"),
+	)
+
+	// PUT
+	s.AddTool(
+		mcp.NewTool("rest_put", urlBodyScopeHeaderOpts(
+			"Execute an authenticated PUT request against an Azure or REST API endpoint",
+			mcp.WithIdempotentHintAnnotation(true),
+		)...),
+		handleBodyMethod("PUT"),
+	)
+
+	// PATCH
+	s.AddTool(
+		mcp.NewTool("rest_patch", urlBodyScopeHeaderOpts(
+			"Execute an authenticated PATCH request against an Azure or REST API endpoint",
+		)...),
+		handleBodyMethod("PATCH"),
+	)
+
+	// DELETE - destructive
+	s.AddTool(
+		mcp.NewTool("rest_delete", urlScopeHeaderOpts(
+			"Execute an authenticated DELETE request against an Azure or REST API endpoint",
+			mcp.WithDestructiveHintAnnotation(true),
+		)...),
+		handleNoBodyMethod("DELETE"),
+	)
+
+	// HEAD - readonly
+	s.AddTool(
+		mcp.NewTool("rest_head",
+			mcp.WithDescription("Execute an authenticated HEAD request to retrieve response headers without body"),
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithReadOnlyHintAnnotation(true),
+			mcp.WithDestructiveHintAnnotation(false),
+		),
+		handleHead,
+	)
+
+	return s
+}
+
+func NewMCPCommand() *cobra.Command {
+	mcpCmd := &cobra.Command{
+		Use:    "mcp",
+		Short:  "MCP server commands",
+		Hidden: true,
+	}
+
+	serveCmd := &cobra.Command{
+		Use:    "serve",
+		Short:  "Start MCP stdio server",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s := newMCPServer()
+			stdioServer := server.NewStdioServer(s)
+			return stdioServer.Listen(cmd.Context(), os.Stdin, os.Stdout)
+		},
+	}
+
+	mcpCmd.AddCommand(serveCmd)
+	return mcpCmd
+}

@@ -84,6 +84,8 @@ Examples:
 		NewOptionsCommand(),
 		NewVersionCommand(),
 		NewMetadataCommand(),
+		NewListenCommand(),
+		NewMCPCommand(),
 	)
 
 	return rootCmd

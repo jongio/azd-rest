@@ -14,7 +14,15 @@ minAzdVersion: 1.10.0
 
 capabilities:
   - custom-commands
+  - lifecycle-events
+  - mcp-server
   - metadata
+
+mcp:
+  serve:
+    args: ["mcp", "serve"]
+    env:
+      - "AZD_REST_PROJECT_DIR=${AZD_PROJECT_DIR}"
 
 examples:
   - name: get
