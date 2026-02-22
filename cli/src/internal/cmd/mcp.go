@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -24,9 +25,75 @@ var limiter = azdextutil.NewRateLimiter(10, 1.0)
 // creating a new Azure credential on every call.
 var (
 	cachedTokenProvider auth.TokenProvider
-	tokenProviderOnce  sync.Once
-	tokenProviderErr   error
+	tokenProviderMu    sync.Mutex
 )
+
+// blockedHeaders are headers that must not be set via custom headers.
+var blockedHeaders = map[string]bool{
+	"authorization":       true,
+	"host":                true,
+	"cookie":              true,
+	"proxy-authorization": true,
+}
+
+// blockedHosts are cloud metadata endpoints that must never be contacted.
+var blockedHosts = []string{
+	"169.254.169.254",
+	"fd00:ec2::254",
+	"metadata.google.internal",
+	"100.100.100.200",
+}
+
+// getOrCreateTokenProvider returns the cached token provider, retrying on failure.
+func getOrCreateTokenProvider() (auth.TokenProvider, error) {
+	tokenProviderMu.Lock()
+	defer tokenProviderMu.Unlock()
+	if cachedTokenProvider != nil {
+		return cachedTokenProvider, nil
+	}
+	tp, err := auth.NewAzureTokenProvider()
+	if err != nil {
+		return nil, err
+	}
+	cachedTokenProvider = tp
+	return tp, nil
+}
+
+// isBlockedURL returns true if the URL targets a cloud metadata endpoint.
+func isBlockedURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return true
+	}
+	host := strings.ToLower(u.Hostname())
+	for _, b := range blockedHosts {
+		if host == b {
+			return true
+		}
+	}
+	return false
+}
+
+// validateScopeURLMatch ensures the scope domain matches the request URL domain.
+func validateScopeURLMatch(scope, rawURL string) error {
+	scopeURL, err := url.Parse(scope)
+	if err != nil {
+		return fmt.Errorf("invalid scope URL: %w", err)
+	}
+	reqURL, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid request URL: %w", err)
+	}
+	scopeHost := strings.ToLower(scopeURL.Hostname())
+	reqHost := strings.ToLower(reqURL.Hostname())
+	if scopeHost == "" || reqHost == "" {
+		return fmt.Errorf("scope and URL must have valid hosts")
+	}
+	if reqHost != scopeHost && !strings.HasSuffix(reqHost, "."+scopeHost) {
+		return fmt.Errorf("scope host %q does not match request URL host %q", scopeHost, reqHost)
+	}
+	return nil
+}
 
 // mcpResponse is the JSON structure returned by MCP tool handlers.
 type mcpResponse struct {
@@ -36,20 +103,24 @@ type mcpResponse struct {
 }
 
 // executeMCPRequest performs an authenticated HTTP request for MCP tools.
-func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride string, customHeaders map[string]string) (*mcpResponse, error) {
+func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride string, customHeaders map[string]string) (*mcpResponse, error) {
+	if isBlockedURL(reqURL) {
+		return nil, fmt.Errorf("requests to cloud metadata endpoints are blocked")
+	}
+
 	if !limiter.Allow() {
 		return nil, fmt.Errorf("rate limit exceeded (60 requests/minute)")
 	}
 
 	opts := client.RequestOptions{
 		Method:          method,
-		URL:             url,
+		URL:             reqURL,
 		Headers:         make(map[string]string),
 		Timeout:         30 * time.Second,
 		FollowRedirects: true,
 		MaxRedirects:    10,
 		Retry:           3,
-		MaxResponseSize: 100 * 1024 * 1024,
+		MaxResponseSize: 10 * 1024 * 1024,
 	}
 
 	for k, v := range customHeaders {
@@ -63,23 +134,28 @@ func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride str
 	// Determine scope
 	detectedScope := scopeOverride
 	if detectedScope == "" {
-		s, err := auth.DetectScope(url)
+		s, err := auth.DetectScope(reqURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to detect scope: %w", err)
 		}
 		detectedScope = s
 	}
+
+	if scopeOverride != "" {
+		if err := validateScopeURLMatch(scopeOverride, reqURL); err != nil {
+			return nil, fmt.Errorf("scope/URL mismatch: %w", err)
+		}
+	}
+
 	opts.Scope = detectedScope
 
-	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, false)
+	opts.SkipAuth = client.ShouldSkipAuth(reqURL, opts.Headers, false)
 
-	tokenProviderOnce.Do(func() {
-		cachedTokenProvider, tokenProviderErr = auth.NewAzureTokenProvider()
-	})
-	if tokenProviderErr != nil {
-		return nil, fmt.Errorf("failed to create token provider: %w", tokenProviderErr)
+	tp, err := getOrCreateTokenProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token provider: %w", err)
 	}
-	opts.TokenProvider = cachedTokenProvider
+	opts.TokenProvider = tp
 
 	httpClient := client.NewClient(opts.TokenProvider, false, opts.Timeout)
 
@@ -103,19 +179,22 @@ func executeMCPRequest(ctx context.Context, method, url, body, scopeOverride str
 }
 
 // parseHeaders extracts custom headers from MCP tool arguments.
-func parseHeaders(request mcp.CallToolRequest) map[string]string {
+func parseHeaders(request mcp.CallToolRequest) (map[string]string, error) {
 	headers := make(map[string]string)
 	args := request.GetArguments()
 	if h, ok := args["headers"]; ok {
 		if hMap, ok := h.(map[string]any); ok {
 			for k, v := range hMap {
+				if blockedHeaders[strings.ToLower(k)] {
+					return nil, fmt.Errorf("header %q is not allowed", k)
+				}
 				if s, ok := v.(string); ok {
 					headers[k] = s
 				}
 			}
 		}
 	}
-	return headers
+	return headers, nil
 }
 
 func formatResponse(resp *mcpResponse) string {
@@ -136,7 +215,10 @@ func handleBodyMethod(method string) server.ToolHandlerFunc {
 
 		body := request.GetString("body", "")
 		scopeOverride := request.GetString("scope", "")
-		headers := parseHeaders(request)
+		headers, err := parseHeaders(request)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		resp, err := executeMCPRequest(ctx, method, url, body, scopeOverride, headers)
 		if err != nil {
@@ -156,7 +238,10 @@ func handleNoBodyMethod(method string) server.ToolHandlerFunc {
 		}
 
 		scopeOverride := request.GetString("scope", "")
-		headers := parseHeaders(request)
+		headers, err := parseHeaders(request)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		resp, err := executeMCPRequest(ctx, method, url, "", scopeOverride, headers)
 		if err != nil {
@@ -175,7 +260,10 @@ func handleHead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	scopeOverride := request.GetString("scope", "")
-	headers := parseHeaders(request)
+	headers, err := parseHeaders(request)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 
 	resp, err := executeMCPRequest(ctx, "HEAD", url, "", scopeOverride, headers)
 	if err != nil {

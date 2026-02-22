@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
@@ -13,7 +14,11 @@ func NewListenCommand() *cobra.Command {
 		Short:  "Start extension listener (internal use only)",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := azdext.WithAccessToken(cmd.Context())
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			ctx = azdext.WithAccessToken(ctx)
 
 			azdClient, err := azdext.NewAzdClient()
 			if err != nil {
