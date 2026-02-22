@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jongio/azd-core/auth"
-	"github.com/jongio/azd-core/azdextutil"
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +57,7 @@ Examples:
 		Version: "0.1.0",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Hydrate context with TRACEPARENT for distributed trace correlation
-			cmd.SetContext(azdextutil.SetupTracingFromEnv(cmd.Context()))
+			cmd.SetContext(azdext.NewContext())
 		},
 	}
 
@@ -88,7 +88,7 @@ Examples:
 		NewHeadCommand(),
 		NewOptionsCommand(),
 		NewVersionCommand(),
-		NewMetadataCommand(),
+		NewMetadataCommand(func() *cobra.Command { return NewRootCmd() }),
 		NewListenCommand(),
 		NewMCPCommand(),
 	)
