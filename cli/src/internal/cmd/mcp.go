@@ -26,7 +26,7 @@ var limiter = azdextutil.NewRateLimiter(10, 1.0)
 // creating a new Azure credential on every call.
 var (
 	cachedTokenProvider auth.TokenProvider
-	tokenProviderMu    sync.Mutex
+	tokenProviderMu     sync.Mutex
 )
 
 // blockedHeaders are headers that must not be set via custom headers.
