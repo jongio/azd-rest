@@ -4,11 +4,12 @@ go 1.26.0
 
 require (
 	github.com/azure/azure-dev/cli/azd v0.0.0-20260221052936-16626caf33f0
-	github.com/jongio/azd-core v0.5.1
+	github.com/jongio/azd-core v0.5.2-0.20260223042348-df3319c65059
 	github.com/magefile/mage v1.15.0
 	github.com/mark3labs/mcp-go v0.44.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
+	go.opentelemetry.io/otel v1.38.0
 )
 
 require (
@@ -73,7 +74,6 @@ require (
 	github.com/yuin/goldmark v1.7.13 // indirect
 	github.com/yuin/goldmark-emoji v1.0.6 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
@@ -89,5 +89,3 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/jongio/azd-core => ../../azd-core

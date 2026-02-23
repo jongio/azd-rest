@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const requiredAzdCoreVersion = "github.com/jongio/azd-core v0.5.1"
+const requiredAzdCoreVersion = "github.com/jongio/azd-core v0.5.2-0.20260223042348-df3319c65059"
 
 // Fails fast when go.mod drifts from the pinned azd-core version.
 func TestAzdCoreVersionPinned(t *testing.T) {
