@@ -4,6 +4,8 @@
   "words": [
     "azd",
     "azdcore",
+    "azdext",
+    "azdextutil",
     "azcore",
     "Buildand",
     "coreversion",
@@ -54,6 +56,8 @@
     "synapse",
     "tcpdump",
     "telemetry",
+    "traceparent",
+    "tracestate",
     "usgovcloudapi",
     "wrapcheck",
     "vulncheck",
