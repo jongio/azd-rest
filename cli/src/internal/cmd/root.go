@@ -99,7 +99,7 @@ Examples:
 		NewHeadCommand(),
 		NewOptionsCommand(),
 		NewVersionCommand(),
-		NewMetadataCommand(func() *cobra.Command { return NewRootCmd() }),
+		NewMetadataCommand(NewRootCmd),
 		NewListenCommand(),
 		NewMCPCommand(),
 	)
