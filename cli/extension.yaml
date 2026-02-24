@@ -5,7 +5,7 @@ namespace: rest
 displayName: REST API Extension
 description: Execute REST API calls with Azure authentication and scope detection.
 usage: azd rest <method> <url> [options]
-version: 0.1.0
+version: 0.1.1
 language: go
 author: jongio
 homepage: https://github.com/jongio/azd-rest
