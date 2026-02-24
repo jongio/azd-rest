@@ -410,6 +410,11 @@ jobs:
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Delete existing tag if present (from a previous failed run)
+          git tag -d "v${VERSION}" 2>/dev/null || true
+          git push origin --delete "v${VERSION}" 2>/dev/null || true
+          
           git tag -a "v${VERSION}" -m "Release version ${VERSION}"
           git push origin "v${VERSION}"
 
@@ -450,13 +455,20 @@ jobs:
       - name: Release
         working-directory: cli
         run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          TAG_NAME="azd-ext-jongio-azd-rest_${VERSION}"
+          
+          # Delete existing release if present (from a previous failed run)
+          gh release delete "$TAG_NAME" --yes 2>/dev/null || true
+          
           azd x release \
             --repo "${{ github.repository }}" \
-            --version "${{ steps.version.outputs.next }}" \
+            --version "$VERSION" \
             --notes-file /tmp/release-notes.md \
             --confirm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update registry
         working-directory: cli
