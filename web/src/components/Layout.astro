@@ -9,10 +9,12 @@ interface Props {
 const { title, description = 'azd rest - Execute REST API calls with automatic Azure authentication' } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
-const siteUrl = 'https://jongio.github.io/azd-rest';
-const fullTitle = title === 'Home' ? 'azd rest | REST API calls with Azure authentication' : `${title} | azd rest`;
-const ogImage = `${siteUrl}/og-image.png`;
+const siteUrl = 'https://jongio.github.io';
+const baseUrl = `${siteUrl}${base}`;
 const currentPath = Astro.url.pathname;
+const currentUrl = `${siteUrl}${currentPath}`;
+const fullTitle = title === 'Home' ? 'azd rest | REST API calls with Azure authentication' : `${title} | azd rest`;
+const ogImage = `${baseUrl}og-image.png`;
 
 const navLinks = [
   { href: `${base}getting-started/`, label: 'Getting Started' },
@@ -36,20 +38,23 @@ const navLinks = [
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={currentUrl} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content="azd rest - REST API calls with Azure authentication" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
-    <meta property="og:url" content={siteUrl} />
     <meta property="og:site_name" content="azd rest" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={currentUrl} />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content="azd rest - REST API calls with Azure authentication" />
     <meta name="twitter:creator" content="@jongallant" />
 
     <script is:inline>
