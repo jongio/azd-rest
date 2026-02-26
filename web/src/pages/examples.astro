@@ -5,144 +5,182 @@ import CodeBlock from '../components/CodeBlock.astro';
 const base = import.meta.env.BASE_URL;
 ---
 
-<Layout title="Examples" description="Real-world examples of using azd rest for various Azure services">
+<Layout title="Examples" description="Real-world examples of using azd rest for Azure REST API calls">
   <div class="page-container">
     <div class="page-header">
       <h1>Examples</h1>
       <p class="page-intro">
-        Learn how to use azd rest with real-world examples for different Azure services.
+        Learn how to use azd rest in real-world scenarios with these practical examples.
       </p>
     </div>
 
     <div class="content">
       <section class="example">
         <div class="example-header">
-          <h2>📊 Management API (ARM)</h2>
-          <p>Interact with Azure Resource Manager APIs to manage your Azure resources.</p>
+          <h2>📋 List Azure Subscriptions</h2>
+          <p>The simplest API call — list all subscriptions available to your account.</p>
         </div>
 
-        <h3>List Subscriptions</h3>
         <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
 
-        <h3>Get Resource Group</h3>
-        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}?api-version=2021-04-01`} language="bash" />
-
-        <h3>Create Storage Account</h3>
-        <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}?api-version=2021-04-01 \\
-  --data '{"location":"eastus","sku":{"name":"Standard_LRS"},"kind":"StorageV2"}'`} language="bash" />
-
-        <h3>Delete Resource</h3>
-        <CodeBlock code={`azd rest delete https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}?api-version=2021-04-01 \\
-  --verbose`} language="bash" />
+        <p>With pagination to get all results:</p>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --paginate`} language="bash" />
       </section>
 
       <section class="example">
         <div class="example-header">
-          <h2>🔐 Key Vault</h2>
-          <p>Access secrets, keys, and certificates from Azure Key Vault.</p>
+          <h2>🗂️ Manage Resource Groups</h2>
+          <p>Create, list, and manage Azure resource groups.</p>
         </div>
 
-        <h3>Get Secret</h3>
-        <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets/my-secret?api-version=7.4`} language="bash" />
+        <h3>List Resource Groups</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2021-04-01`} language="bash" />
 
-        <h3>List Secrets</h3>
+        <h3>Create a Resource Group</h3>
+        <CodeBlock code={`azd rest put https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups/my-rg?api-version=2021-04-01 \\
+  --data '{"location":"eastus","tags":{"environment":"dev"}}'`} language="bash" />
+
+        <h3>Delete a Resource Group</h3>
+        <CodeBlock code={`azd rest delete https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups/my-rg?api-version=2021-04-01`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>💾 Create a Storage Account</h2>
+          <p>Provision Azure Storage with a POST request and JSON body.</p>
+        </div>
+
+        <h3>Inline JSON</h3>
+        <CodeBlock code={`azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
+  --data '{"location":"eastus","kind":"StorageV2","sku":{"name":"Standard_LRS"}}'`} language="bash" />
+
+        <h3>From File</h3>
+        <CodeBlock code={`# storage-account.json
+# {"location":"eastus","kind":"StorageV2","sku":{"name":"Standard_LRS"}}
+
+azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
+  --data-file storage-account.json`} language="bash" />
+      </section>
+
+      <section class="example" id="keyvault">
+        <div class="example-header">
+          <h2>🔐 Key Vault Secrets</h2>
+          <p>Read and manage secrets in Azure Key Vault — scope is auto-detected.</p>
+        </div>
+
+        <h3>Get a Secret</h3>
+        <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4`} language="bash" />
+
+        <h3>List All Secrets</h3>
         <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets?api-version=7.4`} language="bash" />
 
-        <h3>Set Secret</h3>
-        <CodeBlock code={`azd rest put https://myvault.vault.azure.net/secrets/my-secret?api-version=7.4 \\
+        <h3>Set a Secret</h3>
+        <CodeBlock code={`azd rest put https://myvault.vault.azure.net/secrets/newsecret?api-version=7.4 \\
   --data '{"value":"my-secret-value"}'`} language="bash" />
       </section>
 
       <section class="example">
         <div class="example-header">
-          <h2>💾 Storage</h2>
-          <p>Interact with Azure Storage services (Blob, Queue, Table, File).</p>
-        </div>
-
-        <h3>List Containers</h3>
-        <CodeBlock code={`azd rest get https://mystorageacct.blob.core.windows.net/?comp=list`} language="bash" />
-
-        <h3>Get Blob</h3>
-        <CodeBlock code={`azd rest get https://mystorageacct.blob.core.windows.net/container/blob \\
-  --output-file ./downloaded-blob.txt`} language="bash" />
-
-        <h3>List Queue Messages</h3>
-        <CodeBlock code={`azd rest get https://mystorageacct.queue.core.windows.net/myqueue/messages?numofmessages=10`} language="bash" />
-      </section>
-
-      <section class="example">
-        <div class="example-header">
           <h2>👤 Microsoft Graph</h2>
-          <p>Access Microsoft Graph API to work with users, groups, and other Microsoft 365 resources.</p>
+          <p>Query Microsoft Graph API for user and organization data.</p>
         </div>
 
         <h3>Get Current User</h3>
         <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
 
-        <h3>List Users</h3>
-        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/users?\\$top=10`} language="bash" />
+        <h3>List Groups</h3>
+        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/groups`} language="bash" />
 
-        <h3>Get User Profile</h3>
-        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/users/{userId}`} language="bash" />
+        <h3>List Applications</h3>
+        <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/applications`} language="bash" />
       </section>
 
       <section class="example">
         <div class="example-header">
-          <h2>🔧 Custom Scopes</h2>
-          <p>Use custom OAuth scopes for non-Azure endpoints or special cases.</p>
+          <h2>📊 Verbose Diagnostics</h2>
+          <p>Debug requests with verbose output showing headers, timing, and token info (redacted).</p>
         </div>
 
-        <h3>Custom Scope</h3>
-        <CodeBlock code={`azd rest get https://api.myservice.com/data \\
-  --scope https://myservice.com/.default`} language="bash" />
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose`} language="bash" />
 
-        <h3>No Authentication</h3>
-        <CodeBlock code={`azd rest get https://api.github.com/repos/Azure/azure-dev \\
-  --no-auth \\
-  --header "Accept: application/vnd.github.v3+json"`} language="bash" />
+        <p>Example output:</p>
+        <CodeBlock code={`> GET https://management.azure.com/subscriptions?api-version=2020-01-01
+> Authorization: Bearer ***REDACTED***
+> Accept: application/json
+>
+< 200 OK
+< Content-Type: application/json
+< Content-Length: 1234
+<
+Request completed in 234ms
+{
+  "value": [...]
+}`} language="text" showCopy={false} />
       </section>
 
       <section class="example">
         <div class="example-header">
-          <h2>📤 POST Requests</h2>
-          <p>Send data with POST requests using inline JSON or files.</p>
+          <h2>📁 Save & Format Responses</h2>
+          <p>Control output format and save responses to files.</p>
         </div>
-
-        <h3>POST with Inline JSON</h3>
-        <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
-  --data '{"location":"eastus","sku":{"name":"Standard_LRS"},"kind":"StorageV2"}'`} language="bash" />
-
-        <h3>POST with File</h3>
-        <CodeBlock code={`azd rest post https://api.example.com/resource \\
-  --data-file ./payload.json \\
-  --header "Content-Type: application/json"`} language="bash" />
-
-        <h3>POST with @&#123;file&#125; Shorthand</h3>
-        <CodeBlock code={`azd rest post https://api.example.com/resource \\
-  --data-file @./payload.json`} language="bash" />
-      </section>
-
-      <section class="example">
-        <div class="example-header">
-          <h2>🎨 Output Formatting</h2>
-          <p>Control how responses are formatted and displayed.</p>
-        </div>
-
-        <h3>Pretty Print JSON</h3>
-        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
-  --format json`} language="bash" />
-
-        <h3>Raw Output</h3>
-        <CodeBlock code={`azd rest get https://api.example.com/data \\
-  --format raw`} language="bash" />
 
         <h3>Save to File</h3>
         <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
   --output-file subscriptions.json`} language="bash" />
 
-        <h3>Verbose Mode</h3>
-        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
-  --verbose`} language="bash" />
+        <h3>Compact JSON</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format json`} language="bash" />
+
+        <h3>Raw Output</h3>
+        <CodeBlock code={`azd rest get https://api.example.com/data --format raw --no-auth`} language="bash" />
+
+        <h3>Binary Download</h3>
+        <CodeBlock code={`azd rest get https://example.com/image.png --binary --output-file image.png --no-auth`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>🔄 Pagination & Retries</h2>
+          <p>Handle large result sets and transient failures automatically.</p>
+        </div>
+
+        <h3>Auto Pagination</h3>
+        <CodeBlock code={`# Follow nextLink headers to get all results
+azd rest get https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01 --paginate`} language="bash" />
+
+        <h3>Custom Retry Count</h3>
+        <CodeBlock code={`# Retry up to 5 times on transient errors
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --retry 5`} language="bash" />
+
+        <h3>Disable Retries</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --retry 0`} language="bash" />
+      </section>
+
+      <section class="example">
+        <div class="example-header">
+          <h2>🌐 Public APIs (No Auth)</h2>
+          <p>Call non-Azure endpoints by disabling authentication.</p>
+        </div>
+
+        <CodeBlock code={`# GitHub API
+azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Any public REST API
+azd rest get https://jsonplaceholder.typicode.com/posts/1 --no-auth`} language="bash" />
+      </section>
+
+      <section class="section">
+        <h2>More Resources</h2>
+        <div class="resources">
+          <a href={`${base}getting-started`} class="resource-card">
+            <h3>📚 Getting Started</h3>
+            <p>Install and set up azd rest</p>
+          </a>
+          <a href={`${base}reference`} class="resource-card">
+            <h3>📖 CLI Reference</h3>
+            <p>Complete command and flag reference</p>
+          </a>
+        </div>
       </section>
     </div>
   </div>
@@ -150,14 +188,13 @@ const base = import.meta.env.BASE_URL;
 
 <style>
   .page-container {
-    max-width: 1280px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 3rem 1.5rem;
   }
 
   .page-header {
     margin-bottom: 3rem;
-    text-align: center;
   }
 
   .page-header h1 {
@@ -168,29 +205,27 @@ const base = import.meta.env.BASE_URL;
   }
 
   .page-intro {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     color: var(--color-text-secondary);
-    max-width: 700px;
-    margin: 0 auto;
+    margin: 0;
   }
 
   .content {
-    max-width: 900px;
-    margin: 0 auto;
+    line-height: 1.7;
   }
 
   .example {
     margin-bottom: 4rem;
-    padding-bottom: 4rem;
+    padding-bottom: 3rem;
     border-bottom: 1px solid var(--color-border-default);
   }
 
-  .example:last-child {
+  .example:last-of-type {
     border-bottom: none;
   }
 
   .example-header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .example-header h2 {
@@ -201,14 +236,64 @@ const base = import.meta.env.BASE_URL;
   }
 
   .example-header p {
+    font-size: 1.125rem;
     color: var(--color-text-secondary);
     margin: 0;
   }
 
   .example h3 {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    margin: 2rem 0 1rem;
+    margin: 2rem 0 0.5rem;
     color: var(--color-text-primary);
+  }
+
+  .example p {
+    color: var(--color-text-secondary);
+    margin: 0 0 1rem;
+  }
+
+  .section {
+    margin-top: 4rem;
+  }
+
+  .section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 1.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .resources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .resource-card {
+    display: block;
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background-color: var(--color-bg-primary);
+    text-decoration: none;
+    transition: border-color 0.2s;
+  }
+
+  .resource-card:hover {
+    border-color: var(--color-interactive-default);
+    text-decoration: none;
+  }
+
+  .resource-card h3 {
+    font-size: 1.125rem;
+    margin: 0 0 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .resource-card p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
   }
 </style>
