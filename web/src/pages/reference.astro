@@ -1,0 +1,420 @@
+---
+import Layout from '../components/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="CLI Reference" description="Complete command reference for the azd rest extension — all commands, flags, and supported Azure services">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>CLI Reference</h1>
+      <p class="page-intro">
+        Complete reference for all azd rest commands, flags, and supported Azure services.
+      </p>
+    </div>
+
+    <div class="content">
+      <!-- Commands Overview -->
+      <section class="section">
+        <h2>Commands</h2>
+        <p>All HTTP method commands follow the same pattern: <code>azd rest &lt;method&gt; &lt;url&gt; [flags]</code></p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>azd rest get &lt;url&gt;</code></td><td>Execute a GET request</td></tr>
+              <tr><td><code>azd rest post &lt;url&gt;</code></td><td>Execute a POST request</td></tr>
+              <tr><td><code>azd rest put &lt;url&gt;</code></td><td>Execute a PUT request</td></tr>
+              <tr><td><code>azd rest patch &lt;url&gt;</code></td><td>Execute a PATCH request</td></tr>
+              <tr><td><code>azd rest delete &lt;url&gt;</code></td><td>Execute a DELETE request</td></tr>
+              <tr><td><code>azd rest head &lt;url&gt;</code></td><td>Execute a HEAD request (headers only)</td></tr>
+              <tr><td><code>azd rest options &lt;url&gt;</code></td><td>Execute an OPTIONS request</td></tr>
+              <tr><td><code>azd rest version</code></td><td>Display extension version</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Global Flags -->
+      <section class="section">
+        <h2>Global Flags</h2>
+        <p>These flags are available for all HTTP method commands.</p>
+
+        <h3>Authentication</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--scope</code></td><td><code>-s</code></td><td>string</td><td>(auto)</td><td>OAuth scope. Auto-detected for Azure services if not provided.</td></tr>
+              <tr><td><code>--no-auth</code></td><td></td><td>bool</td><td>false</td><td>Skip authentication. Use for public APIs.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Request Configuration</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--header</code></td><td><code>-H</code></td><td>string[]</td><td>[]</td><td>Custom headers (repeatable). Format: <code>Key:Value</code></td></tr>
+              <tr><td><code>--data</code></td><td><code>-d</code></td><td>string</td><td>""</td><td>Request body (JSON string)</td></tr>
+              <tr><td><code>--data-file</code></td><td></td><td>string</td><td>""</td><td>Read request body from file. Also accepts <code>@file</code> shorthand.</td></tr>
+              <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>
+              <tr><td><code>--insecure</code></td><td><code>-k</code></td><td>bool</td><td>false</td><td>Skip TLS certificate verification</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Response Configuration</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> (pretty JSON), <code>json</code> (compact), <code>raw</code></td></tr>
+              <tr><td><code>--output-file</code></td><td></td><td>string</td><td>""</td><td>Write response to file</td></tr>
+              <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
+              <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>bool</td><td>false</td><td>Show headers, timing, request details (tokens redacted)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Advanced Options</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--paginate</code></td><td>bool</td><td>false</td><td>Follow continuation tokens / next links</td></tr>
+              <tr><td><code>--retry</code></td><td>int</td><td>3</td><td>Retry attempts with exponential backoff for transient errors</td></tr>
+              <tr><td><code>--follow-redirects</code></td><td>bool</td><td>true</td><td>Follow HTTP redirects</td></tr>
+              <tr><td><code>--max-redirects</code></td><td>int</td><td>10</td><td>Maximum redirect hops</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Version Command -->
+      <section class="section">
+        <h2>Version Command</h2>
+        <CodeBlock code={`# Default output
+azd rest version
+
+# Quiet — version number only
+azd rest version --quiet
+
+# JSON output
+azd rest version --format json`} language="bash" />
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--quiet</code></td><td><code>-q</code></td><td>bool</td><td>false</td><td>Display only the version number</td></tr>
+              <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> or <code>json</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Scope Detection -->
+      <section class="section" id="scope-detection">
+        <h2>Scope Detection</h2>
+        <p>
+          <code>azd rest</code> automatically detects the correct OAuth scope based on the URL hostname.
+          This eliminates the need to manually specify scopes for most Azure API calls.
+        </p>
+
+        <h3>Supported Azure Services</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Service</th><th>Hostname Pattern</th><th>Scope</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Azure Management API</td><td><code>management.azure.com</code></td><td><code>https://management.azure.com/.default</code></td></tr>
+              <tr><td>Microsoft Graph</td><td><code>graph.microsoft.com</code></td><td><code>https://graph.microsoft.com/.default</code></td></tr>
+              <tr><td>Azure Key Vault</td><td><code>*.vault.azure.net</code></td><td><code>https://vault.azure.net/.default</code></td></tr>
+              <tr><td>Azure Storage</td><td><code>*.blob.core.windows.net</code><br/><code>*.queue.core.windows.net</code><br/><code>*.table.core.windows.net</code><br/><code>*.file.core.windows.net</code><br/><code>*.dfs.core.windows.net</code></td><td><code>https://storage.azure.com/.default</code></td></tr>
+              <tr><td>Azure Container Registry</td><td><code>*.azurecr.io</code></td><td><code>https://containerregistry.azure.net/.default</code></td></tr>
+              <tr><td>Azure Cosmos DB</td><td><code>*.documents.azure.com</code></td><td><code>https://cosmos.azure.com/.default</code></td></tr>
+              <tr><td>Azure App Configuration</td><td><code>*.azconfig.io</code></td><td><code>https://azconfig.io/.default</code></td></tr>
+              <tr><td>Azure Batch</td><td><code>*.batch.azure.com</code></td><td><code>https://batch.core.windows.net/.default</code></td></tr>
+              <tr><td>Azure Database (PostgreSQL/MySQL)</td><td><code>*.postgres.database.azure.com</code><br/><code>*.mysql.database.azure.com</code><br/><code>*.mariadb.database.azure.com</code></td><td><code>https://ossrdbms-aad.database.windows.net/.default</code></td></tr>
+              <tr><td>Azure SQL Database</td><td><code>*.database.windows.net</code></td><td><code>https://database.windows.net/.default</code></td></tr>
+              <tr><td>Azure Synapse</td><td><code>*.dev.azuresynapse.net</code></td><td><code>https://dev.azuresynapse.net/.default</code></td></tr>
+              <tr><td>Azure Data Lake</td><td><code>*.azuredatalakestore.net</code></td><td><code>https://datalake.azure.net/.default</code></td></tr>
+              <tr><td>Azure Media Services</td><td><code>*.media.azure.net</code></td><td><code>https://rest.media.azure.net/.default</code></td></tr>
+              <tr><td>Azure Log Analytics</td><td><code>api.loganalytics.io</code></td><td><code>https://api.loganalytics.io/.default</code></td></tr>
+              <tr><td>Azure DevOps</td><td><code>dev.azure.com</code><br/><code>*.visualstudio.com</code></td><td><code>499b84ac-1321-427f-aa17-267ca6975798/.default</code></td></tr>
+              <tr><td>Azure Kusto</td><td><code>*.kusto.windows.net</code></td><td><code>{"https://{hostname}/.default"}</code></td></tr>
+              <tr><td>Azure Service Bus</td><td><code>*.servicebus.windows.net</code></td><td><code>https://servicebus.azure.net/.default</code></td></tr>
+              <tr><td>Azure Event Hubs</td><td><code>*.servicebus.windows.net</code></td><td><code>https://eventhubs.azure.net/.default</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Custom Scopes</h3>
+        <p>For services not in the auto-detection list, provide a scope manually:</p>
+        <CodeBlock code={`azd rest get https://api.myservice.com/data --scope https://myservice.com/.default`} language="bash" />
+      </section>
+
+      <!-- Pagination -->
+      <section class="section">
+        <h2>Pagination</h2>
+        <p>
+          When <code>--paginate</code> is enabled, <code>azd rest</code> automatically follows continuation tokens
+          from Azure APIs. It looks for:
+        </p>
+        <ul>
+          <li><code>nextLink</code> in the JSON response body</li>
+          <li><code>@odata.nextLink</code> in OData responses</li>
+          <li><code>Link</code> HTTP headers with <code>rel="next"</code></li>
+        </ul>
+        <CodeBlock code={`# Get all resources across all pages
+azd rest get https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01 --paginate`} language="bash" />
+      </section>
+
+      <!-- Retry -->
+      <section class="section">
+        <h2>Retry Configuration</h2>
+        <p>
+          <code>azd rest</code> automatically retries failed requests with exponential backoff
+          for transient errors (5xx status codes, network errors).
+        </p>
+        <CodeBlock code={`# Default: 3 retries
+azd rest get https://api.example.com/resource
+
+# Custom retry count
+azd rest get https://api.example.com/resource --retry 5
+
+# Disable retries
+azd rest get https://api.example.com/resource --retry 0`} language="bash" />
+      </section>
+
+      <!-- Exit Codes -->
+      <section class="section">
+        <h2>Exit Codes</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Code</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>0</code></td><td>Success</td></tr>
+              <tr><td><code>1</code></td><td>Request failed (HTTP error, network error)</td></tr>
+              <tr><td><code>2</code></td><td>Invalid arguments or configuration</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Troubleshooting -->
+      <section class="section">
+        <h2>Troubleshooting</h2>
+
+        <h3>Authentication Errors</h3>
+        <p><strong>Error:</strong> <code>failed to get token: credential unavailable</code></p>
+        <CodeBlock code={`# Ensure you're logged in to Azure
+az login
+
+# Or use service principal
+export AZURE_CLIENT_ID="..."
+export AZURE_CLIENT_SECRET="..."
+export AZURE_TENANT_ID="..."`} language="bash" />
+
+        <h3>Scope Detection Issues</h3>
+        <p><strong>Error:</strong> <code>Warning: Azure host detected but no scope found</code></p>
+        <CodeBlock code={`# Manually specify scope
+azd rest get https://management.azure.com/... --scope https://management.azure.com/.default`} language="bash" />
+
+        <h3>Network Errors</h3>
+        <p><strong>Error:</strong> <code>timeout</code> or <code>connection refused</code></p>
+        <CodeBlock code={`# Increase timeout
+azd rest get https://api.example.com/resource --timeout 5m
+
+# Check proxy settings
+echo $HTTP_PROXY
+echo $HTTPS_PROXY`} language="bash" />
+
+        <h3>Invalid JSON Response</h3>
+        <p><strong>Error:</strong> <code>failed to format response: invalid JSON</code></p>
+        <CodeBlock code={`# Use raw format to see actual response
+azd rest get https://api.example.com/resource --format raw`} language="bash" />
+      </section>
+
+      <!-- More Resources -->
+      <section class="section">
+        <h2>More Resources</h2>
+        <div class="resources">
+          <a href={`${base}getting-started`} class="resource-card">
+            <h3>📚 Getting Started</h3>
+            <p>Install and set up azd rest</p>
+          </a>
+          <a href={`${base}examples`} class="resource-card">
+            <h3>💡 Examples</h3>
+            <p>Real-world usage examples</p>
+          </a>
+          <a href="https://learn.microsoft.com/rest/api/azure/" class="resource-card" target="_blank" rel="noopener noreferrer">
+            <h3>📖 Azure REST API Docs</h3>
+            <p>Official Azure REST API reference</p>
+          </a>
+        </div>
+      </section>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .page-intro {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .content {
+    line-height: 1.7;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--color-text-primary);
+    padding-top: 1rem;
+  }
+
+  .section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2rem 0 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .section p {
+    margin: 0 0 1rem;
+    color: var(--color-text-secondary);
+  }
+
+  .section ul {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .section li {
+    margin: 0.5rem 0;
+    color: var(--color-text-secondary);
+  }
+
+  .section code {
+    background-color: var(--color-bg-tertiary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border-default);
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-secondary);
+    white-space: nowrap;
+  }
+
+  td {
+    color: var(--color-text-secondary);
+  }
+
+  td code {
+    background-color: var(--color-bg-tertiary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    white-space: nowrap;
+  }
+
+  .resources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .resource-card {
+    display: block;
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background-color: var(--color-bg-primary);
+    text-decoration: none;
+    transition: border-color 0.2s;
+  }
+
+  .resource-card:hover {
+    border-color: var(--color-interactive-default);
+    text-decoration: none;
+  }
+
+  .resource-card h3 {
+    font-size: 1.125rem;
+    margin: 0 0 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .resource-card p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+</style>

@@ -15,6 +15,10 @@ Make REST API calls with automatic Azure authentication and scope detection — 
 
 *Full documentation, CLI reference, and security architecture*
 
+[**📦 Part of azd Extensions →**](https://jongio.github.io/azd-extensions/)
+
+*Browse all Azure Developer CLI extensions by Jon Gallant*
+
 <br />
 
 ---
@@ -139,12 +143,18 @@ See the [Security Architecture](https://jongio.github.io/azd-rest/security/) pag
 - [Security Architecture](https://jongio.github.io/azd-rest/security/) — Threat model and security hardening
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
 
-## 🔗 Related Projects
+## 🔗 azd Extensions
 
-- [Azure Developer CLI](https://github.com/Azure/azure-dev) — Core azd tool
-- [azd-copilot](https://github.com/jongio/azd-copilot) — AI-powered Azure development assistant
-- [azd-app](https://github.com/jongio/azd-app) — Run Azure apps locally
-- [azd-exec](https://github.com/jongio/azd-exec) — Execute scripts with azd context
+azd rest is part of a suite of Azure Developer CLI extensions by [Jon Gallant](https://github.com/jongio).
+
+| Extension | Description | Website |
+|-----------|-------------|---------|
+| **[azd app](https://github.com/jongio/azd-app)** | Run Azure apps locally with auto-dependencies, dashboard, and AI debugging | [jongio.github.io/azd-app](https://jongio.github.io/azd-app/) |
+| **[azd copilot](https://github.com/jongio/azd-copilot)** | AI-powered Azure development with 16 agents and 28 skills | [jongio.github.io/azd-copilot](https://jongio.github.io/azd-copilot/) |
+| **[azd exec](https://github.com/jongio/azd-exec)** | Execute scripts with azd environment context and Key Vault integration | [jongio.github.io/azd-exec](https://jongio.github.io/azd-exec/) |
+| **[azd rest](https://github.com/jongio/azd-rest)** | Authenticated REST API calls with automatic scope detection | [jongio.github.io/azd-rest](https://jongio.github.io/azd-rest/) |
+
+🌐 **Extension Hub**: [jongio.github.io/azd-extensions](https://jongio.github.io/azd-extensions/) — Browse all extensions, quick install, and registry info.
 
 ## License
 

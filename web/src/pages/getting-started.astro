@@ -6,12 +6,12 @@ import InstallTabs from '../components/InstallTabs.astro';
 const base = import.meta.env.BASE_URL;
 ---
 
-<Layout title="Getting Started" description="Step-by-step guide to install and use azd rest extension">
+<Layout title="Getting Started" description="Step-by-step guide to install and use azd rest for authenticated Azure REST API calls">
   <div class="page-container">
     <div class="page-header">
       <h1>Getting Started</h1>
       <p class="page-intro">
-        Follow these steps to install azd rest and make your first authenticated REST API call.
+        Follow these steps to install azd rest and make your first authenticated Azure REST API call.
       </p>
     </div>
 
@@ -22,7 +22,7 @@ const base = import.meta.env.BASE_URL;
         <ul>
           <li><strong>Azure Developer CLI (azd)</strong> installed on your system</li>
           <li><strong>Azure subscription</strong> and appropriate permissions</li>
-          <li><strong>Azure authentication</strong> configured (via <code>az login</code> or managed identity)</li>
+          <li><strong>Azure CLI login</strong> — run <code>az login</code> to authenticate</li>
         </ul>
         <p>If you don't have azd installed, visit the <a href="https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd" target="_blank" rel="noopener noreferrer">official installation guide</a>.</p>
       </section>
@@ -38,51 +38,99 @@ const base = import.meta.env.BASE_URL;
         <p>Confirm that azd rest is installed correctly:</p>
         <CodeBlock code={`azd rest version`} language="bash" />
         <p>You should see output similar to:</p>
-        <CodeBlock code={`azd rest version 0.1.0`} language="text" showCopy={false} />
+        <CodeBlock code={`azd rest
+Version: 0.1.0
+Build Date: 2026-01-09T10:30:45Z
+Git Commit: abc123def`} language="text" showCopy={false} />
       </section>
 
       <section class="section">
         <h2>Make Your First Request</h2>
-        <p>Try a simple GET request to the Azure Management API:</p>
-        <CodeBlock code={`# List your Azure subscriptions
-azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
-        
-        <p>This command will:</p>
-        <ul>
-          <li>✅ Automatically detect the Management API scope</li>
-          <li>✅ Use your Azure credentials (from <code>az login</code>)</li>
-          <li>✅ Add the authentication token to the request</li>
-          <li>✅ Pretty-print the JSON response</li>
-        </ul>
+        <p>List your Azure subscriptions — authentication is handled automatically:</p>
+
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
+
+        <p>You should see a JSON response with your subscriptions:</p>
+        <CodeBlock code={`{
+  "value": [
+    {
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000",
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "displayName": "My Subscription",
+      "state": "Enabled"
+    }
+  ]
+}`} language="json" showCopy={false} />
       </section>
 
       <section class="section">
-        <h2>Security Best Practices</h2>
-        <div class="alert-warning">
-          <strong>⚠️ Important:</strong> azd rest uses your Azure credentials to authenticate REST API calls.
-        </div>
-        
-        <h3>Always Follow These Practices:</h3>
-        <ul class="checklist">
-          <li>✅ Only use with trusted Azure endpoints</li>
-          <li>✅ Review URLs before executing requests</li>
-          <li>✅ Use HTTPS for all requests (enforced by default)</li>
-          <li>✅ Never share tokens or credentials</li>
-          <li>✅ Use <code>--verbose</code> mode carefully (tokens are redacted)</li>
-          <li>❌ Don't use <code>--insecure</code> flag in production</li>
-          <li>❌ Don't pipe untrusted URLs to azd rest</li>
-        </ul>
+        <h2>How Authentication Works</h2>
+        <p>
+          <code>azd rest</code> automatically detects the Azure service you're calling and applies the correct OAuth scope.
+          It uses your Azure CLI credentials (via <code>az login</code>) to acquire tokens.
+        </p>
 
-        <p>For comprehensive security information, see the <a href={`${base}security/`}>Security Guidelines</a>.</p>
+        <h3>Automatic Scope Detection</h3>
+        <p>No need to specify scopes for common Azure services:</p>
+        <CodeBlock code={`# Management API — auto-detected
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
+
+# Key Vault — auto-detected
+azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
+
+# Microsoft Graph — auto-detected
+azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
+
+        <h3>Custom Scopes</h3>
+        <p>For non-Azure endpoints, provide a scope manually:</p>
+        <CodeBlock code={`azd rest get https://api.myservice.com/data --scope https://myservice.com/.default`} language="bash" />
+
+        <h3>No Authentication</h3>
+        <p>For public APIs that don't require auth:</p>
+        <CodeBlock code={`azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`} language="bash" />
+      </section>
+
+      <section class="section">
+        <h2>Common Commands</h2>
+
+        <h3>GET Request</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
+
+        <h3>POST with JSON Body</h3>
+        <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
+  --data '{"location":"eastus","kind":"StorageV2","sku":{"name":"Standard_LRS"}}'`} language="bash" />
+
+        <h3>POST with Body from File</h3>
+        <CodeBlock code={`azd rest post https://api.example.com/resource --data-file request.json`} language="bash" />
+
+        <h3>Verbose Output</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose`} language="bash" />
+
+        <h3>Save Response to File</h3>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --output-file subscriptions.json`} language="bash" />
+
+        <h3>Custom Headers</h3>
+        <CodeBlock code={`azd rest get https://api.example.com/resource \\
+  --header "X-Custom-Header: value" \\
+  --header "Accept: application/json"`} language="bash" />
       </section>
 
       <section class="section">
         <h2>Next Steps</h2>
-        <ul>
-          <li>📚 Explore <a href={`${base}examples/`}>Usage Examples</a> for different Azure services</li>
-          <li>📖 Read the <a href={`${base}reference/cli/`}>CLI Reference</a> for all available options</li>
-          <li>🔐 Review <a href={`${base}security/`}>Security Guidelines</a> for best practices</li>
-        </ul>
+        <div class="next-steps">
+          <div class="next-step-card">
+            <h3>📚 Explore Examples</h3>
+            <p>See real-world usage examples for different Azure services.</p>
+            <a href={`${base}examples`} class="card-link">View Examples →</a>
+          </div>
+
+          <div class="next-step-card">
+            <h3>📖 CLI Reference</h3>
+            <p>Learn about all commands, flags, and supported services.</p>
+            <a href={`${base}reference`} class="card-link">Read Reference →</a>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -92,12 +140,11 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
   .page-container {
     max-width: 900px;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 3rem 1.5rem;
   }
 
   .page-header {
     margin-bottom: 3rem;
-    text-align: center;
   }
 
   .page-header h1 {
@@ -108,12 +155,13 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
   }
 
   .page-intro {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     color: var(--color-text-secondary);
+    margin: 0;
   }
 
   .content {
-    max-width: 900px;
+    line-height: 1.7;
   }
 
   .section {
@@ -130,48 +178,64 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
   .section h3 {
     font-size: 1.25rem;
     font-weight: 600;
-    margin: 1.5rem 0 1rem;
+    margin: 2rem 0 1rem;
     color: var(--color-text-primary);
   }
 
   .section p {
-    color: var(--color-text-secondary);
-    line-height: 1.7;
     margin: 0 0 1rem;
+    color: var(--color-text-secondary);
   }
 
   .section ul {
-    color: var(--color-text-secondary);
-    line-height: 1.7;
     margin: 0 0 1rem;
     padding-left: 1.5rem;
   }
 
   .section li {
-    margin-bottom: 0.5rem;
+    margin: 0.5rem 0;
+    color: var(--color-text-secondary);
   }
 
-  .alert-warning {
-    background-color: #fff3cd;
-    border: 2px solid #ffc107;
+  .section code {
+    background-color: var(--color-bg-tertiary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  .next-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .next-step-card {
+    border: 1px solid var(--color-border-default);
     border-radius: 0.5rem;
-    padding: 1rem 1.5rem;
-    margin: 1.5rem 0;
-    color: #664d03;
+    padding: 1.5rem;
+    background-color: var(--color-bg-primary);
   }
 
-  .dark .alert-warning {
-    background-color: #664d03;
-    border-color: #997404;
-    color: #ffeaa7;
+  .next-step-card h3 {
+    font-size: 1.125rem;
+    margin: 0 0 0.5rem;
+    color: var(--color-text-primary);
   }
 
-  .checklist {
-    list-style: none;
-    padding-left: 0;
+  .next-step-card p {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
   }
 
-  .checklist li {
-    padding: 0.5rem 0;
+  .card-link {
+    color: var(--color-interactive-default);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .card-link:hover {
+    text-decoration: underline;
   }
 </style>
