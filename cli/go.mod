@@ -3,7 +3,7 @@ module github.com/jongio/azd-rest
 go 1.26.0
 
 require (
-	github.com/azure/azure-dev/cli/azd v0.0.0-20260221052936-16626caf33f0
+	github.com/azure/azure-dev/cli/azd v0.0.0-20260228002641-8f080b39d69b
 	github.com/jongio/azd-core v0.5.3-0.20260224175512-adb4c33ad704
 	github.com/magefile/mage v1.15.0
 	github.com/mark3labs/mcp-go v0.44.0
@@ -93,5 +93,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/azure/azure-dev/cli/azd => github.com/jongio/azure-dev/cli/azd v0.0.0-20260224163340-dd44e36d1cd2
