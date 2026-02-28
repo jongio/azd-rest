@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/azure/azure-dev/cli/azd v0.0.0-20260228002641-8f080b39d69b
-	github.com/jongio/azd-core v0.5.3-0.20260224175512-adb4c33ad704
+	github.com/jongio/azd-core v0.5.3
 	github.com/magefile/mage v1.15.0
 	github.com/mark3labs/mcp-go v0.44.1
 	github.com/spf13/cobra v1.10.2
