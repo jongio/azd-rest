@@ -588,9 +588,8 @@ func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 	defer srv.Close()
 
 	// Temporarily disable security policy for httptest loopback.
-	origPolicy := securityPolicy
-	securityPolicy = azdext.NewMCPSecurityPolicy()
-	defer func() { securityPolicy = origPolicy }()
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	// Pre-cache a mock token provider so we don't need Azure creds.
 	tokenProviderMu.Lock()
@@ -620,9 +619,9 @@ func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	origPolicy := securityPolicy
-	securityPolicy = azdext.NewMCPSecurityPolicy()
-	defer func() { securityPolicy = origPolicy }()
+	resetSecurityPolicyForTest()
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	tokenProviderMu.Lock()
 	origProvider := cachedTokenProvider
@@ -650,9 +649,8 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	origPolicy := securityPolicy
-	securityPolicy = azdext.NewMCPSecurityPolicy()
-	defer func() { securityPolicy = origPolicy }()
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	// Clear cached token provider to verify no auth is attempted.
 	tokenProviderMu.Lock()

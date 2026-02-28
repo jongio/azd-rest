@@ -86,14 +86,36 @@ type mcpResponse struct {
 }
 
 // securityPolicy is the shared security policy for MCP tools.
-var securityPolicy *azdext.MCPSecurityPolicy
+// Initialized via securityPolicyOnce for thread-safe lazy init.
+var (
+	securityPolicy     *azdext.MCPSecurityPolicy
+	securityPolicyOnce sync.Once
+)
 
 func getMCPSecurityPolicy() *azdext.MCPSecurityPolicy {
-	if securityPolicy == nil {
+	securityPolicyOnce.Do(func() {
 		securityPolicy = azdext.DefaultMCPSecurityPolicy().
 			RedactHeaders("Host", "Proxy-Authorization")
-	}
+	})
 	return securityPolicy
+}
+
+// resetSecurityPolicyForTest resets the security policy singleton so tests
+// can inject a custom policy (e.g. to allow httptest loopback addresses).
+// This must only be called from tests.
+func resetSecurityPolicyForTest() {
+	securityPolicyOnce = sync.Once{}
+	securityPolicy = nil
+}
+
+// setSecurityPolicyForTest replaces the security policy singleton with a
+// custom policy for testing. It resets the sync.Once and immediately marks
+// it as consumed so getMCPSecurityPolicy() returns the injected policy.
+func setSecurityPolicyForTest(p *azdext.MCPSecurityPolicy) {
+	securityPolicyOnce = sync.Once{}
+	securityPolicyOnce.Do(func() {
+		securityPolicy = p
+	})
 }
 
 // executeMCPRequest performs an authenticated HTTP request for MCP tools.
