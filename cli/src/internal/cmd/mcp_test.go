@@ -3,36 +3,37 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-core/auth"
-	"github.com/jongio/azd-core/azdextutil"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// helper to build a CallToolRequest with the given arguments map.
-func newCallToolRequest(args map[string]any) mcp.CallToolRequest {
-	return mcp.CallToolRequest{
+// newToolArgs creates an azdext.ToolArgs from a map for testing by constructing
+// a CallToolRequest and parsing it.
+func newToolArgs(args map[string]any) azdext.ToolArgs {
+	req := mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Arguments: args,
 		},
 	}
+	return azdext.ParseToolArgs(req)
 }
 
 func TestParseHeaders_Valid(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"headers": map[string]any{
 			"Content-Type": "application/json",
 			"X-Custom":     "value",
 		},
 	})
 
-	headers, err := parseHeaders(req)
+	headers, err := parseHeaders(args)
 
 	require.NoError(t, err)
 	assert.Equal(t, "application/json", headers["Content-Type"])
@@ -42,90 +43,15 @@ func TestParseHeaders_Valid(t *testing.T) {
 func TestParseHeaders_BlockedHeaders(t *testing.T) {
 	blocked := []string{"Authorization", "Host", "Cookie", "Proxy-Authorization"}
 	for _, h := range blocked {
-		req := newCallToolRequest(map[string]any{
+		args := newToolArgs(map[string]any{
 			"headers": map[string]any{
 				h: "some-value",
 			},
 		})
 
-		_, err := parseHeaders(req)
+		_, err := parseHeaders(args)
 		require.Error(t, err, "header %q should be blocked", h)
 		assert.Contains(t, err.Error(), "not allowed")
-	}
-}
-
-func TestIsBlockedURL(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping DNS-dependent test in short mode")
-	}
-	tests := []struct {
-		url     string
-		blocked bool
-	}{
-		// Cloud metadata endpoints
-		{"http://169.254.169.254/latest/meta-data/", true},
-		{"http://metadata.google.internal/computeMetadata/v1/", true},
-		// Loopback addresses
-		{"http://127.0.0.1:8080/admin", true},
-		{"http://[::1]:8080/admin", true},
-		// Private ranges
-		{"http://10.0.0.1/internal", true},
-		{"http://192.168.1.1/admin", true},
-		{"http://172.16.0.1/internal", true},
-		// Valid external URLs
-		{"https://management.azure.com/subscriptions", false},
-		{"https://api.github.com/repos", false},
-	}
-	for _, tc := range tests {
-		got := isBlockedURL(tc.url)
-		assert.Equal(t, tc.blocked, got, "isBlockedURL(%q)", tc.url)
-	}
-}
-
-func TestIsBlockedURL_Unit(t *testing.T) {
-	// These tests work without DNS resolution (pure IP checks).
-	tests := []struct {
-		url     string
-		blocked bool
-	}{
-		{"http://169.254.169.254/latest/meta-data/", true},
-		{"http://127.0.0.1:8080/admin", true},
-		{"http://[::1]:8080/admin", true},
-		{"http://0.0.0.0/admin", true},
-		{"http://0.0.0.1:8080/service", true},
-		{"http://[::]:80/admin", true},
-		{"http://10.0.0.1/internal", true},
-		{"http://192.168.1.1/admin", true},
-		{"http://172.16.0.1/internal", true},
-		{"not-a-valid-url://\x00", true}, // parse error → blocked
-	}
-	for _, tc := range tests {
-		got := isBlockedURL(tc.url)
-		assert.Equal(t, tc.blocked, got, "isBlockedURL(%q)", tc.url)
-	}
-}
-
-func TestIsBlockedIP(t *testing.T) {
-	tests := []struct {
-		ip      string
-		blocked bool
-	}{
-		{"0.0.0.0", true},
-		{"0.0.0.1", true},
-		{"127.0.0.1", true},
-		{"127.0.0.2", true},
-		{"10.0.0.1", true},
-		{"172.16.0.1", true},
-		{"192.168.0.1", true},
-		{"169.254.169.254", true},
-		{"8.8.8.8", false},
-		{"20.0.0.1", false},
-	}
-	for _, tc := range tests {
-		ip := net.ParseIP(tc.ip)
-		require.NotNil(t, ip, "failed to parse IP: %s", tc.ip)
-		got := isBlockedIP(ip)
-		assert.Equal(t, tc.blocked, got, "isBlockedIP(%q)", tc.ip)
 	}
 }
 
@@ -338,23 +264,23 @@ func TestValidateScopeURLMatch_EdgeCases(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestParseHeaders_EmptyHeadersMap(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"headers": map[string]any{},
 	})
-	headers, err := parseHeaders(req)
+	headers, err := parseHeaders(args)
 	require.NoError(t, err)
 	assert.Empty(t, headers)
 }
 
 func TestParseHeaders_NoHeadersArgument(t *testing.T) {
-	req := newCallToolRequest(map[string]any{})
-	headers, err := parseHeaders(req)
+	args := newToolArgs(map[string]any{})
+	headers, err := parseHeaders(args)
 	require.NoError(t, err)
 	assert.Empty(t, headers)
 }
 
 func TestParseHeaders_NonStringValues(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"headers": map[string]any{
 			"X-Valid":  "value",
 			"X-Number": 123,
@@ -362,29 +288,29 @@ func TestParseHeaders_NonStringValues(t *testing.T) {
 			"X-Nil":    nil,
 		},
 	})
-	headers, err := parseHeaders(req)
+	headers, err := parseHeaders(args)
 	require.NoError(t, err)
 	assert.Equal(t, "value", headers["X-Valid"])
 	assert.Len(t, headers, 1, "only string-typed header values should be included")
 }
 
 func TestParseHeaders_MixedValidAndBlocked(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"headers": map[string]any{
 			"X-Custom":      "value",
 			"Authorization": "Bearer token",
 		},
 	})
-	_, err := parseHeaders(req)
+	_, err := parseHeaders(args)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not allowed")
 }
 
 func TestParseHeaders_HeadersNotMap(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"headers": "not-a-map",
 	})
-	headers, err := parseHeaders(req)
+	headers, err := parseHeaders(args)
 	require.NoError(t, err)
 	assert.Empty(t, headers, "non-map headers value should be silently ignored")
 }
@@ -392,10 +318,10 @@ func TestParseHeaders_HeadersNotMap(t *testing.T) {
 func TestParseHeaders_BlockedHeaderCaseInsensitive(t *testing.T) {
 	variants := []string{"AUTHORIZATION", "authorization", "Authorization", "aUtHoRiZaTiOn"}
 	for _, h := range variants {
-		req := newCallToolRequest(map[string]any{
+		args := newToolArgs(map[string]any{
 			"headers": map[string]any{h: "value"},
 		})
-		_, err := parseHeaders(req)
+		_, err := parseHeaders(args)
 		require.Error(t, err, "header %q should be blocked", h)
 	}
 }
@@ -447,17 +373,6 @@ func TestExecuteMCPRequest_BlockedLoopback(t *testing.T) {
 	assert.Contains(t, err.Error(), "blocked")
 }
 
-func TestExecuteMCPRequest_RateLimitExceeded(t *testing.T) {
-	// Replace the global limiter with one that always rejects.
-	origLimiter := limiter
-	limiter = azdextutil.NewRateLimiter(0, 0) //nolint:staticcheck // test helper; deprecated API
-	defer func() { limiter = origLimiter }()
-
-	_, err := executeMCPRequest(context.Background(), "GET", "https://management.azure.com/test", "", "", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rate limit")
-}
-
 func TestExecuteMCPRequest_ScopeMismatch(t *testing.T) {
 	// Scope override for a different domain should fail validation.
 	_, err := executeMCPRequest(context.Background(), "GET",
@@ -498,7 +413,7 @@ func resultText(t *testing.T, result *mcp.CallToolResult) string {
 
 func TestHandleBodyMethod_MissingURL(t *testing.T) {
 	handler := handleBodyMethod("POST")
-	result, err := handler(context.Background(), newCallToolRequest(map[string]any{}))
+	result, err := handler(context.Background(), newToolArgs(map[string]any{}))
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "missing required argument: url")
@@ -506,11 +421,11 @@ func TestHandleBodyMethod_MissingURL(t *testing.T) {
 
 func TestHandleBodyMethod_BlockedHeader(t *testing.T) {
 	handler := handleBodyMethod("POST")
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url":     "https://management.azure.com/test",
 		"headers": map[string]any{"Authorization": "Bearer token"},
 	})
-	result, err := handler(context.Background(), req)
+	result, err := handler(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "not allowed")
@@ -518,10 +433,10 @@ func TestHandleBodyMethod_BlockedHeader(t *testing.T) {
 
 func TestHandleBodyMethod_BlockedURL(t *testing.T) {
 	handler := handleBodyMethod("PUT")
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url": "http://169.254.169.254/latest/meta-data/",
 	})
-	result, err := handler(context.Background(), req)
+	result, err := handler(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "blocked")
@@ -529,7 +444,7 @@ func TestHandleBodyMethod_BlockedURL(t *testing.T) {
 
 func TestHandleNoBodyMethod_MissingURL(t *testing.T) {
 	handler := handleNoBodyMethod("GET")
-	result, err := handler(context.Background(), newCallToolRequest(map[string]any{}))
+	result, err := handler(context.Background(), newToolArgs(map[string]any{}))
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "missing required argument: url")
@@ -537,11 +452,11 @@ func TestHandleNoBodyMethod_MissingURL(t *testing.T) {
 
 func TestHandleNoBodyMethod_BlockedHeader(t *testing.T) {
 	handler := handleNoBodyMethod("DELETE")
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url":     "https://management.azure.com/test",
 		"headers": map[string]any{"Cookie": "session=abc"},
 	})
-	result, err := handler(context.Background(), req)
+	result, err := handler(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "not allowed")
@@ -549,38 +464,38 @@ func TestHandleNoBodyMethod_BlockedHeader(t *testing.T) {
 
 func TestHandleNoBodyMethod_BlockedURL(t *testing.T) {
 	handler := handleNoBodyMethod("GET")
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url": "http://10.0.0.1/internal",
 	})
-	result, err := handler(context.Background(), req)
+	result, err := handler(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "blocked")
 }
 
 func TestHandleHead_MissingURL(t *testing.T) {
-	result, err := handleHead(context.Background(), newCallToolRequest(map[string]any{}))
+	result, err := handleHead(context.Background(), newToolArgs(map[string]any{}))
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "missing required argument: url")
 }
 
 func TestHandleHead_BlockedURL(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url": "http://127.0.0.1:8080/admin",
 	})
-	result, err := handleHead(context.Background(), req)
+	result, err := handleHead(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "blocked")
 }
 
 func TestHandleHead_BlockedHeader(t *testing.T) {
-	req := newCallToolRequest(map[string]any{
+	args := newToolArgs(map[string]any{
 		"url":     "https://management.azure.com/test",
 		"headers": map[string]any{"Host": "evil.com"},
 	})
-	result, err := handleHead(context.Background(), req)
+	result, err := handleHead(context.Background(), args)
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	assert.Contains(t, resultText(t, result), "not allowed")
@@ -629,37 +544,34 @@ func TestNewMCPServer_ToolsRequireURL(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// isBlockedURL — additional IP format tests (no DNS, always safe in -short)
+// Security policy tests (via executeMCPRequest)
 // ---------------------------------------------------------------------------
 
-func TestIsBlockedIP_IPv6(t *testing.T) {
-	tests := []struct {
-		ip      string
-		blocked bool
-	}{
-		{"::", true},           // IPv6 unspecified
-		{"::1", true},          // IPv6 loopback
-		{"fe80::1", true},      // IPv6 link-local
-		{"2001:db8::1", false}, // documentation range, not blocked
+func TestSecurityPolicy_BlocksMetadataEndpoints(t *testing.T) {
+	metadataURLs := []string{
+		"http://169.254.169.254/latest/meta-data/",
+		"http://metadata.google.internal/computeMetadata/v1/",
+		"http://100.100.100.200/latest",
 	}
-	for _, tc := range tests {
-		ip := net.ParseIP(tc.ip)
-		require.NotNil(t, ip, "failed to parse IP: %s", tc.ip)
-		assert.Equal(t, tc.blocked, isBlockedIP(ip), "isBlockedIP(%q)", tc.ip)
+	for _, u := range metadataURLs {
+		_, err := executeMCPRequest(context.Background(), "GET", u, "", "", nil)
+		require.Error(t, err, "URL %q should be blocked", u)
+		assert.Contains(t, err.Error(), "blocked")
 	}
 }
 
-func TestIsBlockedURL_InvalidURL(t *testing.T) {
-	// Unparseable URL should be blocked.
-	assert.True(t, isBlockedURL("://"))
-	assert.True(t, isBlockedURL(""))
-}
-
-func TestIsBlockedURL_MetadataHosts(t *testing.T) {
-	// Explicit blocklist hosts that aren't IP addresses.
-	assert.True(t, isBlockedURL("http://metadata.google.internal/computeMetadata/v1/"))
-	assert.True(t, isBlockedURL("http://fd00:ec2::254/latest"))
-	assert.True(t, isBlockedURL("http://100.100.100.200/latest"))
+func TestSecurityPolicy_BlocksPrivateNetworks(t *testing.T) {
+	privateURLs := []string{
+		"http://10.0.0.1/internal",
+		"http://192.168.1.1/admin",
+		"http://172.16.0.1/internal",
+		"http://127.0.0.1:8080/admin",
+	}
+	for _, u := range privateURLs {
+		_, err := executeMCPRequest(context.Background(), "GET", u, "", "", nil)
+		require.Error(t, err, "URL %q should be blocked", u)
+		assert.Contains(t, err.Error(), "blocked")
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -668,22 +580,16 @@ func TestIsBlockedURL_MetadataHosts(t *testing.T) {
 
 func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 	// Stand up a test HTTP server that returns JSON.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"result":"ok"}`))
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// Temporarily allow loopback for httptest.
-	origCIDRs := blockedCIDRs
-	origHosts := blockedHosts
-	blockedCIDRs = nil
-	blockedHosts = nil
-	defer func() {
-		blockedCIDRs = origCIDRs
-		blockedHosts = origHosts
-	}()
+	// Temporarily disable security policy for httptest loopback.
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	// Pre-cache a mock token provider so we don't need Azure creds.
 	tokenProviderMu.Lock()
@@ -696,7 +602,7 @@ func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "GET", server.URL+"/api/test", "", "", nil)
+	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Body, `"result":"ok"`)
@@ -705,22 +611,17 @@ func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 
 func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 	var receivedMethod string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedMethod = r.Method
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte(`{"created":true}`))
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	origCIDRs := blockedCIDRs
-	origHosts := blockedHosts
-	blockedCIDRs = nil
-	blockedHosts = nil
-	defer func() {
-		blockedCIDRs = origCIDRs
-		blockedHosts = origHosts
-	}()
+	resetSecurityPolicyForTest()
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	tokenProviderMu.Lock()
 	origProvider := cachedTokenProvider
@@ -732,7 +633,7 @@ func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "POST", server.URL+"/api/resource", "", "", nil)
+	resp, err := executeMCPRequest(context.Background(), "POST", srv.URL+"/api/resource", "", "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	assert.Equal(t, "POST", receivedMethod)
@@ -740,22 +641,16 @@ func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 
 func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 	// HTTP (non-HTTPS) URLs should skip auth entirely.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify no Authorization header is sent.
 		assert.Empty(t, r.Header.Get("Authorization"), "HTTP requests should not send auth token")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"noauth":"ok"}`))
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	origCIDRs := blockedCIDRs
-	origHosts := blockedHosts
-	blockedCIDRs = nil
-	blockedHosts = nil
-	defer func() {
-		blockedCIDRs = origCIDRs
-		blockedHosts = origHosts
-	}()
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
 
 	// Clear cached token provider to verify no auth is attempted.
 	tokenProviderMu.Lock()
@@ -768,7 +663,7 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "GET", server.URL+"/api/test", "", "", nil)
+	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

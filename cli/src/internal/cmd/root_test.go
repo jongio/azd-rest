@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -365,50 +364,21 @@ func TestNewOptionsCommand(t *testing.T) {
 	assert.Contains(t, cmd.Use, "options")
 }
 
-func TestNewVersionCommand(t *testing.T) {
+func TestVersionCommand_ExistsInRoot(t *testing.T) {
 	resetGlobalFlags()
-	cmd := NewVersionCommand()
+	rootCmd := NewRootCmd()
 
-	assert.NotNil(t, cmd)
-	assert.Contains(t, cmd.Use, "version")
-
-	// Test version command execution - output goes to stdout, not captured easily
-	// Just verify command can be created and executed without error
-	cmd.SetArgs([]string{})
-	outputFormat = "default"
-
-	// Execute should not panic
-	assert.NotPanics(t, func() {
-		_ = cmd.Execute()
-	})
-}
-
-func TestNewVersionCommand_JSON(t *testing.T) {
-	resetGlobalFlags()
-	cmd := NewVersionCommand()
-
-	// Set JSON format
-	outputFormat = "json"
-	cmd.SetArgs([]string{})
-
-	// Execute should not panic
-	assert.NotPanics(t, func() {
-		_ = cmd.Execute()
-	})
-}
-
-func TestNewVersionCommand_Quiet(t *testing.T) {
-	resetGlobalFlags()
-	cmd := NewVersionCommand()
-
-	// Set quiet flag
-	outputFormat = "default"
-	cmd.SetArgs([]string{"--quiet"})
-
-	// Execute should not panic
-	assert.NotPanics(t, func() {
-		_ = cmd.Execute()
-	})
+	// Verify version subcommand exists via root
+	subCmds := rootCmd.Commands()
+	found := false
+	for _, sub := range subCmds {
+		useParts := strings.Fields(sub.Use)
+		if len(useParts) > 0 && useParts[0] == "version" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "version subcommand should exist")
 }
 
 func TestBuildRequestOptions_AzureHostWarning(t *testing.T) {
@@ -462,38 +432,40 @@ func TestExecuteRequest_FormatError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNewMetadataCommand(t *testing.T) {
+func TestMetadataCommand_ExistsInRoot(t *testing.T) {
 	resetGlobalFlags()
-	cmd := NewMetadataCommand(NewRootCmd)
+	rootCmd := NewRootCmd()
 
-	assert.NotNil(t, cmd)
-	assert.Equal(t, "metadata", cmd.Use)
-	assert.True(t, cmd.Hidden)
-
-	// Execute metadata command and capture output
-	var buf strings.Builder
-	cmd.SetOut(&buf)
-	cmd.SetArgs([]string{})
-
-	err := cmd.Execute()
-	require.NoError(t, err)
-
-	// Verify output is valid JSON containing extension ID
-	output := buf.String()
-	assert.Contains(t, output, "jongio.azd.rest")
-
-	var metadata map[string]any
-	err = json.Unmarshal([]byte(output), &metadata)
-	require.NoError(t, err, "metadata output should be valid JSON")
+	// Verify metadata subcommand exists
+	subCmds := rootCmd.Commands()
+	found := false
+	for _, sub := range subCmds {
+		useParts := strings.Fields(sub.Use)
+		if len(useParts) > 0 && useParts[0] == "metadata" {
+			found = true
+			assert.True(t, sub.Hidden)
+			break
+		}
+	}
+	assert.True(t, found, "metadata subcommand should exist")
 }
 
-func TestNewListenCommand_Structure(t *testing.T) {
+func TestListenCommand_ExistsInRoot(t *testing.T) {
 	resetGlobalFlags()
-	cmd := NewListenCommand()
+	rootCmd := NewRootCmd()
 
-	assert.NotNil(t, cmd)
-	assert.Equal(t, "listen", cmd.Use)
-	assert.True(t, cmd.Hidden)
+	// Verify listen subcommand exists
+	subCmds := rootCmd.Commands()
+	found := false
+	for _, sub := range subCmds {
+		useParts := strings.Fields(sub.Use)
+		if len(useParts) > 0 && useParts[0] == "listen" {
+			found = true
+			assert.True(t, sub.Hidden)
+			break
+		}
+	}
+	assert.True(t, found, "listen subcommand should exist")
 }
 
 func TestNewMCPCommand_Structure(t *testing.T) {

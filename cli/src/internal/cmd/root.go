@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/skills"
 	"github.com/jongio/azd-rest/src/internal/version"
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel/propagation"
 )
 
 // Global flags
@@ -37,9 +37,10 @@ var (
 
 // NewRootCmd creates the root command for azd rest
 func NewRootCmd() *cobra.Command {
-	rootCmd := &cobra.Command{
-		Use:   "rest",
-		Short: "Execute REST API calls with Azure authentication",
+	rootCmd, _ := azdext.NewExtensionRootCommand(azdext.ExtensionCommandOptions{
+		Name:    "rest",
+		Version: version.Version,
+		Short:   "Execute REST API calls with Azure authentication",
 		Long: `azd rest is an Azure Developer CLI extension that enables you to execute REST API calls
 with automatic Azure authentication. The extension intelligently detects Azure service
 endpoints and applies the correct OAuth scopes.
@@ -56,30 +57,24 @@ Examples:
 
   # Non-Azure endpoint without auth
   azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`,
-		Version: version.Version,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Install Copilot skill
-			if err := skills.InstallSkill(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to install copilot skill: %v\n", err)
-			}
+	})
 
-			// Inject OTel trace context from env vars while preserving cobra's signal handling
-			ctx := cmd.Context()
-			if ctx == nil {
-				ctx = context.Background()
+	// Chain extension-specific PersistentPreRunE after SDK's built-in one
+	sdkPreRunE := rootCmd.PersistentPreRunE
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if sdkPreRunE != nil {
+			if err := sdkPreRunE(cmd, args); err != nil {
+				return err
 			}
-			if parent := os.Getenv("TRACEPARENT"); parent != "" {
-				tc := propagation.TraceContext{}
-				ctx = tc.Extract(ctx, propagation.MapCarrier{
-					"traceparent": parent,
-					"tracestate":  os.Getenv("TRACESTATE"),
-				})
-			}
-			cmd.SetContext(ctx)
-		},
+		}
+		// Install Copilot skill
+		if err := skills.InstallSkill(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to install copilot skill: %v\n", err)
+		}
+		return nil
 	}
 
-	// Global flags
+	// Extension-specific flags
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
@@ -105,9 +100,9 @@ Examples:
 		NewDeleteCommand(),
 		NewHeadCommand(),
 		NewOptionsCommand(),
-		NewVersionCommand(),
-		NewMetadataCommand(NewRootCmd),
-		NewListenCommand(),
+		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
+		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
+		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
 	)
 
