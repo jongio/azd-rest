@@ -1,3 +1,7 @@
+## [0.4.3] - 2026-03-03
+
+- fix: upgrade azd-core to v0.5.5 for resilient credential chain (#14)
+
 ## [0.4.2] - 2026-03-03
 
 
