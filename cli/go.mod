@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/azure/azure-dev/cli/azd v0.0.0-20260228002641-8f080b39d69b
-	github.com/jongio/azd-core v0.5.3
+	github.com/jongio/azd-core v0.5.4
 	github.com/magefile/mage v1.15.0
 	github.com/mark3labs/mcp-go v0.44.1
 	github.com/spf13/cobra v1.10.2
@@ -81,12 +81,12 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/term v0.39.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/grpc v1.78.0 // indirect

@@ -667,3 +667,41 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
+
+func TestExecuteMCPRequest_RedactsSensitiveResponseHeaders(t *testing.T) {
+	// Verify that sensitive headers from the target API are redacted in MCP output.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Set-Cookie", "session=super-secret-value-1234567890")
+		w.Header().Set("X-Request-Id", "req-abc-123")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
+
+	tokenProviderMu.Lock()
+	origProvider := cachedTokenProvider
+	cachedTokenProvider = &auth.MockTokenProvider{Token: "test-token"}
+	tokenProviderMu.Unlock()
+	defer func() {
+		tokenProviderMu.Lock()
+		cachedTokenProvider = origProvider
+		tokenProviderMu.Unlock()
+	}()
+
+	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// Set-Cookie is sensitive — should be redacted (not the raw value).
+	cookie := resp.Headers["Set-Cookie"]
+	assert.NotEqual(t, "session=super-secret-value-1234567890", cookie, "Set-Cookie should be redacted")
+	assert.NotEmpty(t, cookie, "Set-Cookie should still be present (redacted)")
+
+	// Non-sensitive headers should pass through unchanged.
+	assert.Equal(t, "application/json", resp.Headers["Content-Type"])
+	assert.Equal(t, "req-abc-123", resp.Headers["X-Request-Id"])
+}

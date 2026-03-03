@@ -182,7 +182,7 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 	respHeaders := make(map[string]string)
 	for key, values := range resp.Headers {
 		if len(values) > 0 {
-			respHeaders[key] = values[0]
+			respHeaders[key] = client.RedactSensitiveHeader(key, values[0])
 		}
 	}
 
