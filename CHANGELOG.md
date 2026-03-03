@@ -1,3 +1,7 @@
+## [0.4.2] - 2026-03-03
+
+
+
 ## [0.4.0] - 2026-03-02
 
 - fix: update build.sh to support multi-platform builds for release (d8923a4)
