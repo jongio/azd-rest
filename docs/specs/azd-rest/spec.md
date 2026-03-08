@@ -28,14 +28,14 @@ Developers frequently need to interact with Azure REST APIs for testing, debuggi
 - **Authentication complexity**: Managing bearer tokens manually is error-prone
 - **Scope management**: Different Azure services require different OAuth scopes (e.g., `https://management.azure.com/.default` for ARM, `https://storage.azure.com/.default` for Storage)
 - **Context switching**: Copying tokens from `az account get-access-token` or maintaining separate authentication scripts
-- **azd integration**: No native way to leverage azd's authentication context for REST calls
+- **azd integration**: No native way to use azd's authentication context for REST calls
 
 `azd-rest` solves these problems by providing a simple interface: `azd rest [url]` that handles authentication automatically.
 
 ## Objectives
 
 - ✅ **Simple interface**: `azd rest [url]` for all REST calls
-- ✅ **Automatic Azure authentication**: Leverage azd's authentication context (shared with azd login)
+- ✅ **Automatic Azure authentication**: Use azd's authentication context (shared with azd login)
 - ✅ **Intelligent scope detection**: Automatically determine correct OAuth scope based on endpoint URL
 - ✅ **Comprehensive Azure service support**: Management API, Storage, Key Vault, Graph, and all major Azure services
 - ✅ **Custom scope support**: Allow manual scope override for edge cases or non-Azure endpoints
@@ -447,7 +447,7 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 ### Token Handling
 
 - ✅ **No token exposure**: Tokens never printed to stdout/stderr (only in `--verbose` debug mode with explicit warning)
-- ✅ **Secure storage**: Leverage azd-core's token cache (encrypted on disk)
+- ✅ **Secure storage**: Use azd-core's token cache (encrypted on disk)
 - ✅ **Short-lived tokens**: Azure tokens expire in 1 hour, automatically refreshed
 - ✅ **Scope isolation**: Each request gets minimum required scope
 

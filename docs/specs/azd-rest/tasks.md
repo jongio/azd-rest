@@ -702,7 +702,7 @@ _No active tasks._
 - [ ] Integration tests with real Azure authentication (tagged `integration`)
 - [ ] Supports all credential types: Azure CLI, Managed Identity, Environment Variables
 
-**Notes**: Leverage azd-core security module. Don't reinvent authentication.
+**Notes**: Use azd-core security module. Don't reinvent authentication.
 
 **Status (In Progress)**:
 - Kickoff: handoff to Developer to wire `GetAzureToken` via azd-core credentials + caching; preserve azd-core v0.3.0 pin and Go 1.26.0 guard.
