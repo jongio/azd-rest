@@ -1,3 +1,10 @@
+## [0.4.4] - 2026-03-12
+
+- chore: update azd-core to v0.5.6 (#17) (2adbcfd)
+- ci: optimize GitHub Actions workflows (#16) (5727ec9)
+- chore: update registry for v0.4.3 (d8c7907)
+- fix: remove hardcoded azd-core version from test (f282e08)
+
 ## [0.4.3] - 2026-03-03
 
 - fix: upgrade azd-core to v0.5.5 for resilient credential chain (#14)
