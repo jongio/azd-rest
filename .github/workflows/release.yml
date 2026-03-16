@@ -12,6 +12,10 @@ on:
           - minor
           - major
 
+defaults:
+  run:
+    shell: bash
+
 env:
   GO_VERSION: '1.26.1'
 
@@ -133,6 +137,7 @@ jobs:
           cache-dependency-path: cli/go.sum
 
       - name: Build for multiple platforms
+        if: matrix.os == 'ubuntu-latest'
         run: |
           GOOS=windows GOARCH=amd64 go build -o bin/windows-amd64/rest.exe ./src/cmd/rest
           GOOS=windows GOARCH=arm64 go build -o bin/windows-arm64/rest.exe ./src/cmd/rest
@@ -141,6 +146,7 @@ jobs:
           GOOS=darwin GOARCH=arm64 go build -o bin/darwin-arm64/rest ./src/cmd/rest
 
       - name: Upload artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: binaries
