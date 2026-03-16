@@ -1,3 +1,22 @@
+## [0.4.5] - 2026-03-16
+
+- fix: correct cosign-installer SHA for v3 (a78908a)
+- fix: release workflow - add shell:bash, limit build to ubuntu, fix gosec (9be3706)
+- fix: remove non-existent 'build' job from release.yml needs (880df27)
+- ci: Bump actions/github-script from 7.1.0 to 8.0.0 (#29) (96eae7d)
+- ci: Bump actions/setup-go from 5.6.0 to 6.3.0 (#28) (1456686)
+- ci: Bump actions/cache from 4.2.3 to 5.0.3 (#27) (1cec67d)
+- ci: Bump actions/checkout from 4.3.1 to 6.0.2 (#26) (d276f89)
+- ci: Bump codecov/codecov-action from 4.6.0 to 5.5.2 (#25) (670a86b)
+- ci: Bump actions/upload-artifact from 4.6.2 to 7.0.0 (#24) (31f23b1)
+- ci: Bump actions/download-artifact from 4.3.0 to 8.0.1 (#23) (1e37d7c)
+- ci: Bump anchore/sbom-action from 0.20.0 to 0.23.1 (#22) (39798d9)
+- ci: Bump pnpm/action-setup (#21) (a5d051e)
+- ci: Bump actions/setup-node from 4.4.0 to 6.3.0 (#20) (6c99b34)
+- feat: dispatch-parity quality improvements (#19) (17dfd96)
+- chore: update registry for v0.4.4 (9d4da9c)
+- chore: replace "Leverage" with "Use" in spec docs (633896e)
+
 ## [0.4.4] - 2026-03-12
 
 - chore: update azd-core to v0.5.6 (#17) (2adbcfd)
