@@ -228,6 +228,7 @@ func handleBodyMethod(method string) azdext.MCPToolHandler {
 	return func(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
 		url, err := args.RequireString("url")
 		if err != nil {
+			//nolint:nilerr // intentional: surface validation error as MCP tool result, not Go error
 			return azdext.MCPErrorResult("missing required argument: url"), nil
 		}
 
@@ -252,6 +253,7 @@ func handleNoBodyMethod(method string) azdext.MCPToolHandler {
 	return func(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
 		url, err := args.RequireString("url")
 		if err != nil {
+			//nolint:nilerr // intentional: surface validation error as MCP tool result, not Go error
 			return azdext.MCPErrorResult("missing required argument: url"), nil
 		}
 
@@ -274,6 +276,7 @@ func handleNoBodyMethod(method string) azdext.MCPToolHandler {
 func handleHead(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
 	url, err := args.RequireString("url")
 	if err != nil {
+		//nolint:nilerr // intentional: surface validation error as MCP tool result, not Go error
 		return azdext.MCPErrorResult("missing required argument: url"), nil
 	}
 

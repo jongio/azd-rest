@@ -4,11 +4,13 @@ package version
 
 import coreversion "github.com/jongio/azd-core/version"
 
-// These variables are set at build time via ldflags:
-//
-//	go build -ldflags "-X github.com/jongio/azd-rest/src/internal/version.Version=1.0.0 -X github.com/jongio/azd-rest/src/internal/version.BuildDate=2025-01-09T12:00:00Z -X github.com/jongio/azd-rest/src/internal/version.GitCommit=abc123"
+// Version is the semantic version of the azd-rest extension, set at build time via ldflags.
 var Version = "0.0.0-dev"
+
+// BuildDate is the ISO 8601 build timestamp, set at build time via ldflags.
 var BuildDate = "unknown"
+
+// GitCommit is the short git commit SHA, set at build time via ldflags.
 var GitCommit = "unknown"
 
 // Info provides the shared version information for this extension.

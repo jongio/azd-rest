@@ -263,6 +263,8 @@ func Preflight() error {
 		// Go code quality
 		{"Checking code format", preflightFmtCheck},
 		{"Running linter", Lint},
+		{"Checking gofumpt formatting", preflightGofumpt},
+		{"Checking for dead code", preflightDeadcode},
 		{"Running security scan", preflightGosec},
 		{"Checking for known vulnerabilities", preflightVulncheck},
 		{"Running tests with coverage", TestCoverage},
@@ -428,6 +430,52 @@ func preflightFmtCheck() error {
 		return fmt.Errorf("code is not formatted. Run 'mage fmt' to fix")
 	}
 	fmt.Println("   ✅ Code is formatted")
+	return nil
+}
+
+// preflightGofumpt checks that all Go files are formatted with gofumpt (stricter than gofmt).
+func preflightGofumpt() error {
+	if _, err := exec.LookPath("gofumpt"); err != nil {
+		fmt.Println("   ⚠️  gofumpt not installed — skipping strict format check")
+		fmt.Println("      Install with: go install mvdan.cc/gofumpt@latest")
+		return nil
+	}
+	output, err := sh.Output("gofumpt", "-l", ".")
+	if err != nil {
+		return fmt.Errorf("gofumpt check failed: %w", err)
+	}
+	if strings.TrimSpace(output) != "" {
+		fmt.Println("   Files not formatted with gofumpt:")
+		for _, f := range strings.Split(strings.TrimSpace(output), "\n") {
+			fmt.Printf("   • %s\n", f)
+		}
+		return fmt.Errorf("code is not gofumpt-formatted. Run 'gofumpt -w .' to fix")
+	}
+	fmt.Println("   ✅ Code is gofumpt-formatted")
+	return nil
+}
+
+// preflightDeadcode checks for unreachable functions using golang.org/x/tools deadcode analyzer.
+func preflightDeadcode() error {
+	if _, err := exec.LookPath("deadcode"); err != nil {
+		fmt.Println("   ⚠️  deadcode not installed — skipping dead code check")
+		fmt.Println("      Install with: go install golang.org/x/tools/cmd/deadcode@latest")
+		return nil
+	}
+	output, err := sh.Output("deadcode", "-test", "./...")
+	if err != nil {
+		fmt.Println("   ⚠️  Dead code found:")
+		fmt.Println(output)
+		// Non-fatal for now — report but don't fail
+		fmt.Println("   ⚠️  Dead code check completed with findings (non-fatal)")
+		return nil
+	}
+	if strings.TrimSpace(output) != "" {
+		fmt.Println("   ⚠️  Potential dead code found:")
+		fmt.Println(output)
+	} else {
+		fmt.Println("   ✅ No dead code detected")
+	}
 	return nil
 }
 
