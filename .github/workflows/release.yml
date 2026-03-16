@@ -395,6 +395,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update registry
+        working-directory: cli
+        run: |
+          azd x publish \
+            --registry ../registry.json \
+            --version "${{ steps.version.outputs.next }}" \
+            --repo "${{ github.repository }}"
+          
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update registry for v${{ steps.version.outputs.next }}"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
@@ -440,24 +459,5 @@ jobs:
           # Upload SBOM to the release
           gh release upload "${TAG_NAME}" /tmp/sbom-spdx.json /tmp/sbom-cyclonedx.json --repo "${{ github.repository }}" || true
           echo "✅ SBOM generated and uploaded (SPDX + CycloneDX)"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update registry
-        working-directory: cli
-        run: |
-          azd x publish \
-            --registry ../registry.json \
-            --version "${{ steps.version.outputs.next }}" \
-            --repo "${{ github.repository }}"
-          
-          cd ..
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add registry.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update registry for v${{ steps.version.outputs.next }}"
-            git push
-          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
