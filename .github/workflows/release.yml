@@ -177,11 +177,13 @@ jobs:
 
       - name: Calculate next version
         id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump }}
         run: |
           CURRENT=$(grep '^version:' cli/extension.yaml | awk '{print $2}')
           IFS='.' read -r major minor patch <<< "$CURRENT"
           
-          case "${{ inputs.bump }}" in
+          case "$BUMP_TYPE" in
             major)
               major=$((major + 1))
               minor=0
@@ -205,8 +207,13 @@ jobs:
         id: version_pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.next }}
+          PREV: ${{ steps.version.outputs.current }}
         run: |
-          VERSION="${{ steps.version.outputs.next }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: must be semver (e.g. 1.2.3)"
+            exit 1
+          fi
           BRANCH="release/v${VERSION}"
           
           git push origin --delete "$BRANCH" 2>/dev/null || true
@@ -216,12 +223,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           
-          sed -i "s/^version: .*/version: $VERSION/" cli/extension.yaml
-          
-          PREV="${{ steps.version.outputs.current }}"
+          sed -i "s|^version: .*|version: $VERSION|" cli/extension.yaml
           
           if git rev-parse "v${PREV}" >/dev/null 2>&1; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges v${PREV}..HEAD)
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges "v${PREV}..HEAD")
           else
             LAST_VERSION_COMMIT=$(git log --grep="^chore: bump version to" --format="%H" -n 1)
             if [ -n "$LAST_VERSION_COMMIT" ]; then
