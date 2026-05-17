@@ -1,8 +1,7 @@
 {
-  "name": "@jongio/azd-rest-docs",
-  "version": "1.0.0",
-  "private": true,
+  "name": "azd-rest-web",
   "type": "module",
+  "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -17,8 +16,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^25.8.0",
-    "autoprefixer": "^10.5.0",
-    "postcss": "^8.5.14",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3"
   }
