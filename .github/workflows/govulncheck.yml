@@ -3,8 +3,10 @@ name: Go Vulnerability Check
 on:
   push:
     branches: [main]
+    paths: ['cli/**', '.github/workflows/govulncheck.yml']
   pull_request:
     branches: [main]
+    paths: ['cli/**', '.github/workflows/govulncheck.yml']
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sundays at midnight UTC
 
@@ -31,7 +33,7 @@ jobs:
           cache-dependency-path: cli/go.sum
 
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
       - name: Run govulncheck
         working-directory: cli

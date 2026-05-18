@@ -13,7 +13,7 @@ Make REST API calls with automatic Azure authentication and scope detection — 
 [![Go Reference](https://pkg.go.dev/badge/github.com/jongio/azd-rest/cli.svg)](https://pkg.go.dev/github.com/jongio/azd-rest/cli)
 [![govulncheck](https://img.shields.io/badge/govulncheck-passing-brightgreen)](https://github.com/jongio/azd-rest/actions/workflows/govulncheck.yml)
 [![golangci-lint](https://img.shields.io/badge/golangci--lint-enabled-blue)](https://github.com/jongio/azd-rest/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/badge/go-1.26.0-blue)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/go-1.26.1-blue)](https://go.dev/)
 [![Platform Support](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey)](https://github.com/jongio/azd-rest)
 
 <br />
@@ -115,7 +115,7 @@ For the complete command and flag reference, see the [CLI Reference](https://jon
 
 ### Prerequisites
 
-- [Go 1.25+](https://golang.org/dl/)
+- [Go 1.26+](https://golang.org/dl/)
 - [Node.js 20+](https://nodejs.org/) and [pnpm](https://pnpm.io/)
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
@@ -148,6 +148,7 @@ See the [Security Architecture](https://jongio.github.io/azd-rest/security/) pag
 - [**Website**](https://jongio.github.io/azd-rest/) — Full documentation and guided tour
 - [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) — Complete command and flag reference
 - [Security Architecture](https://jongio.github.io/azd-rest/security/) — Threat model and security hardening
+- [Troubleshooting](docs/troubleshooting.md) — Common error scenarios and solutions
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
 
 ## 🔗 azd Extensions
