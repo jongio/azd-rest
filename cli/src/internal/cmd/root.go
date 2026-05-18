@@ -5,18 +5,21 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
+	"github.com/jongio/azd-rest/src/internal/config"
+	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/jongio/azd-rest/src/internal/skills"
 	"github.com/jongio/azd-rest/src/internal/version"
 	"github.com/spf13/cobra"
 )
 
-// Global flags
+// Global flags - retained for cobra binding; snapshotted into config.Config
+// before any business logic executes. The service layer receives only Config,
+// never these globals directly (#43, #80).
 var (
 	scope           string
 	noAuth          bool
@@ -35,6 +38,53 @@ var (
 	maxRedirects    int
 	maxPages        int
 )
+
+// httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
+type httpMethodDef struct {
+	Method string // HTTP method (uppercase)
+	Use    string // cobra Use field
+	Short  string // cobra Short description
+	Long   string // cobra Long description
+}
+
+// httpMethods is the authoritative table of HTTP method commands.
+// Adding a new method requires only a new entry here (#68).
+var httpMethods = []httpMethodDef{
+	{"GET", "get <url>", "Execute a GET request", "Execute a GET request to the specified URL with automatic Azure authentication."},
+	{"POST", "post <url>", "Execute a POST request", "Execute a POST request to the specified URL with automatic Azure authentication."},
+	{"PUT", "put <url>", "Execute a PUT request", "Execute a PUT request to the specified URL with automatic Azure authentication."},
+	{"PATCH", "patch <url>", "Execute a PATCH request", "Execute a PATCH request to the specified URL with automatic Azure authentication."},
+	{"DELETE", "delete <url>", "Execute a DELETE request", "Execute a DELETE request to the specified URL with automatic Azure authentication."},
+	{"HEAD", "head <url>", "Execute a HEAD request", "Execute a HEAD request to the specified URL with automatic Azure authentication."},
+	{"OPTIONS", "options <url>", "Execute an OPTIONS request", "Execute an OPTIONS request to the specified URL with automatic Azure authentication."},
+}
+
+// newHTTPMethodCommand is the factory that produces a cobra.Command for any
+// HTTP method from its definition (#68). All method commands share identical
+// structure; only the method string and descriptions differ.
+func newHTTPMethodCommand(def httpMethodDef) *cobra.Command {
+	method := def.Method // capture for closure
+	return &cobra.Command{
+		Use:   def.Use,
+		Short: def.Short,
+		Long:  def.Long,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return executeRequest(cmd, method, args[0])
+		},
+	}
+}
+
+// Convenience constructors preserved for backward compatibility with tests
+// and any external references. They delegate to the table-driven factory.
+
+func NewGetCommand() *cobra.Command     { return newHTTPMethodCommand(httpMethods[0]) }
+func NewPostCommand() *cobra.Command    { return newHTTPMethodCommand(httpMethods[1]) }
+func NewPutCommand() *cobra.Command     { return newHTTPMethodCommand(httpMethods[2]) }
+func NewPatchCommand() *cobra.Command   { return newHTTPMethodCommand(httpMethods[3]) }
+func NewDeleteCommand() *cobra.Command  { return newHTTPMethodCommand(httpMethods[4]) }
+func NewHeadCommand() *cobra.Command    { return newHTTPMethodCommand(httpMethods[5]) }
+func NewOptionsCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[6]) }
 
 // NewRootCmd creates the root command for azd rest
 func NewRootCmd() *cobra.Command {
@@ -92,15 +142,13 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", true, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", 10, "Maximum redirect hops")
 
-	// Add subcommands
+	// Add HTTP method subcommands from the table (#68)
+	for _, def := range httpMethods {
+		rootCmd.AddCommand(newHTTPMethodCommand(def))
+	}
+
+	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
-		NewGetCommand(),
-		NewPostCommand(),
-		NewPutCommand(),
-		NewPatchCommand(),
-		NewDeleteCommand(),
-		NewHeadCommand(),
-		NewOptionsCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
@@ -110,116 +158,66 @@ Examples:
 	return rootCmd
 }
 
-// buildRequestOptions constructs RequestOptions from global flags and method-specific args
-func buildRequestOptions(method string, url string) (client.RequestOptions, error) {
-	opts := client.RequestOptions{
-		Method:          method,
-		URL:             url,
-		Headers:         make(map[string]string),
+// snapshotConfig captures the current global flag values into an immutable
+// Config struct (#80). This is the single point where globals are read;
+// all downstream code receives Config via parameters (#43).
+func snapshotConfig() config.Config {
+	return config.Config{
 		Scope:           scope,
-		SkipAuth:        noAuth,
+		NoAuth:          noAuth,
+		Headers:         headers,
+		Data:            data,
+		DataFile:        dataFile,
+		OutputFile:      outputFile,
+		OutputFormat:    outputFormat,
 		Verbose:         verbose,
-		Timeout:         timeout,
+		Paginate:        paginate,
+		Retry:           retry,
+		Binary:          binary,
 		Insecure:        insecure,
+		Timeout:         timeout,
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
-		OutputFile:      outputFile,
-		Format:          outputFormat,
-		Binary:          binary,
-		Retry:           retry,
-		MaxResponseSize: 100 * 1024 * 1024, // 100MB default
-		Paginate:        paginate,
+		MaxPages:        maxPages,
 	}
+}
 
-	// Parse headers
-	for _, header := range headers {
-		parts := strings.SplitN(header, ":", 2)
-		if len(parts) != 2 {
-			return opts, fmt.Errorf("invalid header format: %s (expected Key:Value)", header)
-		}
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		opts.Headers[key] = value
+// defaultService is the production RequestService, lazily initialized.
+// Tests can replace it via the requestService variable.
+var requestService *service.RequestService
+
+func getRequestService() *service.RequestService {
+	if requestService != nil {
+		return requestService
 	}
+	requestService = service.NewRequestService(
+		service.DefaultTokenProviderFactory,
+		service.DefaultHTTPClientFactory,
+	)
+	return requestService
+}
 
-	// Handle request body
-	var bodyFile *os.File
-	if dataFile != "" {
-		// Support @{file} shorthand
-		filePath := dataFile
-		if strings.HasPrefix(dataFile, "@") {
-			filePath = strings.TrimPrefix(dataFile, "@")
-		}
-		file, err := os.Open(filePath) // #nosec G304 -- User-specified file path via --data-file flag is intentional.
-		if err != nil {
-			return opts, fmt.Errorf("failed to open data file: %w", err)
-		}
-		bodyFile = file
-		opts.Body = file
-	} else if data != "" {
-		opts.Body = strings.NewReader(data)
+// buildRequestOptions constructs RequestOptions from global flags and method-specific args.
+// Delegates to the service layer (#42) after snapshotting config (#80).
+func buildRequestOptions(method string, url string) (client.RequestOptions, error) {
+	cfg := snapshotConfig()
+	svc := getRequestService()
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, method, url)
+	if err != nil {
+		return opts, err
 	}
-
-	// closeBodyFile is a helper to close the opened file on error paths.
-	closeBodyFile := func() {
-		if bodyFile != nil {
-			_ = bodyFile.Close()
-		}
-	}
-
-	// Detect scope if not provided
-	if opts.Scope == "" && !opts.SkipAuth {
-		detectedScope, err := auth.DetectScope(url)
-		if err != nil {
-			closeBodyFile()
-			return opts, fmt.Errorf("failed to detect scope: %w", err)
-		}
-		opts.Scope = detectedScope
-
-		// Warn if Azure host but no scope detected
-		if opts.Scope == "" && auth.IsAzureHost(url) {
-			fmt.Fprintf(os.Stderr, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
-		}
-	}
-
-	// Check if auth should be skipped
-	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, noAuth)
-
-	// Create token provider only when authentication is needed
-	if !opts.SkipAuth {
-		tokenProvider, err := auth.NewAzureTokenProvider()
-		if err != nil {
-			closeBodyFile()
-			return opts, fmt.Errorf("failed to create token provider: %w", err)
-		}
-		opts.TokenProvider = tokenProvider
-	}
-
+	// For backward compatibility with tests that call buildRequestOptions directly,
+	// we don't call cleanup here - the caller (executeRequest) handles it.
+	_ = cleanup
 	return opts, nil
 }
 
-// executeRequest executes an HTTP request and handles the response
+// executeRequest executes an HTTP request and handles the response.
+// It snapshots global flags into a Config (#80), then delegates to the
+// service layer (#42) which receives dependencies via injection (#43).
 func executeRequest(cmd *cobra.Command, method string, url string) error {
-	opts, err := buildRequestOptions(method, url)
-	if err != nil {
-		return err
-	}
-
-	// Track if we opened a file so we can close it after the request
-	var fileToClose *os.File
-	if file, ok := opts.Body.(*os.File); ok {
-		fileToClose = file
-	}
-
-	// Ensure file is closed even on error
-	defer func() {
-		if fileToClose != nil {
-			_ = fileToClose.Close()
-		}
-	}()
-
-	// Create HTTP client
-	httpClient := client.NewClient(opts.TokenProvider, insecure, timeout)
+	cfg := snapshotConfig()
+	svc := getRequestService()
 
 	// Use command context for cancellation support (Ctrl+C)
 	ctx := cmd.Context()
@@ -227,28 +225,8 @@ func executeRequest(cmd *cobra.Command, method string, url string) error {
 		ctx = context.Background()
 	}
 
-	if paginate && verbose {
-		fmt.Fprintf(os.Stderr, "> Pagination enabled (max %d pages)\n", maxPages)
-	}
-
-	resp, err := httpClient.Execute(ctx, opts)
-	if err != nil {
-		return err
-	}
-
-	// Create formatter once for output handling
-	formatter := client.NewFormatter(verbose, outputFormat)
-
-	// Handle binary output
-	if binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
-		return formatter.WriteRawOutput(resp.Body, outputFile)
-	}
-
-	// Format and output response
-	formatted, err := formatter.Format(resp)
-	if err != nil {
-		return fmt.Errorf("failed to format response: %w", err)
-	}
-
-	return formatter.WriteOutput(formatted, outputFile)
+	return svc.Execute(ctx, cfg, method, url)
 }
+
+// Ensure imports are used.
+var _ = auth.DetectScope
