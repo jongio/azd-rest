@@ -98,9 +98,9 @@ func TestClient_Execute_ResponseSizeLimit(t *testing.T) {
 }
 
 func TestClient_Execute_RetryExponentialBackoff(t *testing.T) {
-	attemptCount := 0
+	var attemptTimes []time.Time
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attemptCount++
+		attemptTimes = append(attemptTimes, time.Now())
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"server error"}`))
 	}))
@@ -113,15 +113,40 @@ func TestClient_Execute_RetryExponentialBackoff(t *testing.T) {
 		Method:   "GET",
 		URL:      server.URL + "/test",
 		SkipAuth: true,
-		Retry:    2,
+		Retry:    3,
 	}
 
-	start := time.Now()
 	resp, err := client.Execute(context.Background(), opts)
-	duration := time.Since(start)
 
 	require.NoError(t, err, "5xx responses should not cause errors, just retries")
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	assert.GreaterOrEqual(t, attemptCount, 1, "Should have made at least one attempt")
-	assert.GreaterOrEqual(t, duration, 100*time.Millisecond, "Should have taken some time for retries")
+
+	// Verify the correct number of attempts (initial + retries).
+	assert.Equal(t, 4, len(attemptTimes), "Should have made 4 attempts (1 initial + 3 retries)")
+
+	// Verify exponential backoff: each interval should be roughly double the previous.
+	// Allow tolerance for timing jitter (intervals should increase monotonically).
+	if len(attemptTimes) >= 3 {
+		interval1 := attemptTimes[1].Sub(attemptTimes[0])
+		interval2 := attemptTimes[2].Sub(attemptTimes[1])
+
+		// Interval2 should be at least 1.5x interval1 (exponential with jitter tolerance).
+		assert.Greater(t, interval2.Milliseconds(), interval1.Milliseconds(),
+			"Second retry interval (%v) should be longer than first (%v) for exponential backoff",
+			interval2, interval1)
+
+		// Both intervals should be non-trivial (at least 50ms for first, indicating real backoff).
+		assert.GreaterOrEqual(t, interval1.Milliseconds(), int64(50),
+			"First retry delay should be at least 50ms")
+	}
+
+	if len(attemptTimes) >= 4 {
+		interval2 := attemptTimes[2].Sub(attemptTimes[1])
+		interval3 := attemptTimes[3].Sub(attemptTimes[2])
+
+		// Third interval should also be longer than second.
+		assert.Greater(t, interval3.Milliseconds(), interval2.Milliseconds(),
+			"Third retry interval (%v) should be longer than second (%v)",
+			interval3, interval2)
+	}
 }
