@@ -25,6 +25,12 @@ var (
 	tokenProviderMu     sync.Mutex
 )
 
+// cachedHTTPClient is reused across MCP requests for connection reuse.
+var (
+	cachedHTTPClient *client.Client
+	httpClientMu     sync.Mutex
+)
+
 // getOrCreateTokenProvider returns the cached token provider, retrying on failure.
 func getOrCreateTokenProvider() (auth.TokenProvider, error) {
 	tokenProviderMu.Lock()
@@ -38,6 +44,18 @@ func getOrCreateTokenProvider() (auth.TokenProvider, error) {
 	}
 	cachedTokenProvider = tp
 	return tp, nil
+}
+
+// getOrCreateHTTPClient returns the cached HTTP client, creating one if needed.
+func getOrCreateHTTPClient(tp auth.TokenProvider) *client.Client {
+	httpClientMu.Lock()
+	defer httpClientMu.Unlock()
+	if cachedHTTPClient != nil {
+		return cachedHTTPClient
+	}
+	c := client.NewClient(tp, false, 30*time.Second)
+	cachedHTTPClient = c
+	return c
 }
 
 // validateScopeURLMatch ensures the scope domain matches the request URL domain.
@@ -172,7 +190,7 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		opts.TokenProvider = tp
 	}
 
-	httpClient := client.NewClient(opts.TokenProvider, false, opts.Timeout)
+	httpClient := getOrCreateHTTPClient(opts.TokenProvider)
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {

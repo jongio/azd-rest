@@ -88,7 +88,7 @@ func TestBuildRequestOptions_DataFile(t *testing.T) {
 	// Create a temporary file
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test.json")
-	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0644)
+	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0o644)
 	require.NoError(t, err)
 
 	dataFile = tmpFile
@@ -115,7 +115,7 @@ func TestBuildRequestOptions_DataFileWithAtPrefix(t *testing.T) {
 	// Create a temporary file
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test.json")
-	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0644)
+	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0o644)
 	require.NoError(t, err)
 
 	dataFile = "@" + tmpFile
@@ -246,7 +246,7 @@ func TestExecuteRequest_WithFileBody(t *testing.T) {
 	// Create a temporary file
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test.json")
-	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0644)
+	err := os.WriteFile(tmpFile, []byte(`{"test": "data"}`), 0o644)
 	require.NoError(t, err)
 
 	// Set up flags
