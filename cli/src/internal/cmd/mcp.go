@@ -243,6 +243,28 @@ func formatResponse(resp *mcpResponse) string {
 
 // Tool handler for methods with a body (POST, PUT, PATCH)
 func handleBodyMethod(method string) azdext.MCPToolHandler {
+	return mcpHandlerFactory(method, true, false)
+}
+
+// Tool handler for methods without a body (GET, DELETE)
+func handleNoBodyMethod(method string) azdext.MCPToolHandler {
+	return mcpHandlerFactory(method, false, false)
+}
+
+// handleHead handles HEAD requests (returns status + headers only).
+func handleHead(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
+	return mcpHandlerFactory("HEAD", false, true)(ctx, args)
+}
+
+// mcpHandlerFactory is the single parameterized factory that generates all MCP
+// tool handlers (#39, #81). It replaces the duplicated handleBodyMethod,
+// handleNoBodyMethod, and handleHead implementations with one unified function.
+//
+// Parameters:
+//   - method: HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD)
+//   - hasBody: whether to extract the "body" argument from tool args
+//   - stripResponseBody: whether to omit the response body (HEAD requests)
+func mcpHandlerFactory(method string, hasBody, stripResponseBody bool) azdext.MCPToolHandler {
 	return func(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
 		url, err := args.RequireString("url")
 		if err != nil {
@@ -250,7 +272,11 @@ func handleBodyMethod(method string) azdext.MCPToolHandler {
 			return azdext.MCPErrorResult("missing required argument: url"), nil
 		}
 
-		body := args.OptionalString("body", "")
+		body := ""
+		if hasBody {
+			body = args.OptionalString("body", "")
+		}
+
 		scopeOverride := args.OptionalString("scope", "")
 		headers, err := parseHeaders(args)
 		if err != nil {
@@ -262,56 +288,12 @@ func handleBodyMethod(method string) azdext.MCPToolHandler {
 			return azdext.MCPErrorResult("%s", err.Error()), nil
 		}
 
-		return azdext.MCPTextResult("%s", formatResponse(resp)), nil
-	}
-}
-
-// Tool handler for methods without a body (GET, DELETE)
-func handleNoBodyMethod(method string) azdext.MCPToolHandler {
-	return func(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
-		url, err := args.RequireString("url")
-		if err != nil {
-			//nolint:nilerr // intentional: surface validation error as MCP tool result, not Go error
-			return azdext.MCPErrorResult("missing required argument: url"), nil
-		}
-
-		scopeOverride := args.OptionalString("scope", "")
-		headers, err := parseHeaders(args)
-		if err != nil {
-			return azdext.MCPErrorResult("%s", err.Error()), nil
-		}
-
-		resp, err := executeMCPRequest(ctx, method, url, "", scopeOverride, headers)
-		if err != nil {
-			return azdext.MCPErrorResult("%s", err.Error()), nil
+		if stripResponseBody {
+			resp.Body = ""
 		}
 
 		return azdext.MCPTextResult("%s", formatResponse(resp)), nil
 	}
-}
-
-// handleHead handles HEAD requests (returns status + headers only).
-func handleHead(ctx context.Context, args azdext.ToolArgs) (*mcp.CallToolResult, error) {
-	url, err := args.RequireString("url")
-	if err != nil {
-		//nolint:nilerr // intentional: surface validation error as MCP tool result, not Go error
-		return azdext.MCPErrorResult("missing required argument: url"), nil
-	}
-
-	scopeOverride := args.OptionalString("scope", "")
-	headers, err := parseHeaders(args)
-	if err != nil {
-		return azdext.MCPErrorResult("%s", err.Error()), nil
-	}
-
-	resp, err := executeMCPRequest(ctx, "HEAD", url, "", scopeOverride, headers)
-	if err != nil {
-		return azdext.MCPErrorResult("%s", err.Error()), nil
-	}
-
-	// HEAD responses omit body
-	resp.Body = ""
-	return azdext.MCPTextResult("%s", formatResponse(resp)), nil
 }
 
 const mcpInstructions = `You are an Azure REST API assistant powered by the azd-rest extension.
