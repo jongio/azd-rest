@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/cli"
     schedule:
       interval: "weekly"
     commit-message:
@@ -12,3 +12,15 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"

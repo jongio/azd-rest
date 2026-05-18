@@ -39,7 +39,7 @@ We use GitHub to host code, to track issues and feature requests, as well as acc
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/azd-rest.git
+git clone https://github.com/<your-username>/azd-rest.git
 cd azd-rest/cli
 
 # Install dependencies
