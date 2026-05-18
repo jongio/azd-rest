@@ -63,15 +63,24 @@ func TestPagination_NextLinkInBody(t *testing.T) {
 	valueArray, ok := data["value"].([]interface{})
 	require.True(t, ok, "Response should have 'value' array")
 
-	// TODO: Strengthen to assert.Equal(t, 3, ...) once azd-core httpclient
-	// pagination fully follows nextLink for httptest servers.
-	assert.GreaterOrEqual(t, len(valueArray), 2, "Should have at least items from first page")
-	if len(valueArray) == 3 {
-		_, hasNextLink := data["nextLink"]
-		assert.False(t, hasNextLink, "nextLink should be removed after pagination")
-	} else {
-		t.Logf("Note: Pagination did not follow nextLink (got %d items, expected 3). Pending azd-core httpclient pagination support.", len(valueArray))
-	}
+	// Verify pagination collected all items from both pages.
+	assert.Equal(t, 3, len(valueArray), "Pagination should aggregate items from all pages (2 from page 1, 1 from page 2)")
+
+	// Verify the server was hit exactly twice (once per page).
+	assert.Equal(t, 2, pageCount, "Server should have received exactly 2 requests (one per page)")
+
+	// Verify nextLink is stripped from the final aggregated response.
+	_, hasNextLink := data["nextLink"]
+	assert.False(t, hasNextLink, "nextLink should be removed from the aggregated response")
+
+	// Verify item ordering is preserved across pages.
+	firstItem, ok := valueArray[0].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "1", firstItem["id"])
+
+	lastItem, ok := valueArray[2].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "3", lastItem["id"])
 }
 
 func TestPagination_LinkHeader(t *testing.T) {
@@ -121,12 +130,21 @@ func TestPagination_LinkHeader(t *testing.T) {
 
 	valueArray, ok := data["value"].([]interface{})
 	require.True(t, ok)
-	// TODO: Strengthen to assert.Equal(t, 2, ...) once azd-core httpclient
-	// pagination fully follows Link headers for httptest servers.
-	assert.GreaterOrEqual(t, len(valueArray), 1, "Should have at least items from first page")
-	if len(valueArray) < 2 {
-		t.Logf("Note: Pagination did not follow Link header (got %d items, expected 2). Pending azd-core httpclient pagination support.", len(valueArray))
-	}
+
+	// Verify pagination followed the Link header and aggregated both pages.
+	assert.Equal(t, 2, len(valueArray), "Pagination should aggregate items from both pages via Link header")
+
+	// Verify server was hit twice.
+	assert.Equal(t, 2, pageCount, "Server should have received exactly 2 requests for Link header pagination")
+
+	// Verify item ordering.
+	item1, ok := valueArray[0].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "1", item1["id"])
+
+	item2, ok := valueArray[1].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "2", item2["id"])
 }
 
 func TestPagination_NoPagination(t *testing.T) {
