@@ -7,7 +7,6 @@
     "azdext",
     "azdextutil",
     "azcore",
-    "Buildand",
     "coreversion",
     "azidentity",
     "azconfig",
@@ -61,8 +60,6 @@
     "usgovcloudapi",
     "wrapcheck",
     "vulncheck",
-    "XVCJ",
-    "dvcm",
     "sessio",
     "nolint",
     "nilerr",
@@ -85,6 +82,7 @@
     "*.so",
     "*.dylib",
     "go.sum",
-    "package-lock.json"
+    "package-lock.json",
+    "pnpm-lock.yaml"
   ]
 }

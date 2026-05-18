@@ -187,32 +187,7 @@ azd rest get https://jsonplaceholder.typicode.com/posts/1 --no-auth`} language="
 </Layout>
 
 <style>
-  .page-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 3rem 1.5rem;
-  }
-
-  .page-header {
-    margin-bottom: 3rem;
-  }
-
-  .page-header h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin: 0 0 1rem;
-    color: var(--color-text-primary);
-  }
-
-  .page-intro {
-    font-size: 1.25rem;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  .content {
-    line-height: 1.7;
-  }
+  @import '../styles/pages.css';
 
   .example {
     margin-bottom: 4rem;
@@ -258,42 +233,6 @@ azd rest get https://jsonplaceholder.typicode.com/posts/1 --no-auth`} language="
   }
 
   .section h2 {
-    font-size: 1.75rem;
-    font-weight: 600;
     margin: 0 0 1.5rem;
-    color: var(--color-text-primary);
-  }
-
-  .resources {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .resource-card {
-    display: block;
-    border: 1px solid var(--color-border-default);
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    background-color: var(--color-bg-primary);
-    text-decoration: none;
-    transition: border-color 0.2s;
-  }
-
-  .resource-card:hover {
-    border-color: var(--color-interactive-default);
-    text-decoration: none;
-  }
-
-  .resource-card h3 {
-    font-size: 1.125rem;
-    margin: 0 0 0.5rem;
-    color: var(--color-text-primary);
-  }
-
-  .resource-card p {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
   }
 </style>

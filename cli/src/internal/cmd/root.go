@@ -33,6 +33,7 @@ var (
 	timeout         time.Duration
 	followRedirects bool
 	maxRedirects    int
+	maxPages        int
 )
 
 // NewRootCmd creates the root command for azd rest
@@ -226,19 +227,24 @@ func executeRequest(cmd *cobra.Command, method string, url string) error {
 		ctx = context.Background()
 	}
 
+	if paginate && verbose {
+		fmt.Fprintf(os.Stderr, "> Pagination enabled (max %d pages)\n", maxPages)
+	}
+
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
 		return err
 	}
 
+	// Create formatter once for output handling
+	formatter := client.NewFormatter(verbose, outputFormat)
+
 	// Handle binary output
 	if binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
-		formatter := client.NewFormatter(verbose, outputFormat)
 		return formatter.WriteRawOutput(resp.Body, outputFile)
 	}
 
 	// Format and output response
-	formatter := client.NewFormatter(verbose, outputFormat)
 	formatted, err := formatter.Format(resp)
 	if err != nil {
 		return fmt.Errorf("failed to format response: %w", err)
