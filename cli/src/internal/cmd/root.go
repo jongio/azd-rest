@@ -76,15 +76,25 @@ func newHTTPMethodCommand(def httpMethodDef) *cobra.Command {
 	}
 }
 
-// Convenience constructors preserved for backward compatibility with tests
-// and any external references. They delegate to the table-driven factory.
+// NewGetCommand returns the GET subcommand.
+func NewGetCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[0]) }
 
-func NewGetCommand() *cobra.Command     { return newHTTPMethodCommand(httpMethods[0]) }
-func NewPostCommand() *cobra.Command    { return newHTTPMethodCommand(httpMethods[1]) }
-func NewPutCommand() *cobra.Command     { return newHTTPMethodCommand(httpMethods[2]) }
-func NewPatchCommand() *cobra.Command   { return newHTTPMethodCommand(httpMethods[3]) }
-func NewDeleteCommand() *cobra.Command  { return newHTTPMethodCommand(httpMethods[4]) }
-func NewHeadCommand() *cobra.Command    { return newHTTPMethodCommand(httpMethods[5]) }
+// NewPostCommand returns the POST subcommand.
+func NewPostCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[1]) }
+
+// NewPutCommand returns the PUT subcommand.
+func NewPutCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[2]) }
+
+// NewPatchCommand returns the PATCH subcommand.
+func NewPatchCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[3]) }
+
+// NewDeleteCommand returns the DELETE subcommand.
+func NewDeleteCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[4]) }
+
+// NewHeadCommand returns the HEAD subcommand.
+func NewHeadCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[5]) }
+
+// NewOptionsCommand returns the OPTIONS subcommand.
 func NewOptionsCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[6]) }
 
 // NewRootCmd creates the root command for azd rest

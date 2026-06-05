@@ -131,11 +131,11 @@ func TestGetOrCreateTokenProvider_NoRaceCondition(t *testing.T) {
 	origProvider := cachedTokenProvider
 	cachedTokenProvider = &auth.MockTokenProvider{Token: "race-check"}
 	tokenProviderMu.Unlock()
-	defer func() {
+	t.Cleanup(func() {
 		tokenProviderMu.Lock()
 		cachedTokenProvider = origProvider
 		tokenProviderMu.Unlock()
-	}()
+	})
 
 	// Spawn parallel subtests that all hit the same global cache.
 	for i := range 10 {
