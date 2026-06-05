@@ -126,6 +126,10 @@ func TestGetOrCreateTokenProvider_ConcurrentCreation(t *testing.T) {
 // TestGetOrCreateTokenProvider_NoRaceCondition uses t.Parallel subsets
 // to run concurrent getOrCreateTokenProvider calls and detect data races
 // (when run with -race flag).
+//
+//nolint:tparallel // Top-level t.Parallel() would race with sibling tests that
+// save/restore cachedTokenProvider via tokenProviderMu. Parallelism is exercised
+// internally via parallel subtests; the parent must remain sequential.
 func TestGetOrCreateTokenProvider_NoRaceCondition(t *testing.T) {
 	tokenProviderMu.Lock()
 	origProvider := cachedTokenProvider
