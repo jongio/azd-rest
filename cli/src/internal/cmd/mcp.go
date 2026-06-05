@@ -20,10 +20,10 @@ import (
 
 // Default values for MCP request configuration.
 const (
-	mcpDefaultTimeout         = 30 * time.Second
-	mcpDefaultMaxRedirects    = 10
-	mcpDefaultRetry           = 3
-	mcpMaxResponseSize        = 10 * 1024 * 1024 // 10MB — smaller limit for MCP tool responses
+	mcpDefaultTimeout      = 30 * time.Second
+	mcpDefaultMaxRedirects = 10
+	mcpDefaultRetry        = 3
+	mcpMaxResponseSize     = 10 * 1024 * 1024 // 10MB — smaller limit for MCP tool responses
 )
 
 // cachedTokenProvider is reused across MCP requests to avoid
