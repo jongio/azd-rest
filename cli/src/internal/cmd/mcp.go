@@ -18,6 +18,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Default values for MCP request configuration.
+const (
+	mcpDefaultTimeout         = 30 * time.Second
+	mcpDefaultMaxRedirects    = 10
+	mcpDefaultRetry           = 3
+	mcpMaxResponseSize        = 10 * 1024 * 1024 // 10MB — smaller limit for MCP tool responses
+)
+
 // cachedTokenProvider is reused across MCP requests to avoid
 // creating a new Azure credential on every call.
 var (
@@ -144,14 +152,18 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 	}
 
 	opts := client.RequestOptions{
-		Method:          method,
-		URL:             reqURL,
-		Headers:         make(map[string]string),
-		Timeout:         30 * time.Second,
+		Method:  method,
+		URL:     reqURL,
+		Headers: make(map[string]string),
+		Timeout: mcpDefaultTimeout,
+		// Redirects are intentionally disabled for MCP requests.
+		// Following redirects in an AI-controlled context could enable SSRF
+		// attacks where a server redirects to an internal metadata endpoint
+		// after the URL check has already passed.
 		FollowRedirects: false,
-		MaxRedirects:    10,
-		Retry:           3,
-		MaxResponseSize: 10 * 1024 * 1024,
+		MaxRedirects:    mcpDefaultMaxRedirects,
+		Retry:           mcpDefaultRetry,
+		MaxResponseSize: mcpMaxResponseSize,
 	}
 
 	for k, v := range customHeaders {
@@ -204,10 +216,19 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		}
 	}
 
+	// Guard against a double-allocation spike: if the body is at or near the
+	// limit, converting to string would temporarily hold two copies in memory.
+	// Truncate with a clear marker so callers know the response was cut.
+	bodyBytes := resp.Body
+	if len(bodyBytes) >= mcpMaxResponseSize {
+		const truncMsg = "\n[response truncated: exceeded max response size]"
+		bodyBytes = append(bodyBytes[:mcpMaxResponseSize-len(truncMsg)], truncMsg...)
+	}
+
 	return &mcpResponse{
 		StatusCode: resp.StatusCode,
 		Headers:    respHeaders,
-		Body:       string(resp.Body),
+		Body:       string(bodyBytes),
 	}, nil
 }
 

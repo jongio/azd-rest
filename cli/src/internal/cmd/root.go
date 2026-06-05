@@ -37,6 +37,7 @@ var (
 	followRedirects bool
 	maxRedirects    int
 	maxPages        int
+	maxResponseSize int64
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -125,6 +126,9 @@ Examples:
 		return nil
 	}
 
+	// Use config.Defaults() as the single source of truth for flag default values.
+	defaults := config.Defaults()
+
 	// Extension-specific flags
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
@@ -132,15 +136,17 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", "auto", "Output format: auto, json, raw")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
-	rootCmd.PersistentFlags().IntVar(&retry, "retry", 3, "Retry attempts with exponential backoff for transient errors")
+	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
-	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification")
-	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 30*time.Second, "Request timeout")
-	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", true, "Follow HTTP redirects")
-	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", 10, "Maximum redirect hops")
+	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
+	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
+	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
+	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
+	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
+	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
 
 	// Add HTTP method subcommands from the table (#68)
 	for _, def := range httpMethods {
@@ -179,6 +185,7 @@ func snapshotConfig() config.Config {
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
+		MaxResponseSize: maxResponseSize,
 	}
 }
 
