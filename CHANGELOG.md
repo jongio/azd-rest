@@ -1,3 +1,8 @@
+## [0.4.8] - 2026-06-06
+
+- fix: update cosign to use --bundle format (deprecated --output-signature) (#123) (de4d6f3)
+- chore: update registry for v0.4.7 (04de06a)
+
 ## [0.4.7] - 2026-06-06
 
 - fix: add subtest to cspell word list (9194d3d)
