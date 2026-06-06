@@ -3,7 +3,7 @@ module github.com/jongio/azd-rest
 go 1.26.4
 
 require (
-	github.com/azure/azure-dev/cli/azd v1.25.1
+	github.com/azure/azure-dev/cli/azd v1.25.4
 	github.com/jongio/azd-core v0.5.7
 	github.com/magefile/mage v1.17.2
 	github.com/mark3labs/mcp-go v0.54.0
