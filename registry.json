@@ -563,6 +563,83 @@
               "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-windows-arm64.zip"
             }
           }
+        },
+        {
+          "version": "0.4.8",
+          "capabilities": [
+            "custom-commands",
+            "lifecycle-events",
+            "mcp-server",
+            "metadata"
+          ],
+          "usage": "azd rest <method> <url> [options]",
+          "examples": [
+            {
+              "name": "get",
+              "description": "Execute a GET request against Azure Resource Manager",
+              "usage": "azd rest get https://management.azure.com/subscriptions?api-version=2022-12-01"
+            },
+            {
+              "name": "post",
+              "description": "Execute a POST request with a JSON body",
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
+            },
+            {
+              "name": "version",
+              "description": "Display extension version",
+              "usage": "azd rest version"
+            }
+          ],
+          "artifacts": {
+            "darwin/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "f830bf51bd8a694b5302d5ef52f90a8184c55b7af44366d689e5f21eddb54ee0"
+              },
+              "entryPoint": "jongio-azd-rest-darwin-amd64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-darwin-amd64.zip"
+            },
+            "darwin/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "cea7a2ba72ba24468ed7e9da0117b73e7a14b7611a69028cc6fd4ef3fd53e6f1"
+              },
+              "entryPoint": "jongio-azd-rest-darwin-arm64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-darwin-arm64.zip"
+            },
+            "linux/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "0eda410bf184921056123ca210dcd64be620be090e9b756c96546cb7af4bea1b"
+              },
+              "entryPoint": "jongio-azd-rest-linux-amd64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-linux-amd64.tar.gz"
+            },
+            "linux/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "ef2905b274e63930f7f09ebeccc60c6c03638784ecd807da55428f2a57363b1e"
+              },
+              "entryPoint": "jongio-azd-rest-linux-arm64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-linux-arm64.tar.gz"
+            },
+            "windows/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "7c622d565822991238acedecdf4b70312579b3c1cbfdcd1a132c0c7952d83fbd"
+              },
+              "entryPoint": "jongio-azd-rest-windows-amd64.exe",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-windows-amd64.zip"
+            },
+            "windows/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "3e67b4119f6116dac048ac21b23fe0387897f7f6249467cd10c8c56d6672e554"
+              },
+              "entryPoint": "jongio-azd-rest-windows-arm64.exe",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.8/jongio-azd-rest-windows-arm64.zip"
+            }
+          }
         }
       ],
       "tags": [
