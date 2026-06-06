@@ -3,34 +3,44 @@ package cmd
 import (
 	"context"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// resetGlobalFlags resets all global flags to their default values
+// resetGlobalFlags resets all global flags to their default values.
+//
+// WARNING: These tests mutate package-level global flag variables and must NOT
+// be run in parallel (do not call t.Parallel()). Each test must call
+// resetGlobalFlags() at its start to avoid state bleed from prior tests.
 func resetGlobalFlags() {
+	defaults := config.Defaults()
 	scope = ""
 	noAuth = false
 	headers = []string{}
 	data = ""
 	dataFile = ""
 	outputFile = ""
-	outputFormat = "auto"
+	outputFormat = defaults.OutputFormat
 	verbose = false
 	paginate = false
-	retry = 3
+	retry = defaults.Retry
 	binary = false
 	insecure = false
-	timeout = 30 * time.Second
-	followRedirects = true
-	maxRedirects = 10
+	timeout = defaults.Timeout
+	followRedirects = defaults.FollowRedirects
+	maxRedirects = defaults.MaxRedirects
+	maxPages = defaults.MaxPages
+	maxResponseSize = defaults.MaxResponseSize
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -430,6 +440,64 @@ func TestExecuteRequest_FormatError(t *testing.T) {
 	// Use invalid URL to trigger error path
 	err := executeRequest(cmd, "GET", "https://192.0.2.0/invalid")
 	assert.Error(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// executeRequest — success paths with httptest server
+// ---------------------------------------------------------------------------
+
+func TestExecuteRequest_SuccessPath_JSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer srv.Close()
+
+	resetGlobalFlags()
+	noAuth = true
+	outputFormat = "raw"
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	// Verify the request completes without error — the formatter writes to os.Stdout directly.
+	err := executeRequest(cmd, "GET", srv.URL+"/api/test")
+	require.NoError(t, err)
+}
+
+func TestExecuteRequest_SuccessPath_WithFileBody(t *testing.T) {
+	var receivedBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		receivedBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"created":true}`))
+	}))
+	defer srv.Close()
+
+	resetGlobalFlags()
+	noAuth = true
+	outputFormat = "raw"
+
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "body.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(`{"send":"this"}`), 0600))
+	dataFile = tmpFile
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	err := executeRequest(cmd, "POST", srv.URL+"/api/resource")
+	require.NoError(t, err)
+	assert.Equal(t, `{"send":"this"}`, receivedBody)
+}
+
+func TestExecuteRequest_MaxResponseSize_Flag(t *testing.T) {
+	resetGlobalFlags()
+	// Verify the flag default matches config.Defaults().
+	assert.Equal(t, config.Defaults().MaxResponseSize, maxResponseSize)
 }
 
 func TestMetadataCommand_ExistsInRoot(t *testing.T) {

@@ -71,7 +71,14 @@
     "copilotskills",
     "TOCTOU",
     "Unparseable",
-    "unexploitable"
+    "unexploitable",
+    "subtest",
+    "subtests",
+    "tparallel",
+    "anchore",
+    "XVCJ",
+    "dvcm",
+    "USERPROFILE"
   ],
   "ignorePaths": [
     "node_modules",

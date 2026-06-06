@@ -70,7 +70,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		Format:          cfg.OutputFormat,
 		Binary:          cfg.Binary,
 		Retry:           cfg.Retry,
-		MaxResponseSize: 100 * 1024 * 1024, // 100MB default
+		MaxResponseSize: cfg.MaxResponseSize,
 		Paginate:        cfg.Paginate,
 	}
 
@@ -143,6 +143,11 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 
 // Execute performs the full request lifecycle: build options, execute, format output.
 func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method, url string) error {
+	// Warn prominently when TLS verification is disabled.
+	if cfg.Insecure {
+		fmt.Fprintf(os.Stderr, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
