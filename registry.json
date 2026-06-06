@@ -11,7 +11,7 @@
           "capabilities": [
             "custom-commands"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -33,7 +33,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -43,7 +43,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -110,7 +110,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -120,7 +120,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -187,7 +187,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -197,7 +197,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -264,7 +264,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -274,7 +274,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -341,7 +341,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -351,7 +351,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -418,7 +418,7 @@
             "mcp-server",
             "metadata"
           ],
-          "usage": "azd rest \u003cmethod\u003e \u003curl\u003e [options]",
+          "usage": "azd rest <method> <url> [options]",
           "examples": [
             {
               "name": "get",
@@ -428,7 +428,7 @@
             {
               "name": "post",
               "description": "Execute a POST request with a JSON body",
-              "usage": "azd rest post \u003curl\u003e --body '{\"key\": \"value\"}'"
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
             },
             {
               "name": "version",
@@ -484,6 +484,83 @@
               },
               "entryPoint": "jongio-azd-rest-windows-arm64.exe",
               "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.6/jongio-azd-rest-windows-arm64.zip"
+            }
+          }
+        },
+        {
+          "version": "0.4.7",
+          "capabilities": [
+            "custom-commands",
+            "lifecycle-events",
+            "mcp-server",
+            "metadata"
+          ],
+          "usage": "azd rest <method> <url> [options]",
+          "examples": [
+            {
+              "name": "get",
+              "description": "Execute a GET request against Azure Resource Manager",
+              "usage": "azd rest get https://management.azure.com/subscriptions?api-version=2022-12-01"
+            },
+            {
+              "name": "post",
+              "description": "Execute a POST request with a JSON body",
+              "usage": "azd rest post <url> --body '{\"key\": \"value\"}'"
+            },
+            {
+              "name": "version",
+              "description": "Display extension version",
+              "usage": "azd rest version"
+            }
+          ],
+          "artifacts": {
+            "darwin/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "9ba95df09c7bd272fbb0a0ad04942f3a3c2145c1d2bc0ca2509710feefae0a56"
+              },
+              "entryPoint": "jongio-azd-rest-darwin-amd64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-darwin-amd64.zip"
+            },
+            "darwin/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "52f34d9f7878e5151bd2fa5e7154d0bb25be7e4ca3d82564ddddfcd2f8860bc5"
+              },
+              "entryPoint": "jongio-azd-rest-darwin-arm64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-darwin-arm64.zip"
+            },
+            "linux/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "0b3253cd9ebd587b716d136c70a39246f555ae335560384c0317567f67f653fe"
+              },
+              "entryPoint": "jongio-azd-rest-linux-amd64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-linux-amd64.tar.gz"
+            },
+            "linux/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "7315a67638602e3f8a013f275c88542a62e015b3e74b4f46d237f01e5af0b779"
+              },
+              "entryPoint": "jongio-azd-rest-linux-arm64",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-linux-arm64.tar.gz"
+            },
+            "windows/amd64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "709508bf1ff3f28fbc9bd5a19bb9f929447bd2b9808d212b60fa8b4e6e62392c"
+              },
+              "entryPoint": "jongio-azd-rest-windows-amd64.exe",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-windows-amd64.zip"
+            },
+            "windows/arm64": {
+              "checksum": {
+                "algorithm": "sha256",
+                "value": "7c8a93ea284c43f10cc55347752a4e08c9c949c163f2f742b1e84bb3a9b64d21"
+              },
+              "entryPoint": "jongio-azd-rest-windows-arm64.exe",
+              "url": "https://github.com/jongio/azd-rest/releases/download/azd-ext-jongio-azd-rest_0.4.7/jongio-azd-rest-windows-arm64.zip"
             }
           }
         }
