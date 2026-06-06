@@ -433,12 +433,12 @@ jobs:
             for file in /tmp/release-assets/*; do
               if [ -f "$file" ]; then
                 echo "Signing $(basename $file)..."
-                cosign sign-blob --yes "$file" --output-signature "${file}.sig" --output-certificate "${file}.pem"
+                cosign sign-blob --yes "$file" --bundle "${file}.bundle.json"
               fi
             done
-            
-            # Upload signatures and certificates to the release
-            gh release upload "${TAG_NAME}" /tmp/release-assets/*.sig /tmp/release-assets/*.pem --repo "${{ github.repository }}" || true
+
+            # Upload bundles to the release
+            gh release upload "${TAG_NAME}" /tmp/release-assets/*.bundle.json --repo "${{ github.repository }}" || true
             echo "✅ All artifacts signed with cosign (keyless/OIDC)"
           fi
         env:
