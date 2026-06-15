@@ -3,7 +3,7 @@ module github.com/jongio/azd-rest
 go 1.26.4
 
 require (
-	github.com/azure/azure-dev/cli/azd v1.25.1
+	github.com/azure/azure-dev/cli/azd v1.25.6
 	github.com/jongio/azd-core v0.5.7
 	github.com/magefile/mage v1.17.2
 	github.com/mark3labs/mcp-go v0.54.0
@@ -96,6 +96,7 @@ require (
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
