@@ -78,7 +78,9 @@
     "anchore",
     "XVCJ",
     "dvcm",
-    "USERPROFILE"
+    "USERPROFILE",
+    "godoc",
+    "sigstore"
   ],
   "ignorePaths": [
     "node_modules",
