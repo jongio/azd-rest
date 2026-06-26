@@ -26,6 +26,7 @@ var (
 	headers         []string
 	data            string
 	dataFile        string
+	query           string
 	outputFile      string
 	outputFormat    string
 	verbose         bool
@@ -145,6 +146,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
+	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
@@ -184,6 +186,7 @@ func snapshotConfig() config.Config {
 		Headers:         headers,
 		Data:            data,
 		DataFile:        dataFile,
+		Query:           query,
 		OutputFile:      outputFile,
 		OutputFormat:    outputFormat,
 		Verbose:         verbose,

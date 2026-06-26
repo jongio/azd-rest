@@ -4,6 +4,7 @@ go 1.26.4
 
 require (
 	github.com/azure/azure-dev/cli/azd v1.26.0
+	github.com/jmespath-community/go-jmespath v1.1.1
 	github.com/jongio/azd-core v0.5.7
 	github.com/magefile/mage v1.17.2
 	github.com/mark3labs/mcp-go v0.55.1
@@ -62,7 +63,6 @@ require (
 	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.14.0 // indirect
-	github.com/jmespath-community/go-jmespath v1.1.1 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect

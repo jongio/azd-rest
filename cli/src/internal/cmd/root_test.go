@@ -29,6 +29,7 @@ func resetGlobalFlags() {
 	headers = []string{}
 	data = ""
 	dataFile = ""
+	query = ""
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false
@@ -223,6 +224,7 @@ func TestBuildRequestOptions_AllFlags(t *testing.T) {
 	noAuth = true // Use noAuth to avoid credential issues
 	headers = []string{"X-Test: value"}
 	data = `{"test": true}`
+	query = "test"
 	outputFile = "/tmp/output.json"
 	outputFormat = "json"
 	verbose = true
@@ -241,6 +243,7 @@ func TestBuildRequestOptions_AllFlags(t *testing.T) {
 	assert.Equal(t, "https://test.scope/.default", opts.Scope)
 	assert.True(t, opts.SkipAuth) // Because noAuth = true
 	assert.Equal(t, "value", opts.Headers["X-Test"])
+	assert.Equal(t, "test", snapshotConfig().Query)
 	assert.Equal(t, "json", opts.Format)
 	assert.Equal(t, "/tmp/output.json", opts.OutputFile)
 	assert.True(t, opts.Verbose)

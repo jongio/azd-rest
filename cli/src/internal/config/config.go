@@ -14,6 +14,7 @@ type Config struct {
 	Headers         []string
 	Data            string
 	DataFile        string
+	Query           string
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool
