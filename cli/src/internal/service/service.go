@@ -5,11 +5,13 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/jmespath-community/go-jmespath"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
@@ -45,6 +47,33 @@ func DefaultTokenProviderFactory() (client.TokenProvider, error) {
 // DefaultHTTPClientFactory is the production factory using the real HTTP client.
 func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
 	return client.NewClient(tp, insecure, timeout)
+}
+
+func applyQueryToResponse(resp *client.Response, expression string) error {
+	if expression == "" {
+		return nil
+	}
+	if !strings.Contains(strings.ToLower(resp.Headers.Get("Content-Type")), "json") && !client.IsJSON(resp.Body) {
+		return fmt.Errorf("--query requires a JSON response")
+	}
+
+	var data any
+	if err := json.Unmarshal(resp.Body, &data); err != nil {
+		return fmt.Errorf("failed to parse JSON response for --query: %w", err)
+	}
+
+	result, err := jmespath.Search(expression, data)
+	if err != nil {
+		return fmt.Errorf("invalid --query expression: %w", err)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("failed to encode --query result: %w", err)
+	}
+
+	resp.Body = body
+	return nil
 }
 
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
@@ -163,6 +192,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
 		return err
+	}
+
+	if cfg.Query != "" {
+		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
+			return err
+		}
 	}
 
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)

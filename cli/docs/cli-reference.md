@@ -186,6 +186,7 @@ These flags are available for all HTTP method commands:
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
 | `--timeout` | `-t` | duration | 30s | Request timeout. Examples: `30s`, `5m`, `1h`. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
+| `--query` | `-q` | string | "" | JMESPath query to apply to JSON responses. |
 
 ### Response Configuration
 
@@ -380,6 +381,20 @@ Use `--format raw` for raw response (no JSON parsing):
 
 ```bash
 azd rest get https://api.example.com/data --format raw
+```
+
+### Query JSON Responses
+
+Use `--query` to select data from JSON responses with JMESPath:
+
+```bash
+# Return subscription display names
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[].displayName"
+
+# Return the first item
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[0]"
 ```
 
 ### Binary Content
