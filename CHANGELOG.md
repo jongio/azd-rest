@@ -1,3 +1,13 @@
+## [0.4.9] - 2026-06-26
+
+- chore(deps): upgrade all dependencies to latest (#143) (70c8655)
+- ci: Bump actions/upload-artifact from 7.0.0 to 7.0.1 (#111) (0d153e2)
+- ci: Bump codecov/codecov-action from 6.0.0 to 7.0.0 (#126) (7392a1d)
+- ci: Bump actions/checkout from 6.0.2 to 7.0.0 (#137) (20bd6b2)
+- ci: Bump pnpm/action-setup from 6.0.8 to 6.0.9 (#129) (95d32ec)
+- deps: upgrade all dependencies to latest (#138) (b843cec)
+- chore: update registry for v0.4.8 (edcdf03)
+
 ## [0.4.8] - 2026-06-06
 
 - fix: update cosign to use --bundle format (deprecated --output-signature) (#123) (de4d6f3)
