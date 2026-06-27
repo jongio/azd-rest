@@ -176,6 +176,7 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--scope` | `-s` | string | (auto-detected) | OAuth scope for authentication. Auto-detected for Azure services if not provided. |
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
+| `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
 
 ### Request Configuration
 
@@ -301,6 +302,17 @@ azd rest get https://api.myservice.com/data --scope https://myservice.com/.defau
 # Override auto-detected scope
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --scope https://management.azure.com/.default
+```
+
+### API Version Helper
+
+Use `--api-version` to add or replace the Azure `api-version` query parameter:
+
+```bash
+azd rest get https://management.azure.com/subscriptions --api-version 2020-01-01
+
+azd rest get https://management.azure.com/subscriptions?api-version=2019-01-01 \
+  --api-version 2020-01-01
 ```
 
 ### No Authentication

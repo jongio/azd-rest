@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -47,6 +48,20 @@ func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout ti
 	return client.NewClient(tp, insecure, timeout)
 }
 
+func applyAPIVersion(rawURL, apiVersion string) (string, error) {
+	if apiVersion == "" {
+		return rawURL, nil
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL for --api-version: %w", err)
+	}
+	query := parsed.Query()
+	query.Set("api-version", apiVersion)
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
 // The caller owns the returned Body (if it is an *os.File, it must be closed).
 //
@@ -55,9 +70,14 @@ func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout ti
 // the file after the request completes. The returned cleanup function handles
 // this - call it on error paths. On success paths the caller should defer it.
 func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url string) (client.RequestOptions, func(), error) {
+	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
+	if err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+
 	opts := client.RequestOptions{
 		Method:          method,
-		URL:             url,
+		URL:             requestURL,
 		Headers:         make(map[string]string),
 		Scope:           cfg.Scope,
 		SkipAuth:        cfg.NoAuth,
@@ -113,14 +133,14 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 
 	// Detect scope if not provided
 	if opts.Scope == "" && !opts.SkipAuth {
-		detectedScope, err := auth.DetectScope(url)
+		detectedScope, err := auth.DetectScope(requestURL)
 		if err != nil {
 			cleanup()
 			return opts, nil, fmt.Errorf("failed to detect scope: %w", err)
 		}
 		opts.Scope = detectedScope
 
-		if opts.Scope == "" && auth.IsAzureHost(url) {
+		if opts.Scope == "" && auth.IsAzureHost(requestURL) {
 			fmt.Fprintf(os.Stderr, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
 		}
 	}

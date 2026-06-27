@@ -11,6 +11,7 @@ import "time"
 type Config struct {
 	Scope           string
 	NoAuth          bool
+	APIVersion      string
 	Headers         []string
 	Data            string
 	DataFile        string
