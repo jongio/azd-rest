@@ -24,7 +24,25 @@ const (
 	mcpDefaultMaxRedirects = 10
 	mcpDefaultRetry        = 3
 	mcpMaxResponseSize     = 10 * 1024 * 1024 // 10MB — smaller limit for MCP tool responses
+	mcpMaxTimeoutSeconds   = 600
+	mcpMaxRetry            = 10
+	mcpMaxResponseSizeCap  = 50 * 1024 * 1024
 )
+
+type mcpRequestControls struct {
+	Timeout         time.Duration
+	Retry           int
+	MaxResponseSize int64
+	NoAuth          bool
+}
+
+func defaultMCPRequestControls() mcpRequestControls {
+	return mcpRequestControls{
+		Timeout:         mcpDefaultTimeout,
+		Retry:           mcpDefaultRetry,
+		MaxResponseSize: mcpMaxResponseSize,
+	}
+}
 
 // cachedTokenProvider is reused across MCP requests to avoid
 // creating a new Azure credential on every call.
@@ -55,13 +73,17 @@ func getOrCreateTokenProvider() (auth.TokenProvider, error) {
 }
 
 // getOrCreateHTTPClient returns the cached HTTP client, creating one if needed.
-func getOrCreateHTTPClient(tp auth.TokenProvider) *client.Client {
+func getOrCreateHTTPClient(tp auth.TokenProvider, timeout time.Duration) *client.Client {
+	if timeout != mcpDefaultTimeout {
+		return client.NewClient(tp, false, timeout)
+	}
+
 	httpClientMu.Lock()
 	defer httpClientMu.Unlock()
 	if cachedHTTPClient != nil {
 		return cachedHTTPClient
 	}
-	c := client.NewClient(tp, false, 30*time.Second)
+	c := client.NewClient(tp, false, mcpDefaultTimeout)
 	cachedHTTPClient = c
 	return c
 }
@@ -111,6 +133,46 @@ type mcpResponse struct {
 	Body       string            `json:"body,omitempty"`
 }
 
+func parseMCPRequestControls(args azdext.ToolArgs) (mcpRequestControls, error) {
+	controls := defaultMCPRequestControls()
+
+	if args.Has("timeoutSeconds") {
+		timeoutSeconds, err := args.RequireInt("timeoutSeconds")
+		if err != nil {
+			return controls, err
+		}
+		if timeoutSeconds < 1 || timeoutSeconds > mcpMaxTimeoutSeconds {
+			return controls, fmt.Errorf("timeoutSeconds must be between 1 and %d", mcpMaxTimeoutSeconds)
+		}
+		controls.Timeout = time.Duration(timeoutSeconds) * time.Second
+	}
+
+	if args.Has("retry") {
+		retry, err := args.RequireInt("retry")
+		if err != nil {
+			return controls, err
+		}
+		if retry < 1 || retry > mcpMaxRetry {
+			return controls, fmt.Errorf("retry must be between 1 and %d", mcpMaxRetry)
+		}
+		controls.Retry = retry
+	}
+
+	if args.Has("maxResponseSizeBytes") {
+		maxResponseSize, err := args.RequireInt("maxResponseSizeBytes")
+		if err != nil {
+			return controls, err
+		}
+		if maxResponseSize < 1 || maxResponseSize > mcpMaxResponseSizeCap {
+			return controls, fmt.Errorf("maxResponseSizeBytes must be between 1 and %d", mcpMaxResponseSizeCap)
+		}
+		controls.MaxResponseSize = int64(maxResponseSize)
+	}
+
+	controls.NoAuth = args.OptionalBool("noAuth", false)
+	return controls, nil
+}
+
 // securityPolicy is the shared security policy for MCP tools.
 // Initialized via securityPolicyOnce for thread-safe lazy init.
 var (
@@ -145,7 +207,17 @@ func setSecurityPolicyForTest(p *azdext.MCPSecurityPolicy) {
 }
 
 // executeMCPRequest performs an authenticated HTTP request for MCP tools.
-func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride string, customHeaders map[string]string) (*mcpResponse, error) {
+func executeMCPRequest(
+	ctx context.Context,
+	method, reqURL, body, scopeOverride string,
+	customHeaders map[string]string,
+	controlOverrides ...mcpRequestControls,
+) (*mcpResponse, error) {
+	controls := defaultMCPRequestControls()
+	if len(controlOverrides) > 0 {
+		controls = controlOverrides[0]
+	}
+
 	policy := getMCPSecurityPolicy()
 	if err := policy.CheckURL(reqURL); err != nil {
 		return nil, fmt.Errorf("requests to cloud metadata endpoints are blocked: %w", err)
@@ -155,15 +227,15 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		Method:  method,
 		URL:     reqURL,
 		Headers: make(map[string]string),
-		Timeout: mcpDefaultTimeout,
+		Timeout: controls.Timeout,
 		// Redirects are intentionally disabled for MCP requests.
 		// Following redirects in an AI-controlled context could enable SSRF
 		// attacks where a server redirects to an internal metadata endpoint
 		// after the URL check has already passed.
 		FollowRedirects: false,
 		MaxRedirects:    mcpDefaultMaxRedirects,
-		Retry:           mcpDefaultRetry,
-		MaxResponseSize: mcpMaxResponseSize,
+		Retry:           controls.Retry,
+		MaxResponseSize: controls.MaxResponseSize,
 	}
 
 	for k, v := range customHeaders {
@@ -175,24 +247,26 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 	}
 
 	// Determine scope
-	detectedScope := scopeOverride
-	if detectedScope == "" {
-		s, err := auth.DetectScope(reqURL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to detect scope: %w", err)
+	if !controls.NoAuth {
+		detectedScope := scopeOverride
+		if detectedScope == "" {
+			s, err := auth.DetectScope(reqURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to detect scope: %w", err)
+			}
+			detectedScope = s
 		}
-		detectedScope = s
+
+		if scopeOverride != "" {
+			if err := validateScopeURLMatch(scopeOverride, reqURL); err != nil {
+				return nil, fmt.Errorf("scope/URL mismatch: %w", err)
+			}
+		}
+
+		opts.Scope = detectedScope
 	}
 
-	if scopeOverride != "" {
-		if err := validateScopeURLMatch(scopeOverride, reqURL); err != nil {
-			return nil, fmt.Errorf("scope/URL mismatch: %w", err)
-		}
-	}
-
-	opts.Scope = detectedScope
-
-	opts.SkipAuth = client.ShouldSkipAuth(reqURL, opts.Headers, false)
+	opts.SkipAuth = controls.NoAuth || client.ShouldSkipAuth(reqURL, opts.Headers, false)
 
 	if !opts.SkipAuth {
 		tp, err := getOrCreateTokenProvider()
@@ -202,7 +276,7 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		opts.TokenProvider = tp
 	}
 
-	httpClient := getOrCreateHTTPClient(opts.TokenProvider)
+	httpClient := getOrCreateHTTPClient(opts.TokenProvider, controls.Timeout)
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
@@ -230,6 +304,34 @@ func executeMCPRequest(ctx context.Context, method, reqURL, body, scopeOverride 
 		Headers:    respHeaders,
 		Body:       string(bodyBytes),
 	}, nil
+}
+
+func mcpRequestControlToolOptions() []mcp.ToolOption {
+	return []mcp.ToolOption{
+		mcp.WithInteger("timeoutSeconds", mcp.Description("Request timeout in seconds, from 1 to 600")),
+		mcp.WithInteger("retry", mcp.Description("Retry attempts for transient errors, from 1 to 10")),
+		mcp.WithInteger("maxResponseSizeBytes", mcp.Description("Maximum response size in bytes, from 1 to 52428800")),
+		mcp.WithBoolean("noAuth", mcp.Description("Skip Azure bearer token authentication for this request")),
+	}
+}
+
+func mcpNoBodyToolOptions() []mcp.ToolOption {
+	opts := []mcp.ToolOption{
+		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+	}
+	return append(opts, mcpRequestControlToolOptions()...)
+}
+
+func mcpBodyToolOptions() []mcp.ToolOption {
+	opts := []mcp.ToolOption{
+		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
+		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+	}
+	return append(opts, mcpRequestControlToolOptions()...)
 }
 
 // parseHeaders extracts custom headers from MCP tool arguments.
@@ -303,8 +405,12 @@ func mcpHandlerFactory(method string, hasBody, stripResponseBody bool) azdext.MC
 		if err != nil {
 			return azdext.MCPErrorResult("%s", err.Error()), nil
 		}
+		controls, err := parseMCPRequestControls(args)
+		if err != nil {
+			return azdext.MCPErrorResult("%s", err.Error()), nil
+		}
 
-		resp, err := executeMCPRequest(ctx, method, url, body, scopeOverride, headers)
+		resp, err := executeMCPRequest(ctx, method, url, body, scopeOverride, headers, controls)
 		if err != nil {
 			return azdext.MCPErrorResult("%s", err.Error()), nil
 		}
@@ -322,7 +428,8 @@ You can execute authenticated HTTP requests against Azure and other REST APIs.
 OAuth scopes are automatically detected from the URL for known Azure services
 (management.azure.com, graph.microsoft.com, etc.). Use the scope parameter
 to override when needed. All requests include Azure bearer token authentication
-by default.`
+by default. Use timeoutSeconds, retry, maxResponseSizeBytes, and noAuth to
+tune one request when needed.`
 
 func newMCPServer() *server.MCPServer {
 	policy := getMCPSecurityPolicy()
@@ -337,9 +444,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated GET request against an Azure or REST API endpoint",
 			ReadOnly:    true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpNoBodyToolOptions()...,
 	)
 
 	// POST
@@ -348,10 +453,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated POST request against an Azure or REST API endpoint",
 			Destructive: true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpBodyToolOptions()...,
 	)
 
 	// PUT
@@ -360,10 +462,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated PUT request against an Azure or REST API endpoint",
 			Idempotent:  true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpBodyToolOptions()...,
 	)
 
 	// PATCH
@@ -372,10 +471,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated PATCH request against an Azure or REST API endpoint",
 			Destructive: true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpBodyToolOptions()...,
 	)
 
 	// DELETE - destructive
@@ -384,9 +480,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated DELETE request against an Azure or REST API endpoint",
 			Destructive: true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpNoBodyToolOptions()...,
 	)
 
 	// HEAD - readonly
@@ -395,9 +489,7 @@ func newMCPServer() *server.MCPServer {
 			Description: "Execute an authenticated HEAD request to retrieve response headers without body",
 			ReadOnly:    true,
 		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		mcpNoBodyToolOptions()...,
 	)
 
 	return builder.Build()
