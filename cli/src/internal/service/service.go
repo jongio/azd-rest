@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -187,7 +188,20 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
+	// When --include is set, prepend the HTTP status line and response headers
+	// to the output (curl -i style). Sensitive header values are redacted.
+	var headerBlock string
+	if cfg.Include {
+		headerBlock = buildResponseHeaderBlock(resp)
+	}
+
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
+		if cfg.Include {
+			data := make([]byte, 0, len(headerBlock)+len(resp.Body))
+			data = append(data, headerBlock...)
+			data = append(data, resp.Body...)
+			return formatter.WriteRawOutput(data, cfg.OutputFile)
+		}
 		return formatter.WriteRawOutput(resp.Body, cfg.OutputFile)
 	}
 
@@ -196,7 +210,29 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return fmt.Errorf("failed to format response: %w", err)
 	}
 
-	return formatter.WriteOutput(formatted, cfg.OutputFile)
+	return formatter.WriteOutput(headerBlock+formatted, cfg.OutputFile)
+}
+
+// buildResponseHeaderBlock renders the HTTP status line and response headers as
+// a curl -i style block terminated by a blank line. Header keys are sorted for
+// deterministic output and sensitive values are redacted.
+func buildResponseHeaderBlock(resp *client.Response) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n", resp.Status)
+
+	keys := make([]string, 0, len(resp.Headers))
+	for key := range resp.Headers {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		for _, value := range resp.Headers[key] {
+			fmt.Fprintf(&b, "%s: %s\n", key, client.RedactSensitiveHeader(key, value))
+		}
+	}
+	b.WriteString("\n")
+	return b.String()
 }
 
 // RedactSensitiveHeader re-exports from client for MCP use.
