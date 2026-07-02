@@ -195,6 +195,7 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response). |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
+| `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 
 ### Advanced Options
@@ -448,6 +449,30 @@ Request completed in 234ms
   "value": [...]
 }
 ```
+
+---
+
+## Include Response Headers
+
+Use `--include` (or `-i`) to prepend the HTTP status line and response headers to the output, similar to `curl -i`. The header block is written to stdout ahead of the body, or to `--output-file` when that flag is set:
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --include
+```
+
+**Example:**
+```
+200 OK
+Content-Length: 1234
+Content-Type: application/json
+x-ms-request-id: 6f1c...
+
+{
+  "value": [...]
+}
+```
+
+Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
 
 ---
 
