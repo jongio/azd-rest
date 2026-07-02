@@ -35,6 +35,7 @@ var (
 	binary          bool
 	insecure        bool
 	timeout         time.Duration
+	maxTime         time.Duration
 	followRedirects bool
 	maxRedirects    int
 	maxPages        int
@@ -155,6 +156,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
+	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
@@ -195,6 +197,7 @@ func snapshotConfig() config.Config {
 		Binary:          binary,
 		Insecure:        insecure,
 		Timeout:         timeout,
+		MaxTime:         maxTime,
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,

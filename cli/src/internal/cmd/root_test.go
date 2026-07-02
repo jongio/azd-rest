@@ -38,6 +38,7 @@ func resetGlobalFlags() {
 	binary = false
 	insecure = false
 	timeout = defaults.Timeout
+	maxTime = defaults.MaxTime
 	followRedirects = defaults.FollowRedirects
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
