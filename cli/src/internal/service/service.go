@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -174,6 +175,14 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 	defer cleanup()
 
+	// --max-time bounds the whole operation (retries and pagination included).
+	// A value of zero leaves the context untouched, preserving prior behavior.
+	if cfg.MaxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cfg.MaxTime)
+		defer cancel()
+	}
+
 	httpClient := s.httpClientFactory(opts.TokenProvider, cfg.Insecure, cfg.Timeout)
 
 	if cfg.Paginate && cfg.Verbose {
@@ -182,6 +191,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
+		// Distinguish the overall budget from a per-attempt timeout: when the
+		// max-time context is the one that fired, ctx.Err() is non-nil here.
+		if cfg.MaxTime > 0 && ctx.Err() != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("overall time budget of %s exceeded (--max-time): %w", cfg.MaxTime, err)
+		}
 		return err
 	}
 
