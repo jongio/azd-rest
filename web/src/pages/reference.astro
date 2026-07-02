@@ -68,6 +68,7 @@ const base = import.meta.env.BASE_URL;
             </thead>
             <tbody>
               <tr><td><code>--header</code></td><td><code>-H</code></td><td>string[]</td><td>[]</td><td>Custom headers (repeatable). Format: <code>Key:Value</code></td></tr>
+              <tr><td><code>--url-param</code></td><td></td><td>string[]</td><td>[]</td><td>Set or append a URL query parameter (repeatable). Format: <code>key=value</code></td></tr>
               <tr><td><code>--data</code></td><td><code>-d</code></td><td>string</td><td>""</td><td>Request body (JSON string)</td></tr>
               <tr><td><code>--data-file</code></td><td></td><td>string</td><td>""</td><td>Read request body from file. Also accepts <code>@file</code> shorthand.</td></tr>
               <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>

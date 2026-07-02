@@ -12,6 +12,7 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	URLParams       []string
 	Headers         []string
 	Data            string
 	DataFile        string

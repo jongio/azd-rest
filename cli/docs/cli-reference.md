@@ -177,6 +177,7 @@ These flags are available for all HTTP method commands:
 | `--scope` | `-s` | string | (auto-detected) | OAuth scope for authentication. Auto-detected for Azure services if not provided. |
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
 | `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
+| `--url-param` | | string[] | [] | Set or append a URL query parameter (repeatable, format: `key=value`). |
 
 ### Request Configuration
 
@@ -313,6 +314,22 @@ azd rest get https://management.azure.com/subscriptions --api-version 2020-01-01
 
 azd rest get https://management.azure.com/subscriptions?api-version=2019-01-01 \
   --api-version 2020-01-01
+```
+
+### URL Query Parameters
+
+Use `--url-param key=value` to set or append query parameters without hand-encoding them into the URL. The flag is repeatable. The first use of a key replaces any existing value on the URL, and repeating the same key appends another value:
+
+```bash
+# Add query parameters
+azd rest get https://management.azure.com/subscriptions \
+  --url-param api-version=2020-01-01 --url-param '$top=10'
+
+# Replace an existing value
+azd rest get "https://api.example.com/items?filter=all" --url-param filter=active
+
+# Repeat a key to send multiple values
+azd rest get https://api.example.com/items --url-param tag=a --url-param tag=b
 ```
 
 ### No Authentication

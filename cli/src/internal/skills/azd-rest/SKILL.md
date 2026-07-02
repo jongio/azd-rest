@@ -36,6 +36,7 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
+| `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
