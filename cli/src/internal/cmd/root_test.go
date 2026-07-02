@@ -287,7 +287,7 @@ func TestBuildRequestOptions_URLParamRepeatedKeyAppends(t *testing.T) {
 func TestBuildRequestOptions_URLParamInvalidFormat(t *testing.T) {
 	resetGlobalFlags()
 	noAuth = true
-	urlParams = []string{"noequalsign"}
+	urlParams = []string{"no-equals-sign"}
 
 	_, err := buildRequestOptions("GET", "https://api.example.com/items")
 
