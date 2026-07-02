@@ -24,6 +24,7 @@ var (
 	scope           string
 	noAuth          bool
 	apiVersion      string
+	urlParams       []string
 	headers         []string
 	data            string
 	dataFile        string
@@ -144,6 +145,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringVar(&apiVersion, "api-version", "", "Set or replace the api-version query parameter")
+	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
@@ -184,6 +186,7 @@ func snapshotConfig() config.Config {
 		Scope:           scope,
 		NoAuth:          noAuth,
 		APIVersion:      apiVersion,
+		URLParams:       urlParams,
 		Headers:         headers,
 		Data:            data,
 		DataFile:        dataFile,

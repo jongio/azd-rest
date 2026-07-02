@@ -27,6 +27,7 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	urlParams = []string{}
 	headers = []string{}
 	data = ""
 	dataFile = ""
@@ -248,6 +249,50 @@ func TestBuildRequestOptions_APIVersionReplacesExistingValue(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamAddsQueryParameter(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"$top=10"}
+
+	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://management.azure.com/subscriptions?%24top=10", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamReplacesExistingValue(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"filter=active"}
+
+	opts, err := buildRequestOptions("GET", "https://api.example.com/items?filter=all")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/items?filter=active", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamRepeatedKeyAppends(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"tag=a", "tag=b"}
+
+	opts, err := buildRequestOptions("GET", "https://api.example.com/items")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/items?tag=a&tag=b", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamInvalidFormat(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"no-equals-sign"}
+
+	_, err := buildRequestOptions("GET", "https://api.example.com/items")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --url-param format")
 }
 
 func TestBuildRequestOptions_AllFlags(t *testing.T) {
