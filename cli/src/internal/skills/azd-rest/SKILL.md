@@ -35,6 +35,7 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 |------|-------|---------|-------------|
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
+| `--client-request-id` | | "" | Set the x-ms-client-request-id header for Azure request correlation (pass without a value to generate a random ID) |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
@@ -115,6 +116,10 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 
 # Public API without auth
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Correlate a call for an Azure support request
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
 
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
