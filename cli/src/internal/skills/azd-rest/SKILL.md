@@ -87,6 +87,14 @@ azd-rest includes an MCP server for AI assistant integration:
 azd rest mcp serve
 ```
 
+Use `--read-only` to expose only the read tools (`rest_get`, `rest_head`). The
+mutating tools (`rest_post`, `rest_put`, `rest_patch`, `rest_delete`) are omitted
+from the tool surface entirely, so an assistant cannot make write calls:
+
+```bash
+azd rest mcp serve --read-only
+```
+
 ## Examples
 
 ```bash
