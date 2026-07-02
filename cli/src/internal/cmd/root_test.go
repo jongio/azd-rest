@@ -519,7 +519,7 @@ func TestExecuteRequest_SuccessPath_WithFileBody(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "body.json")
-	require.NoError(t, os.WriteFile(tmpFile, []byte(`{"send":"this"}`), 0600))
+	require.NoError(t, os.WriteFile(tmpFile, []byte(`{"send":"this"}`), 0o600))
 	dataFile = tmpFile
 
 	cmd := &cobra.Command{}
@@ -582,14 +582,19 @@ func TestNewMCPCommand_Structure(t *testing.T) {
 
 	// Verify serve subcommand exists
 	subCmds := cmd.Commands()
-	found := false
+	var serveCmd *cobra.Command
 	for _, sub := range subCmds {
 		if sub.Use == "serve" {
-			found = true
+			serveCmd = sub
 			break
 		}
 	}
-	assert.True(t, found, "serve subcommand should exist")
+	require.NotNil(t, serveCmd, "serve subcommand should exist")
+
+	// Verify the --read-only flag is registered on serve.
+	flag := serveCmd.Flags().Lookup("read-only")
+	require.NotNil(t, flag, "serve should expose a --read-only flag")
+	assert.Equal(t, "false", flag.DefValue, "--read-only should default to false")
 }
 
 func TestNewRootCmd_PersistentPreRun_TraceparentInjection(t *testing.T) {
