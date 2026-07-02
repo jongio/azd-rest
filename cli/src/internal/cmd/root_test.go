@@ -37,6 +37,7 @@ func resetGlobalFlags() {
 	retry = defaults.Retry
 	binary = false
 	insecure = false
+	silent = false
 	timeout = defaults.Timeout
 	followRedirects = defaults.FollowRedirects
 	maxRedirects = defaults.MaxRedirects
@@ -67,6 +68,23 @@ func TestNewRootCmd(t *testing.T) {
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
+}
+
+func TestNewRootCmd_SilentFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("silent")
+	require.NotNil(t, flag, "--silent persistent flag should be registered")
+	assert.Equal(t, "false", flag.DefValue, "--silent should default to false")
+	assert.Empty(t, flag.Shorthand, "--silent should have no short alias")
+}
+
+func TestSnapshotConfig_Silent(t *testing.T) {
+	resetGlobalFlags()
+	silent = true
+	cfg := snapshotConfig()
+	assert.True(t, cfg.Silent, "snapshotConfig should carry the silent flag")
 }
 
 func TestBuildRequestOptions_Headers(t *testing.T) {
@@ -519,7 +537,7 @@ func TestExecuteRequest_SuccessPath_WithFileBody(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "body.json")
-	require.NoError(t, os.WriteFile(tmpFile, []byte(`{"send":"this"}`), 0600))
+	require.NoError(t, os.WriteFile(tmpFile, []byte(`{"send":"this"}`), 0o600))
 	dataFile = tmpFile
 
 	cmd := &cobra.Command{}
