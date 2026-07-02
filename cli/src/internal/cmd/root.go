@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
+	"github.com/google/uuid"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
@@ -24,6 +25,7 @@ var (
 	scope           string
 	noAuth          bool
 	apiVersion      string
+	clientRequestID string
 	headers         []string
 	data            string
 	dataFile        string
@@ -144,6 +146,9 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringVar(&apiVersion, "api-version", "", "Set or replace the api-version query parameter")
+	rootCmd.PersistentFlags().StringVar(&clientRequestID, "client-request-id", "", "Set the x-ms-client-request-id header for Azure request correlation. Pass the flag without a value to generate a random ID.")
+	// Passing --client-request-id without a value generates a fresh ID for this invocation.
+	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
@@ -184,6 +189,7 @@ func snapshotConfig() config.Config {
 		Scope:           scope,
 		NoAuth:          noAuth,
 		APIVersion:      apiVersion,
+		ClientRequestID: clientRequestID,
 		Headers:         headers,
 		Data:            data,
 		DataFile:        dataFile,
