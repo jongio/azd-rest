@@ -15,6 +15,7 @@ import (
 	"github.com/jongio/azd-rest/src/internal/skills"
 	"github.com/jongio/azd-rest/src/internal/version"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // Global flags - retained for cobra binding; snapshotted into config.Config
@@ -122,6 +123,17 @@ Examples:
   azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`,
 	})
 
+	// Capture the SDK-provided persistent flags so environment-variable defaults
+	// are applied only to the extension's own flags (#172).
+	sdkFlagNames := map[string]bool{}
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		sdkFlagNames[f.Name] = true
+	})
+
+	// extensionFlagNames is populated after the extension flags are registered
+	// below; the PersistentPreRunE closure reads it at execution time.
+	var extensionFlagNames []string
+
 	// Chain extension-specific PersistentPreRunE after SDK's built-in one
 	sdkPreRunE := rootCmd.PersistentPreRunE
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -129,6 +141,11 @@ Examples:
 			if err := sdkPreRunE(cmd, args); err != nil {
 				return err
 			}
+		}
+		// Apply AZD_REST_<FLAG> environment defaults before any request runs, so
+		// an invalid value fails fast with exit code 2 (#172).
+		if err := applyEnvDefaults(cmd.Flags(), extensionFlagNames, os.LookupEnv); err != nil {
+			return err
 		}
 		// Install Copilot skill
 		if err := skills.InstallSkill(); err != nil {
@@ -159,6 +176,14 @@ Examples:
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+
+	// Record the extension's own persistent flag names (those not added by the
+	// SDK) so environment-variable defaults apply only to them (#172).
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if !sdkFlagNames[f.Name] {
+			extensionFlagNames = append(extensionFlagNames, f.Name)
+		}
+	})
 
 	// Add HTTP method subcommands from the table (#68)
 	for _, def := range httpMethods {
