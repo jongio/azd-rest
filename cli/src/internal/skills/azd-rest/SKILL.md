@@ -36,6 +36,7 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
+| `--header-file` | | "" | Read headers from a file (one Key: Value per line; blank lines and # comments ignored; -H overrides) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
@@ -119,6 +120,9 @@ azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
+
+# Reuse a header set from a file
+azd rest get https://api.example.com/widgets --header-file headers.txt
 
 # Verbose output with timing details
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose

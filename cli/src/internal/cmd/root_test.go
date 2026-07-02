@@ -28,6 +28,7 @@ func resetGlobalFlags() {
 	noAuth = false
 	apiVersion = ""
 	headers = []string{}
+	headerFile = ""
 	data = ""
 	dataFile = ""
 	outputFile = ""

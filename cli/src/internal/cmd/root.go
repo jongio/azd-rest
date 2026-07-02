@@ -25,6 +25,7 @@ var (
 	noAuth          bool
 	apiVersion      string
 	headers         []string
+	headerFile      string
 	data            string
 	dataFile        string
 	outputFile      string
@@ -145,6 +146,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringVar(&apiVersion, "api-version", "", "Set or replace the api-version query parameter")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
+	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
@@ -185,6 +187,7 @@ func snapshotConfig() config.Config {
 		NoAuth:          noAuth,
 		APIVersion:      apiVersion,
 		Headers:         headers,
+		HeaderFile:      headerFile,
 		Data:            data,
 		DataFile:        dataFile,
 		OutputFile:      outputFile,

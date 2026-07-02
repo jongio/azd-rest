@@ -13,6 +13,7 @@ type Config struct {
 	NoAuth          bool
 	APIVersion      string
 	Headers         []string
+	HeaderFile      string
 	Data            string
 	DataFile        string
 	OutputFile      string
