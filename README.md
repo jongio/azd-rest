@@ -101,6 +101,9 @@ azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
 # Microsoft Graph
 azd rest get https://graph.microsoft.com/v1.0/me
 
+# Show the signed-in Azure identity (tenant, app, scopes, expiry)
+azd rest whoami
+
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
