@@ -88,11 +88,33 @@ azd-rest includes an MCP server for AI assistant integration:
 azd rest mcp serve
 ```
 
+## Resource Graph
+
+Run an Azure Resource Graph query with `azd rest graph` using Kusto Query
+Language (KQL). Authentication and the api-version are handled for you, and the
+query runs against every subscription you can access unless you narrow it with
+`--subscription` or `--management-group`.
+
+```bash
+azd rest graph "Resources | summarize count() by type"
+```
+
+| Flag | Description |
+|------|-------------|
+| `--subscription` | Subscription ID to scope the query (repeatable) |
+| `--management-group` | Management group ID to scope the query (repeatable) |
+| `--top` | Maximum number of rows to return |
+| `--skip` | Number of rows to skip |
+| `--skip-token` | Continuation token from a previous response |
+
 ## Examples
 
 ```bash
 # List Azure subscriptions
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
+
+# Count resources by type with Resource Graph
+azd rest graph "Resources | summarize count() by type"
 
 # Get Key Vault secret
 azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4

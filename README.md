@@ -101,6 +101,9 @@ azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
 # Microsoft Graph
 azd rest get https://graph.microsoft.com/v1.0/me
 
+# Azure Resource Graph (KQL) query
+azd rest graph "Resources | summarize count() by type"
+
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
