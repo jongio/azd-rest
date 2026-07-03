@@ -88,6 +88,19 @@ azd-rest includes an MCP server for AI assistant integration:
 azd rest mcp serve
 ```
 
+## Diagnostics
+
+When a request fails with an auth error, run the doctor to find out whether the
+problem is your credentials, your scope, or something else:
+
+```bash
+azd rest doctor
+```
+
+It checks scope detection, acquires a token for the management API, and decodes
+the token's tenant and expiry. Add `--format json` for machine-readable output.
+The command exits non-zero if any check fails, so you can gate scripts on it.
+
 ## Examples
 
 ```bash
@@ -129,4 +142,7 @@ azd rest get https://api.myservice.com/data --scope https://myservice.com/.defau
 
 # Paginate through results
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --paginate
+
+# Diagnose authentication issues
+azd rest doctor
 ```
