@@ -226,6 +226,16 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return formatter.WriteRawOutput(resp.Body, cfg.OutputFile)
 	}
 
+	// azd-rest renders formats that azd-core's formatter does not support
+	// (currently "table"), then delegates everything else to azd-core.
+	if cfg.OutputFormat == "table" {
+		out, err := renderTable(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
 	formatted, err := formatter.Format(resp)
 	if err != nil {
 		return fmt.Errorf("failed to format response: %w", err)

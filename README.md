@@ -107,6 +107,9 @@ azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
+
+# Table output (works with arrays and ARM value[] responses)
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.

@@ -40,7 +40,7 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
-| `--format` | `-f` | auto | Output format: auto, json, raw |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -123,6 +123,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
 
 # Verbose output with timing details
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose
+
+# Table output for arrays and ARM value[] responses
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
 
 # Custom scope for non-Azure endpoint
 azd rest get https://api.myservice.com/data --scope https://myservice.com/.default
