@@ -203,6 +203,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprintf(os.Stderr, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if err := validateColorMode(cfg.Color); err != nil {
+		return err
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -229,6 +233,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	formatted, err := formatter.Format(resp)
 	if err != nil {
 		return fmt.Errorf("failed to format response: %w", err)
+	}
+
+	if shouldColorize(cfg, resp) {
+		fmt.Print(colorizeJSON(formatted))
+		return nil
 	}
 
 	return formatter.WriteOutput(formatted, cfg.OutputFile)
