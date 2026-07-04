@@ -220,6 +220,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	if cfg.ShowThrottle {
+		writeThrottleInfo(os.Stderr, resp.Headers)
+	}
+
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
