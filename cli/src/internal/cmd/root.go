@@ -43,6 +43,7 @@ var (
 	maxRedirects    int
 	maxPages        int
 	maxResponseSize int64
+	include         bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -182,6 +183,7 @@ Examples:
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -234,6 +236,7 @@ func snapshotConfig() config.Config {
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
+		Include:         include,
 	}
 }
 
