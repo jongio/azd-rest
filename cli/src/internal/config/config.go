@@ -28,6 +28,7 @@ type Config struct {
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	WriteOut        string
 }
 
 // Defaults returns a Config populated with the default flag values.

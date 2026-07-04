@@ -88,6 +88,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--output-file</code></td><td></td><td>string</td><td>""</td><td>Write response to file</td></tr>
               <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
               <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>bool</td><td>false</td><td>Show headers, timing, request details (tokens redacted)</td></tr>
+              <tr><td><code>--write-out</code></td><td><code>-w</code></td><td>string</td><td>""</td><td>Print curl-style response metadata to stderr. See <a href="#write-out">Write-Out Variables</a>.</td></tr>
             </tbody>
           </table>
         </div>
@@ -106,9 +107,41 @@ const base = import.meta.env.BASE_URL;
             </tbody>
           </table>
         </div>
-      </section>
 
-      <!-- Version Command -->
+        <h3 id="write-out">Write-Out Variables</h3>
+        <p>
+          <code>--write-out</code> / <code>-w</code> prints a curl-style template to stderr after
+          the request completes, so stdout stays clean for the response body. Use it in scripts and
+          CI to capture the status code, timing, or size without parsing verbose output. The
+          escape sequences <code>\n</code> and <code>\t</code> expand to newline and tab. Unknown
+          <code>%&#123;...&#125;</code> tokens are left as-is.
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Variable</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>%&#123;http_code&#125;</code></td><td>Response status code (e.g. <code>200</code>)</td></tr>
+              <tr><td><code>%&#123;http_status&#125;</code></td><td>Full status line (e.g. <code>200 OK</code>)</td></tr>
+              <tr><td><code>%&#123;time_total&#125;</code></td><td>Total request time in seconds</td></tr>
+              <tr><td><code>%&#123;time_total_ms&#125;</code></td><td>Total request time in milliseconds</td></tr>
+              <tr><td><code>%&#123;size_download&#125;</code></td><td>Response body size in bytes</td></tr>
+              <tr><td><code>%&#123;content_type&#125;</code></td><td>Response <code>Content-Type</code></td></tr>
+              <tr><td><code>%&#123;method&#125;</code></td><td>Request method</td></tr>
+              <tr><td><code>%&#123;url&#125;</code></td><td>Final request URL</td></tr>
+              <tr><td><code>%&#123;header.NAME&#125;</code></td><td>Named response header value (sensitive headers redacted)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <CodeBlock code={`# Print only the status code
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --write-out "%{http_code}\\n" > body.json
+
+# Status and timing on one line
+azd rest get https://graph.microsoft.com/v1.0/me \\
+  --write-out "%{http_code} %{time_total}s %{size_download}B\\n"`} language="bash" />
+      </section>
       <section class="section">
         <h2>Version Command</h2>
         <CodeBlock code={`# Default output

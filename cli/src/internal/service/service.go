@@ -220,6 +220,20 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	if err := s.writeResponseOutput(cfg, resp); err != nil {
+		return err
+	}
+
+	if cfg.WriteOut != "" {
+		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+	}
+
+	return nil
+}
+
+// writeResponseOutput renders the response body to stdout or --output-file,
+// choosing the raw path for binary content and the formatter path otherwise.
+func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
