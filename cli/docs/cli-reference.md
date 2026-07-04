@@ -199,6 +199,7 @@ These flags are available for all HTTP method commands:
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
+| `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
 ### Advanced Options
 
@@ -565,6 +566,23 @@ Request completed in 234ms
 {
   "value": [...]
 }
+```
+
+---
+
+## Silent Mode
+
+Use `--silent` to suppress non-error diagnostic messages that `azd rest` writes to stderr. This covers the insecure TLS warning, the "no scope found" warning, and the pagination notice. Errors, exit codes, and the response body on stdout are unaffected, so you never lose a genuine failure by silencing diagnostics.
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --silent
+```
+
+This is useful in CI logs and scripts where advisory output is noise. Unlike redirecting stderr, `--silent` keeps real error messages visible.
+
+```bash
+# Quiet output in a pipeline, errors still surface
+azd rest get https://api.example.com/data --insecure --silent > data.json
 ```
 
 ---

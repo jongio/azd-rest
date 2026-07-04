@@ -23,6 +23,7 @@ type Config struct {
 	Retry           int
 	Binary          bool
 	Insecure        bool
+	Silent          bool
 	Timeout         time.Duration
 	MaxTime         time.Duration
 	FollowRedirects bool
