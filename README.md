@@ -107,6 +107,9 @@ azd rest whoami
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
+# Preview the detected scope without sending a request
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
