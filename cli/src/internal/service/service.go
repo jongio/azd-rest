@@ -5,7 +5,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sort"
@@ -49,6 +51,17 @@ func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout ti
 	return client.NewClient(tp, insecure, timeout)
 }
 
+// writeDiagnostic writes a non-error advisory message (warning or notice) to w
+// unless silent mode is enabled. It is only for informational diagnostics;
+// errors and response output must never be routed through it, so silencing
+// diagnostics can never hide a genuine failure (#171).
+func writeDiagnostic(w io.Writer, silent bool, format string, args ...any) {
+	if silent {
+		return
+	}
+	fmt.Fprintf(w, format, args...)
+}
+
 func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 	if apiVersion == "" {
 		return rawURL, nil
@@ -63,6 +76,36 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 	return parsed.String(), nil
 }
 
+// applyURLParams sets or appends query parameters from repeatable key=value flags.
+// The first occurrence of a key replaces any existing value on the URL; further
+// occurrences of the same key append, so multi-valued parameters are possible.
+func applyURLParams(rawURL string, params []string) (string, error) {
+	if len(params) == 0 {
+		return rawURL, nil
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL for --url-param: %w", err)
+	}
+	query := parsed.Query()
+	seen := make(map[string]bool)
+	for _, param := range params {
+		parts := strings.SplitN(param, "=", 2)
+		if len(parts) != 2 || parts[0] == "" {
+			return "", fmt.Errorf("invalid --url-param format: %s (expected key=value)", param)
+		}
+		key, value := parts[0], parts[1]
+		if seen[key] {
+			query.Add(key, value)
+		} else {
+			query.Set(key, value)
+			seen[key] = true
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
 // The caller owns the returned Body (if it is an *os.File, it must be closed).
 //
@@ -72,6 +115,11 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 // this - call it on error paths. On success paths the caller should defer it.
 func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url string) (client.RequestOptions, func(), error) {
 	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
+	if err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+
+	requestURL, err = applyURLParams(requestURL, cfg.URLParams)
 	if err != nil {
 		return client.RequestOptions{}, nil, err
 	}
@@ -142,7 +190,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Scope = detectedScope
 
 		if opts.Scope == "" && auth.IsAzureHost(requestURL) {
-			fmt.Fprintf(os.Stderr, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
+			writeDiagnostic(os.Stderr, cfg.Silent, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
 		}
 	}
 
@@ -166,7 +214,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method, url string) error {
 	// Warn prominently when TLS verification is disabled.
 	if cfg.Insecure {
-		fmt.Fprintf(os.Stderr, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
+		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
@@ -175,14 +223,27 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 	defer cleanup()
 
+	// --max-time bounds the whole operation (retries and pagination included).
+	// A value of zero leaves the context untouched, preserving prior behavior.
+	if cfg.MaxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cfg.MaxTime)
+		defer cancel()
+	}
+
 	httpClient := s.httpClientFactory(opts.TokenProvider, cfg.Insecure, cfg.Timeout)
 
 	if cfg.Paginate && cfg.Verbose {
-		fmt.Fprintf(os.Stderr, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
+		writeDiagnostic(os.Stderr, cfg.Silent, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
 	}
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
+		// Distinguish the overall budget from a per-attempt timeout: when the
+		// max-time context is the one that fired, ctx.Err() is non-nil here.
+		if cfg.MaxTime > 0 && ctx.Err() != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("overall time budget of %s exceeded (--max-time): %w", cfg.MaxTime, err)
+		}
 		return err
 	}
 

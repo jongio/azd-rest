@@ -324,7 +324,7 @@ OAuth scopes are automatically detected from the URL for known Azure services
 to override when needed. All requests include Azure bearer token authentication
 by default.`
 
-func newMCPServer() *server.MCPServer {
+func newMCPServer(readOnly bool) *server.MCPServer {
 	policy := getMCPSecurityPolicy()
 	builder := azdext.NewMCPServerBuilder("azd-rest", version.Version).
 		WithRateLimit(10, 1.0).
@@ -332,7 +332,8 @@ func newMCPServer() *server.MCPServer {
 		WithSecurityPolicy(policy)
 
 	// GET - readonly
-	builder.AddTool("rest_get", handleNoBodyMethod("GET"),
+	builder.AddTool(
+		"rest_get", handleNoBodyMethod("GET"),
 		azdext.MCPToolOptions{
 			Description: "Execute an authenticated GET request against an Azure or REST API endpoint",
 			ReadOnly:    true,
@@ -342,55 +343,64 @@ func newMCPServer() *server.MCPServer {
 		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
 	)
 
-	// POST
-	builder.AddTool("rest_post", handleBodyMethod("POST"),
-		azdext.MCPToolOptions{
-			Description: "Execute an authenticated POST request against an Azure or REST API endpoint",
-			Destructive: true,
-		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	)
+	// Mutating tools are skipped in read-only mode so that no write tool exists
+	// at the tool surface, not merely guarded at call time (#170).
+	if !readOnly {
+		// POST
+		builder.AddTool(
+			"rest_post", handleBodyMethod("POST"),
+			azdext.MCPToolOptions{
+				Description: "Execute an authenticated POST request against an Azure or REST API endpoint",
+				Destructive: true,
+			},
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("body", mcp.Description("Request body (JSON string)")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		)
 
-	// PUT
-	builder.AddTool("rest_put", handleBodyMethod("PUT"),
-		azdext.MCPToolOptions{
-			Description: "Execute an authenticated PUT request against an Azure or REST API endpoint",
-			Idempotent:  true,
-		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	)
+		// PUT
+		builder.AddTool(
+			"rest_put", handleBodyMethod("PUT"),
+			azdext.MCPToolOptions{
+				Description: "Execute an authenticated PUT request against an Azure or REST API endpoint",
+				Idempotent:  true,
+			},
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("body", mcp.Description("Request body (JSON string)")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		)
 
-	// PATCH
-	builder.AddTool("rest_patch", handleBodyMethod("PATCH"),
-		azdext.MCPToolOptions{
-			Description: "Execute an authenticated PATCH request against an Azure or REST API endpoint",
-			Destructive: true,
-		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	)
+		// PATCH
+		builder.AddTool(
+			"rest_patch", handleBodyMethod("PATCH"),
+			azdext.MCPToolOptions{
+				Description: "Execute an authenticated PATCH request against an Azure or REST API endpoint",
+				Destructive: true,
+			},
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("body", mcp.Description("Request body (JSON string)")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		)
 
-	// DELETE - destructive
-	builder.AddTool("rest_delete", handleNoBodyMethod("DELETE"),
-		azdext.MCPToolOptions{
-			Description: "Execute an authenticated DELETE request against an Azure or REST API endpoint",
-			Destructive: true,
-		},
-		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
-		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
-		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	)
+		// DELETE - destructive
+		builder.AddTool(
+			"rest_delete", handleNoBodyMethod("DELETE"),
+			azdext.MCPToolOptions{
+				Description: "Execute an authenticated DELETE request against an Azure or REST API endpoint",
+				Destructive: true,
+			},
+			mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
+			mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
+			mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
+		)
+	}
 
 	// HEAD - readonly
-	builder.AddTool("rest_head", handleHead,
+	builder.AddTool(
+		"rest_head", handleHead,
 		azdext.MCPToolOptions{
 			Description: "Execute an authenticated HEAD request to retrieve response headers without body",
 			ReadOnly:    true,
@@ -411,15 +421,18 @@ func NewMCPCommand() *cobra.Command {
 		Hidden: true,
 	}
 
+	var readOnly bool
 	serveCmd := &cobra.Command{
 		Use:    "serve",
 		Short:  "Start MCP stdio server",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s := newMCPServer()
+			s := newMCPServer(readOnly)
 			return server.ServeStdio(s)
 		},
 	}
+	serveCmd.Flags().BoolVar(&readOnly, "read-only", false,
+		"Expose only read-only tools (rest_get, rest_head); omit the mutating POST, PUT, PATCH, and DELETE tools")
 
 	mcpCmd.AddCommand(serveCmd)
 	return mcpCmd
