@@ -127,6 +127,19 @@ azd rest graph "Resources | summarize count() by type"
 | `--skip` | Number of rows to skip |
 | `--skip-token` | Continuation token from a previous response |
 
+## Identity
+
+Check which Azure identity your requests use:
+
+```bash
+azd rest whoami
+```
+
+This acquires a token, decodes it locally, and prints the tenant, object ID,
+app ID, audience, granted scopes, and expiry. The raw token is never printed.
+Use `--scope` to inspect a token for a different service and `--format json`
+for machine-readable output.
+
 ## Examples
 
 ```bash
@@ -174,6 +187,9 @@ azd rest get https://api.myservice.com/data --scope https://myservice.com/.defau
 
 # Paginate through results
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --paginate
+
+# Show the signed-in Azure identity
+azd rest whoami
 
 # Cap the whole call, including retries and pagination
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \

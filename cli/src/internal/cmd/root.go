@@ -206,6 +206,7 @@ Examples:
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
 		NewGraphCommand(),
+		NewWhoamiCommand(),
 	)
 
 	return rootCmd
