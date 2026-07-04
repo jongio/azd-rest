@@ -11,6 +11,8 @@ import "time"
 type Config struct {
 	Scope           string
 	NoAuth          bool
+	APIVersion      string
+	URLParams       []string
 	Headers         []string
 	Data            string
 	DataFile        string
@@ -21,7 +23,9 @@ type Config struct {
 	Retry           int
 	Binary          bool
 	Insecure        bool
+	Silent          bool
 	Timeout         time.Duration
+	MaxTime         time.Duration
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int

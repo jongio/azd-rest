@@ -29,6 +29,8 @@ azd rest <method> <url> [flags]
 
 Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`
 
+Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for a URL without sending a request.
+
 ## Flags
 
 | Flag | Short | Default | Description |
@@ -36,6 +38,7 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
+| `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
@@ -45,7 +48,8 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--retry` | | 3 | Retry attempts with exponential backoff |
 | `--binary` | | false | Stream as binary without transformation |
 | `--insecure` | `-k` | false | Skip TLS certificate verification |
-| `--timeout` | `-t` | 30s | Request timeout (e.g., 30s, 5m, 1h) |
+| `--timeout` | `-t` | 30s | Request timeout for a single attempt (e.g., 30s, 5m, 1h) |
+| `--max-time` | | 0 | Overall time budget across retries and pagination (0 disables the limit) |
 | `--follow-redirects` | | true | Follow HTTP redirects |
 | `--max-redirects` | | 10 | Maximum redirect hops |
 
@@ -96,6 +100,14 @@ MCP tools accept per-request controls:
 | `maxResponseSizeBytes` | 10485760 | Maximum response size up to 52428800 bytes |
 | `noAuth` | false | Skip Azure bearer token authentication |
 
+Use `--read-only` to expose only the read tools (`rest_get`, `rest_head`). The
+mutating tools (`rest_post`, `rest_put`, `rest_patch`, `rest_delete`) are omitted
+from the tool surface entirely, so an assistant cannot make write calls:
+
+```bash
+azd rest mcp serve --read-only
+```
+
 ## Examples
 
 ```bash
@@ -125,6 +137,9 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 # Public API without auth
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
+# Preview the detected scope without sending a request
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
@@ -137,4 +152,8 @@ azd rest get https://api.myservice.com/data --scope https://myservice.com/.defau
 
 # Paginate through results
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --paginate
+
+# Cap the whole call, including retries and pagination
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --paginate --max-time 20s
 ```

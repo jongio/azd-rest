@@ -97,7 +97,7 @@ func TestParseHeaders_BlockedHeaders(t *testing.T) {
 }
 
 func TestNewMCPServer_ToolsExposeRequestControls(t *testing.T) {
-	s := newMCPServer()
+	s := newMCPServer(false)
 	tools := s.ListTools()
 
 	for name, tool := range tools {
@@ -560,7 +560,7 @@ func TestHandleHead_BlockedHeader(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewMCPServer_RegistersAllTools(t *testing.T) {
-	s := newMCPServer()
+	s := newMCPServer(false)
 	tools := s.ListTools()
 
 	expectedTools := []string{
@@ -575,8 +575,27 @@ func TestNewMCPServer_RegistersAllTools(t *testing.T) {
 	}
 }
 
+func TestNewMCPServer_ReadOnly_OnlyReadTools(t *testing.T) {
+	s := newMCPServer(true)
+	tools := s.ListTools()
+
+	// Only the read-only tools are present.
+	expectedTools := []string{"rest_get", "rest_head"}
+	assert.Len(t, tools, len(expectedTools))
+	for _, name := range expectedTools {
+		_, exists := tools[name]
+		assert.True(t, exists, "read-only tool %q should be registered", name)
+	}
+
+	// Mutating tools are absent from the tool surface, not just guarded.
+	for _, name := range []string{"rest_post", "rest_put", "rest_patch", "rest_delete"} {
+		_, exists := tools[name]
+		assert.False(t, exists, "mutating tool %q must not be registered in read-only mode", name)
+	}
+}
+
 func TestNewMCPServer_ToolsHaveDescriptions(t *testing.T) {
-	s := newMCPServer()
+	s := newMCPServer(false)
 	tools := s.ListTools()
 
 	for name, tool := range tools {
@@ -586,7 +605,7 @@ func TestNewMCPServer_ToolsHaveDescriptions(t *testing.T) {
 }
 
 func TestNewMCPServer_ToolsRequireURL(t *testing.T) {
-	s := newMCPServer()
+	s := newMCPServer(false)
 	tools := s.ListTools()
 
 	for name, tool := range tools {
