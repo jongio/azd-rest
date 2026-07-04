@@ -27,6 +27,7 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	urlParams = []string{}
 	headers = []string{}
 	data = ""
 	dataFile = ""
@@ -39,6 +40,7 @@ func resetGlobalFlags() {
 	insecure = false
 	silent = false
 	timeout = defaults.Timeout
+	maxTime = defaults.MaxTime
 	followRedirects = defaults.FollowRedirects
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
@@ -64,7 +66,7 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
@@ -266,6 +268,50 @@ func TestBuildRequestOptions_APIVersionReplacesExistingValue(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamAddsQueryParameter(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"$top=10"}
+
+	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://management.azure.com/subscriptions?%24top=10", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamReplacesExistingValue(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"filter=active"}
+
+	opts, err := buildRequestOptions("GET", "https://api.example.com/items?filter=all")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/items?filter=active", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamRepeatedKeyAppends(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"tag=a", "tag=b"}
+
+	opts, err := buildRequestOptions("GET", "https://api.example.com/items")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/items?tag=a&tag=b", opts.URL)
+}
+
+func TestBuildRequestOptions_URLParamInvalidFormat(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	urlParams = []string{"no-equals-sign"}
+
+	_, err := buildRequestOptions("GET", "https://api.example.com/items")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --url-param format")
 }
 
 func TestBuildRequestOptions_AllFlags(t *testing.T) {
@@ -600,14 +646,19 @@ func TestNewMCPCommand_Structure(t *testing.T) {
 
 	// Verify serve subcommand exists
 	subCmds := cmd.Commands()
-	found := false
+	var serveCmd *cobra.Command
 	for _, sub := range subCmds {
 		if sub.Use == "serve" {
-			found = true
+			serveCmd = sub
 			break
 		}
 	}
-	assert.True(t, found, "serve subcommand should exist")
+	require.NotNil(t, serveCmd, "serve subcommand should exist")
+
+	// Verify the --read-only flag is registered on serve.
+	flag := serveCmd.Flags().Lookup("read-only")
+	require.NotNil(t, flag, "serve should expose a --read-only flag")
+	assert.Equal(t, "false", flag.DefValue, "--read-only should default to false")
 }
 
 func TestNewRootCmd_PersistentPreRun_TraceparentInjection(t *testing.T) {

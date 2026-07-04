@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -74,6 +75,36 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 	return parsed.String(), nil
 }
 
+// applyURLParams sets or appends query parameters from repeatable key=value flags.
+// The first occurrence of a key replaces any existing value on the URL; further
+// occurrences of the same key append, so multi-valued parameters are possible.
+func applyURLParams(rawURL string, params []string) (string, error) {
+	if len(params) == 0 {
+		return rawURL, nil
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL for --url-param: %w", err)
+	}
+	query := parsed.Query()
+	seen := make(map[string]bool)
+	for _, param := range params {
+		parts := strings.SplitN(param, "=", 2)
+		if len(parts) != 2 || parts[0] == "" {
+			return "", fmt.Errorf("invalid --url-param format: %s (expected key=value)", param)
+		}
+		key, value := parts[0], parts[1]
+		if seen[key] {
+			query.Add(key, value)
+		} else {
+			query.Set(key, value)
+			seen[key] = true
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
 // The caller owns the returned Body (if it is an *os.File, it must be closed).
 //
@@ -83,6 +114,11 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 // this - call it on error paths. On success paths the caller should defer it.
 func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url string) (client.RequestOptions, func(), error) {
 	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
+	if err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+
+	requestURL, err = applyURLParams(requestURL, cfg.URLParams)
 	if err != nil {
 		return client.RequestOptions{}, nil, err
 	}
@@ -186,6 +222,14 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 	defer cleanup()
 
+	// --max-time bounds the whole operation (retries and pagination included).
+	// A value of zero leaves the context untouched, preserving prior behavior.
+	if cfg.MaxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cfg.MaxTime)
+		defer cancel()
+	}
+
 	httpClient := s.httpClientFactory(opts.TokenProvider, cfg.Insecure, cfg.Timeout)
 
 	if cfg.Paginate && cfg.Verbose {
@@ -194,6 +238,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
+		// Distinguish the overall budget from a per-attempt timeout: when the
+		// max-time context is the one that fired, ctx.Err() is non-nil here.
+		if cfg.MaxTime > 0 && ctx.Err() != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("overall time budget of %s exceeded (--max-time): %w", cfg.MaxTime, err)
+		}
 		return err
 	}
 
