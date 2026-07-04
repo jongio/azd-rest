@@ -209,6 +209,35 @@ These flags are available for all HTTP method commands:
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 
+### Environment Variable Defaults
+
+Every global flag can take its default from an environment variable. This lets you set an option once for a shell session or CI job instead of repeating it on every call.
+
+The variable name is the flag name upper-cased, with dashes replaced by underscores, and prefixed with `AZD_REST_`:
+
+| Flag | Environment variable |
+|------|----------------------|
+| `--scope` | `AZD_REST_SCOPE` |
+| `--api-version` | `AZD_REST_API_VERSION` |
+| `--timeout` | `AZD_REST_TIMEOUT` |
+| `--retry` | `AZD_REST_RETRY` |
+| `--format` | `AZD_REST_FORMAT` |
+| `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
+
+Precedence is command line over environment over built-in default. A value passed on the command line always wins; an environment value is used only when the flag is not passed. An invalid value (for example `AZD_REST_RETRY=abc`) exits with code 2 and makes no request.
+
+```bash
+export AZD_REST_RETRY=5
+export AZD_REST_TIMEOUT=60s
+
+# Both calls use retry=5, timeout=60s without repeating the flags
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
+azd rest get https://management.azure.com/tenants?api-version=2020-01-01
+
+# Command line still overrides the environment
+azd rest get https://api.example.com/data --retry 1
+```
+
 ---
 
 ## `azd rest version`
