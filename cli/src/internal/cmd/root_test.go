@@ -43,6 +43,7 @@ func resetGlobalFlags() {
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
+	repeat = defaults.Repeat
 }
 
 func TestNewRootCmd(t *testing.T) {

@@ -203,6 +203,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprintf(os.Stderr, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if cfg.Repeat < 1 {
+		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -215,11 +219,21 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprintf(os.Stderr, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
 	}
 
+	if cfg.Repeat > 1 {
+		return s.executeRepeat(ctx, cfg, httpClient, opts)
+	}
+
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
 		return err
 	}
 
+	return writeResponse(cfg, resp)
+}
+
+// writeResponse renders a response to the configured output (stdout or file),
+// choosing raw output for binary content and the formatter for everything else.
+func writeResponse(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
