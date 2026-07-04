@@ -29,6 +29,8 @@ azd rest <method> <url> [flags]
 
 Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`
 
+Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for a URL without sending a request.
+
 ## Flags
 
 | Flag | Short | Default | Description |
@@ -46,7 +48,8 @@ Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `option
 | `--retry` | | 3 | Retry attempts with exponential backoff |
 | `--binary` | | false | Stream as binary without transformation |
 | `--insecure` | `-k` | false | Skip TLS certificate verification |
-| `--timeout` | `-t` | 30s | Request timeout (e.g., 30s, 5m, 1h) |
+| `--timeout` | `-t` | 30s | Request timeout for a single attempt (e.g., 30s, 5m, 1h) |
+| `--max-time` | | 0 | Overall time budget across retries and pagination (0 disables the limit) |
 | `--follow-redirects` | | true | Follow HTTP redirects |
 | `--max-redirects` | | 10 | Maximum redirect hops |
 
@@ -88,6 +91,36 @@ azd-rest includes an MCP server for AI assistant integration:
 azd rest mcp serve
 ```
 
+MCP tools accept per-request controls:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `timeoutSeconds` | 30 | Request timeout from 1 to 600 seconds |
+| `retry` | 3 | Retry attempts from 1 to 10 |
+| `maxResponseSizeBytes` | 10485760 | Maximum response size up to 52428800 bytes |
+| `noAuth` | false | Skip Azure bearer token authentication |
+
+Use `--read-only` to expose only the read tools (`rest_get`, `rest_head`). The
+mutating tools (`rest_post`, `rest_put`, `rest_patch`, `rest_delete`) are omitted
+from the tool surface entirely, so an assistant cannot make write calls:
+
+```bash
+azd rest mcp serve --read-only
+```
+
+## Identity
+
+Check which Azure identity your requests use:
+
+```bash
+azd rest whoami
+```
+
+This acquires a token, decodes it locally, and prints the tenant, object ID,
+app ID, audience, granted scopes, and expiry. The raw token is never printed.
+Use `--scope` to inspect a token for a different service and `--format json`
+for machine-readable output.
+
 ## Examples
 
 ```bash
@@ -117,6 +150,9 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 # Public API without auth
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
+# Preview the detected scope without sending a request
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
@@ -132,4 +168,11 @@ azd rest get https://api.myservice.com/data --scope https://myservice.com/.defau
 
 # Paginate through results
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --paginate
+
+# Show the signed-in Azure identity
+azd rest whoami
+
+# Cap the whole call, including retries and pagination
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --paginate --max-time 20s
 ```

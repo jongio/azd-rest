@@ -23,11 +23,14 @@ type Config struct {
 	Retry           int
 	Binary          bool
 	Insecure        bool
+	Silent          bool
 	Timeout         time.Duration
+	MaxTime         time.Duration
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	Include         bool
 }
 
 // Defaults returns a Config populated with the default flag values.

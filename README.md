@@ -101,8 +101,14 @@ azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
 # Microsoft Graph
 azd rest get https://graph.microsoft.com/v1.0/me
 
+# Show the signed-in Azure identity (tenant, app, scopes, expiry)
+azd rest whoami
+
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Preview the detected scope without sending a request
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
