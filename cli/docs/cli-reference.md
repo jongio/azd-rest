@@ -186,7 +186,8 @@ These flags are available for all HTTP method commands:
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
-| `--timeout` | `-t` | duration | 30s | Request timeout. Examples: `30s`, `5m`, `1h`. |
+| `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
+| `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
 
 ### Response Configuration
@@ -339,6 +340,22 @@ For public APIs that don't require authentication, use `--no-auth`:
 ```bash
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 ```
+
+### Timeouts and Overall Budget
+
+`--timeout` bounds a single request attempt. `--max-time` bounds the entire operation, including retries and pagination, so a slow endpoint cannot hang a script far past the point you expect:
+
+```bash
+# Cap the whole call at 20 seconds, even while paginating
+azd rest get https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01 \
+  --paginate --max-time 20s
+
+# Per-attempt timeout and overall budget together
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --timeout 5s --max-time 30s
+```
+
+The two flags are independent. `--timeout` still applies to each attempt, while `--max-time` is the ceiling for the whole run. A value of `0` (the default) means no overall limit. Exceeding the budget cancels in-flight work and returns a timeout error with a non-zero exit code.
 
 ---
 

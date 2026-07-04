@@ -24,6 +24,7 @@ type Config struct {
 	Binary          bool
 	Insecure        bool
 	Timeout         time.Duration
+	MaxTime         time.Duration
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int
