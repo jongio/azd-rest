@@ -37,6 +37,7 @@ azd rest version
 | `delete` | Execute a DELETE request |
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
+| `scope` | Preview the detected OAuth scope and auth mode for a URL |
 | `version` | Display the extension version |
 
 ---
@@ -259,6 +260,60 @@ Git Commit: abc123def
   "version": "0.1.0",
   "buildDate": "2026-01-09T10:30:45Z",
   "gitCommit": "abc123def"
+}
+```
+
+---
+
+## `azd rest scope <url>`
+
+Preview how `azd rest` would authenticate a request to a URL without sending it. The command reports the resolved authentication mode, the OAuth scope, and the matched Azure service when known. It makes no network call, so it is safe to run against any URL.
+
+Scope honors the same flags the request pipeline uses: `--scope` overrides the detected scope, `--no-auth` and a `-H "Authorization: ..."` header both report an unauthenticated request, and an `http://` URL reports that authentication is skipped.
+
+**Usage:**
+```bash
+azd rest scope <url> [flags]
+```
+
+**Examples:**
+```bash
+# Preview the scope for a Management API URL
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
+# See the effect of --no-auth
+azd rest scope https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Machine-readable output
+azd rest scope https://graph.microsoft.com/v1.0/me --format json
+```
+
+**Flags:**
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--scope` | `-s` | string | (auto) | Override the OAuth scope reported for the URL |
+| `--no-auth` | | bool | false | Report the request as unauthenticated |
+| `--header` | `-H` | string | | Headers used to evaluate auth skip (repeatable) |
+| `--format` | `-f` | string | auto | Output format: `auto` or `json` |
+
+**Output Examples:**
+
+**Default:**
+```
+URL:      https://management.azure.com/subscriptions?api-version=2020-01-01
+Auth:     bearer
+Scope:    https://management.azure.com/.default
+Service:  Azure Resource Manager
+```
+
+**JSON:**
+```json
+{
+  "url": "https://graph.microsoft.com/v1.0/me",
+  "authMode": "bearer",
+  "scope": "https://graph.microsoft.com/.default",
+  "service": "Microsoft Graph"
 }
 ```
 
