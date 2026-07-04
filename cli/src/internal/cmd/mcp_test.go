@@ -40,6 +40,47 @@ func TestParseHeaders_Valid(t *testing.T) {
 	assert.Equal(t, "value", headers["X-Custom"])
 }
 
+func TestParseMCPRequestControls_Defaults(t *testing.T) {
+	controls, err := parseMCPRequestControls(newToolArgs(map[string]any{}))
+
+	require.NoError(t, err)
+	assert.Equal(t, mcpDefaultTimeout, controls.Timeout)
+	assert.Equal(t, mcpDefaultRetry, controls.Retry)
+	assert.Equal(t, int64(mcpMaxResponseSize), controls.MaxResponseSize)
+	assert.False(t, controls.NoAuth)
+}
+
+func TestParseMCPRequestControls_CustomValues(t *testing.T) {
+	controls, err := parseMCPRequestControls(newToolArgs(map[string]any{
+		"timeoutSeconds":       120,
+		"retry":                1,
+		"maxResponseSizeBytes": 1024,
+		"noAuth":               true,
+	}))
+
+	require.NoError(t, err)
+	assert.Equal(t, 120, int(controls.Timeout.Seconds()))
+	assert.Equal(t, 1, controls.Retry)
+	assert.Equal(t, int64(1024), controls.MaxResponseSize)
+	assert.True(t, controls.NoAuth)
+}
+
+func TestParseMCPRequestControls_ValidatesRanges(t *testing.T) {
+	tests := []map[string]any{
+		{"timeoutSeconds": 0},
+		{"timeoutSeconds": mcpMaxTimeoutSeconds + 1},
+		{"retry": 0},
+		{"retry": mcpMaxRetry + 1},
+		{"maxResponseSizeBytes": 0},
+		{"maxResponseSizeBytes": mcpMaxResponseSizeCap + 1},
+	}
+
+	for _, args := range tests {
+		_, err := parseMCPRequestControls(newToolArgs(args))
+		require.Error(t, err)
+	}
+}
+
 func TestParseHeaders_BlockedHeaders(t *testing.T) {
 	blocked := []string{"Authorization", "Host", "Cookie", "Proxy-Authorization"}
 	for _, h := range blocked {
@@ -52,6 +93,20 @@ func TestParseHeaders_BlockedHeaders(t *testing.T) {
 		_, err := parseHeaders(args)
 		require.Error(t, err, "header %q should be blocked", h)
 		assert.Contains(t, err.Error(), "not allowed")
+	}
+}
+
+func TestNewMCPServer_ToolsExposeRequestControls(t *testing.T) {
+	s := newMCPServer(false)
+	tools := s.ListTools()
+
+	for name, tool := range tools {
+		props := tool.Tool.InputSchema.Properties
+		require.NotNil(t, props, "tool %q should have properties", name)
+		for _, prop := range []string{"timeoutSeconds", "retry", "maxResponseSizeBytes", "noAuth"} {
+			_, ok := props[prop]
+			assert.True(t, ok, "tool %q should expose %s", name, prop)
+		}
 	}
 }
 
@@ -684,6 +739,28 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestExecuteMCPRequest_CustomControlsSetRetry(t *testing.T) {
+	attemptCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attemptCount++
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"try once"}`))
+	}))
+	defer srv.Close()
+
+	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
+	defer resetSecurityPolicyForTest()
+
+	controls := defaultMCPRequestControls()
+	controls.Retry = 1
+	controls.NoAuth = true
+
+	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil, controls)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, 2, attemptCount)
 }
 
 func TestExecuteMCPRequest_RedactsSensitiveResponseHeaders(t *testing.T) {

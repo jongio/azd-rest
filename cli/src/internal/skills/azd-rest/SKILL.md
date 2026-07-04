@@ -91,6 +91,15 @@ azd-rest includes an MCP server for AI assistant integration:
 azd rest mcp serve
 ```
 
+MCP tools accept per-request controls:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `timeoutSeconds` | 30 | Request timeout from 1 to 600 seconds |
+| `retry` | 3 | Retry attempts from 1 to 10 |
+| `maxResponseSizeBytes` | 10485760 | Maximum response size up to 52428800 bytes |
+| `noAuth` | false | Skip Azure bearer token authentication |
+
 Use `--read-only` to expose only the read tools (`rest_get`, `rest_head`). The
 mutating tools (`rest_post`, `rest_put`, `rest_patch`, `rest_delete`) are omitted
 from the tool surface entirely, so an assistant cannot make write calls:
