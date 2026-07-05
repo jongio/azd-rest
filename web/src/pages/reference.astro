@@ -76,6 +76,8 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--data</code></td><td><code>-d</code></td><td>string</td><td>""</td><td>Request body (JSON string)</td></tr>
               <tr><td><code>--data-file</code></td><td></td><td>string</td><td>""</td><td>Read request body from file. Also accepts <code>@file</code> shorthand.</td></tr>
               <tr><td><code>--form-field</code></td><td></td><td>string[]</td><td>[]</td><td>Add an <code>application/x-www-form-urlencoded</code> field (repeatable). Format: <code>key=value</code>. Repeat a key for multi-valued fields. Cannot be combined with <code>--data</code> or <code>--data-file</code>.</td></tr>
+              <tr><td><code>--json-field</code></td><td></td><td>string[]</td><td>[]</td><td>Add a string field to a JSON request body (repeatable). Format: <code>key=value</code>. Dotted keys nest. Cannot be combined with <code>--data</code>, <code>--data-file</code>, or <code>--form-field</code>.</td></tr>
+              <tr><td><code>--json-field-raw</code></td><td></td><td>string[]</td><td>[]</td><td>Add a raw JSON field to a JSON request body (repeatable). Format: <code>key:=json</code>. Dotted keys nest.</td></tr>
               <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout for a single attempt. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>
               <tr><td><code>--max-time</code></td><td></td><td>duration</td><td>0</td><td>Overall time budget across retries and pagination. <code>0</code> disables the limit.</td></tr>
               <tr><td><code>--insecure</code></td><td><code>-k</code></td><td>bool</td><td>false</td><td>Skip TLS certificate verification</td></tr>

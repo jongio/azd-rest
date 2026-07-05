@@ -187,6 +187,8 @@ These flags are available for all HTTP method commands:
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
+| `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
+| `--json-field-raw` | | string[] | [] | Add a raw JSON field to a JSON request body (repeatable, format: `key:=json`). Dotted keys nest. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
 | `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
@@ -472,6 +474,20 @@ azd rest post https://api.example.com/resource --data-file @request.json
 - The file is read as-is (raw bytes)
 - For JSON, ensure the file contains valid JSON
 - Binary files are supported when using `--binary` flag
+
+### JSON Body Fields
+
+Use `--json-field` and `--json-field-raw` to build a JSON body from `key=value` pairs instead of writing raw JSON. `--json-field` sets a string value, and `--json-field-raw` parses the value as JSON so numbers, booleans, arrays, objects, and null keep their type. Dotted keys build nested objects, and repeated prefixes merge into the same parent object. `Content-Type: application/json` is set when you do not provide one:
+
+```bash
+azd rest post https://api.example.com/resource \
+  --json-field name=example \
+  --json-field-raw enabled:=true \
+  --json-field-raw retries:=3 \
+  --json-field sku.name=Standard_LRS
+```
+
+This sends `{"name":"example","enabled":true,"retries":3,"sku":{"name":"Standard_LRS"}}`. These flags cannot be combined with `--data`, `--data-file`, or `--form-field`.
 
 ---
 
