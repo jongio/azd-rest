@@ -31,6 +31,7 @@ type Config struct {
 	MaxPages        int
 	MaxResponseSize int64
 	Color           string
+	WriteOut        string
 	Include         bool
 }
 

@@ -44,6 +44,7 @@ var (
 	maxPages        int
 	maxResponseSize int64
 	colorMode       string
+	writeOut        string
 	include         bool
 )
 
@@ -185,6 +186,7 @@ Examples:
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
+	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 
 	// Record the extension's own persistent flag names (those not added by the
@@ -242,6 +244,7 @@ func snapshotConfig() config.Config {
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
 		Color:           colorMode,
+		WriteOut:        writeOut,
 		Include:         include,
 	}
 }
