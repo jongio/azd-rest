@@ -5,9 +5,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -46,6 +49,17 @@ func DefaultTokenProviderFactory() (client.TokenProvider, error) {
 // DefaultHTTPClientFactory is the production factory using the real HTTP client.
 func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
 	return client.NewClient(tp, insecure, timeout)
+}
+
+// writeDiagnostic writes a non-error advisory message (warning or notice) to w
+// unless silent mode is enabled. It is only for informational diagnostics;
+// errors and response output must never be routed through it, so silencing
+// diagnostics can never hide a genuine failure (#171).
+func writeDiagnostic(w io.Writer, silent bool, format string, args ...any) {
+	if silent {
+		return
+	}
+	fmt.Fprintf(w, format, args...)
 }
 
 func applyAPIVersion(rawURL, apiVersion string) (string, error) {
@@ -176,7 +190,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Scope = detectedScope
 
 		if opts.Scope == "" && auth.IsAzureHost(requestURL) {
-			fmt.Fprintf(os.Stderr, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
+			writeDiagnostic(os.Stderr, cfg.Silent, "Warning: Azure host detected but no scope found. Use --scope to provide a scope or --no-auth to skip authentication.\n")
 		}
 	}
 
@@ -200,7 +214,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method, url string) error {
 	// Warn prominently when TLS verification is disabled.
 	if cfg.Insecure {
-		fmt.Fprintf(os.Stderr, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
+		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
+	}
+
+	if cfg.Repeat < 1 {
+		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
+	}
+
+	if err := validateColorMode(cfg.Color); err != nil {
+		return err
 	}
 
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
@@ -209,14 +231,31 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 	defer cleanup()
 
+	// --max-time bounds the whole operation (retries and pagination included).
+	// A value of zero leaves the context untouched, preserving prior behavior.
+	if cfg.MaxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cfg.MaxTime)
+		defer cancel()
+	}
+
 	httpClient := s.httpClientFactory(opts.TokenProvider, cfg.Insecure, cfg.Timeout)
 
 	if cfg.Paginate && cfg.Verbose {
-		fmt.Fprintf(os.Stderr, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
+		writeDiagnostic(os.Stderr, cfg.Silent, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
+	}
+
+	if cfg.Repeat > 1 {
+		return s.executeRepeat(ctx, cfg, httpClient, opts)
 	}
 
 	resp, err := httpClient.Execute(ctx, opts)
 	if err != nil {
+		// Distinguish the overall budget from a per-attempt timeout: when the
+		// max-time context is the one that fired, ctx.Err() is non-nil here.
+		if cfg.MaxTime > 0 && ctx.Err() != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("overall time budget of %s exceeded (--max-time): %w", cfg.MaxTime, err)
+		}
 		return err
 	}
 
@@ -224,10 +263,55 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeThrottleInfo(os.Stderr, resp.Headers)
 	}
 
+	if err := s.writeResponseOutput(cfg, resp); err != nil {
+		return err
+	}
+
+	if cfg.WriteOut != "" {
+		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+	}
+
+	return nil
+}
+
+// writeResponseOutput renders the response body to stdout or --output-file,
+// choosing the raw path for binary content and the formatter path otherwise.
+func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
+	// When --include is set, prepend the HTTP status line and response headers
+	// to the output (curl -i style). Sensitive header values are redacted.
+	var headerBlock string
+	if cfg.Include {
+		headerBlock = buildResponseHeaderBlock(resp)
+	}
+
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
+		if cfg.Include {
+			data := make([]byte, 0, len(headerBlock)+len(resp.Body))
+			data = append(data, headerBlock...)
+			data = append(data, resp.Body...)
+			return formatter.WriteRawOutput(data, cfg.OutputFile)
+		}
 		return formatter.WriteRawOutput(resp.Body, cfg.OutputFile)
+	}
+
+	// azd-rest renders formats that azd-core's formatter does not support
+	// (currently "table" and "jsonl"), then delegates everything else to azd-core.
+	if cfg.OutputFormat == "table" {
+		out, err := renderTable(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "jsonl" {
+		out, err := renderJSONL(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
 	}
 
 	formatted, err := formatter.Format(resp)
@@ -235,7 +319,34 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return fmt.Errorf("failed to format response: %w", err)
 	}
 
-	return formatter.WriteOutput(formatted, cfg.OutputFile)
+	if shouldColorize(cfg, resp) {
+		fmt.Print(headerBlock + colorizeJSON(formatted))
+		return nil
+	}
+
+	return formatter.WriteOutput(headerBlock+formatted, cfg.OutputFile)
+}
+
+// buildResponseHeaderBlock renders the HTTP status line and response headers as
+// a curl -i style block terminated by a blank line. Header keys are sorted for
+// deterministic output and sensitive values are redacted.
+func buildResponseHeaderBlock(resp *client.Response) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n", resp.Status)
+
+	keys := make([]string, 0, len(resp.Headers))
+	for key := range resp.Headers {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		for _, value := range resp.Headers[key] {
+			fmt.Fprintf(&b, "%s: %s\n", key, client.RedactSensitiveHeader(key, value))
+		}
+	}
+	b.WriteString("\n")
+	return b.String()
 }
 
 // RedactSensitiveHeader re-exports from client for MCP use.
