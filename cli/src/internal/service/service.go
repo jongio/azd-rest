@@ -124,6 +124,22 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		return client.RequestOptions{}, nil, err
 	}
 
+	// Host allowlist (#219): when set, the request host must match an allowed
+	// pattern before any token is acquired or request is sent. This runs early
+	// so a disallowed host never triggers authentication.
+	if len(cfg.AllowedHosts) > 0 {
+		host, allowed, parseErr := requestHostAllowed(requestURL, cfg.AllowedHosts)
+		if parseErr != nil {
+			return client.RequestOptions{}, nil, fmt.Errorf("failed to parse request URL: %w", parseErr)
+		}
+		if !allowed {
+			return client.RequestOptions{}, nil, fmt.Errorf("host %q is not in the --allow-host allowlist", host)
+		}
+		if cfg.FollowRedirects {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --allow-host is set and redirects are enabled; redirect targets are bounded by --max-redirects but are not checked against the allowlist\n")
+		}
+	}
+
 	opts := client.RequestOptions{
 		Method:          method,
 		URL:             requestURL,

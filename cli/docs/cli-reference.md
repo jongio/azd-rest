@@ -210,6 +210,7 @@ These flags are available for all HTTP method commands:
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
+| `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |
 
 ### Environment Variable Defaults
 
@@ -227,6 +228,8 @@ The variable name is the flag name upper-cased, with dashes replaced by undersco
 | `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
 
 Precedence is command line over environment over built-in default. A value passed on the command line always wins; an environment value is used only when the flag is not passed. An invalid value (for example `AZD_REST_RETRY=abc`) exits with code 2 and makes no request.
+
+The repeatable `--allow-host` flag reads its default from `AZD_REST_ALLOWED_HOSTS`, a comma separated list of host patterns (for example `management.azure.com,*.vault.azure.net`). Blank entries are ignored. This is the one flag whose variable name is not the generic upper-cased mapping, because the value is a list rather than a single value.
 
 ```bash
 export AZD_REST_RETRY=5
@@ -607,6 +610,32 @@ This is useful in CI logs and scripts where advisory output is noise. Unlike red
 # Quiet output in a pipeline, errors still surface
 azd rest get https://api.example.com/data --insecure --silent > data.json
 ```
+
+## Restricting Request Hosts
+
+Use `--allow-host` to restrict which hosts `azd rest` will call. When one or more patterns are set, the request host must match at least one pattern before any access token is acquired or any request is sent. A disallowed host fails fast with a non-zero exit code and never triggers authentication, which keeps a mistyped or unexpected host from receiving a bearer token.
+
+```bash
+# Only allow the ARM control plane and any Key Vault data-plane host
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --allow-host management.azure.com \
+  --allow-host "*.vault.azure.net"
+```
+
+Matching rules:
+
+- Matching is case insensitive and the port is ignored.
+- A pattern that begins with `*.` matches any subdomain of the remaining suffix. For example `*.vault.azure.net` matches `kv.vault.azure.net` but not the bare `vault.azure.net`.
+- Any other pattern must match the host exactly.
+
+The flag is repeatable, and `AZD_REST_ALLOWED_HOSTS` supplies a comma separated default for shells and CI jobs:
+
+```bash
+export AZD_REST_ALLOWED_HOSTS="management.azure.com,*.vault.azure.net"
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
+```
+
+When `--allow-host` is combined with `--follow-redirects`, only the initial request host is checked. Redirect targets are still bounded by `--max-redirects` but are not matched against the allowlist, so a notice is printed to stderr unless `--silent` is set.
 
 ---
 

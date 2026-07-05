@@ -52,6 +52,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--max-time` | | 0 | Overall time budget across retries and pagination (0 disables the limit) |
 | `--follow-redirects` | | true | Follow HTTP redirects |
 | `--max-redirects` | | 10 | Maximum redirect hops |
+| `--allow-host` | | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). Env: `AZD_REST_ALLOWED_HOSTS` (comma separated) |
 
 ## Automatic Scope Detection
 
