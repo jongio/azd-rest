@@ -37,6 +37,7 @@ azd rest version
 | `delete` | Execute a DELETE request |
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
+| `scope` | Preview the detected OAuth scope and auth mode for a URL |
 | `version` | Display the extension version |
 
 ---
@@ -178,6 +179,7 @@ These flags are available for all HTTP method commands:
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
 | `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
 | `--client-request-id` | | string | "" | Set the `x-ms-client-request-id` header for Azure request correlation. Pass the flag without a value to generate a random ID. |
+| `--url-param` | | string[] | [] | Set or append a URL query parameter (repeatable, format: `key=value`). |
 
 ### Request Configuration
 
@@ -186,7 +188,8 @@ These flags are available for all HTTP method commands:
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
-| `--timeout` | `-t` | duration | 30s | Request timeout. Examples: `30s`, `5m`, `1h`. |
+| `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
+| `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
 
 ### Response Configuration
@@ -196,7 +199,9 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response). |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
+| `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
+| `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
 ### Advanced Options
 
@@ -206,6 +211,35 @@ These flags are available for all HTTP method commands:
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
+
+### Environment Variable Defaults
+
+Every global flag can take its default from an environment variable. This lets you set an option once for a shell session or CI job instead of repeating it on every call.
+
+The variable name is the flag name upper-cased, with dashes replaced by underscores, and prefixed with `AZD_REST_`:
+
+| Flag | Environment variable |
+|------|----------------------|
+| `--scope` | `AZD_REST_SCOPE` |
+| `--api-version` | `AZD_REST_API_VERSION` |
+| `--timeout` | `AZD_REST_TIMEOUT` |
+| `--retry` | `AZD_REST_RETRY` |
+| `--format` | `AZD_REST_FORMAT` |
+| `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
+
+Precedence is command line over environment over built-in default. A value passed on the command line always wins; an environment value is used only when the flag is not passed. An invalid value (for example `AZD_REST_RETRY=abc`) exits with code 2 and makes no request.
+
+```bash
+export AZD_REST_RETRY=5
+export AZD_REST_TIMEOUT=60s
+
+# Both calls use retry=5, timeout=60s without repeating the flags
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
+azd rest get https://management.azure.com/tenants?api-version=2020-01-01
+
+# Command line still overrides the environment
+azd rest get https://api.example.com/data --retry 1
+```
 
 ---
 
@@ -258,6 +292,60 @@ Git Commit: abc123def
   "version": "0.1.0",
   "buildDate": "2026-01-09T10:30:45Z",
   "gitCommit": "abc123def"
+}
+```
+
+---
+
+## `azd rest scope <url>`
+
+Preview how `azd rest` would authenticate a request to a URL without sending it. The command reports the resolved authentication mode, the OAuth scope, and the matched Azure service when known. It makes no network call, so it is safe to run against any URL.
+
+Scope honors the same flags the request pipeline uses: `--scope` overrides the detected scope, `--no-auth` and a `-H "Authorization: ..."` header both report an unauthenticated request, and an `http://` URL reports that authentication is skipped.
+
+**Usage:**
+```bash
+azd rest scope <url> [flags]
+```
+
+**Examples:**
+```bash
+# Preview the scope for a Management API URL
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
+# See the effect of --no-auth
+azd rest scope https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Machine-readable output
+azd rest scope https://graph.microsoft.com/v1.0/me --format json
+```
+
+**Flags:**
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--scope` | `-s` | string | (auto) | Override the OAuth scope reported for the URL |
+| `--no-auth` | | bool | false | Report the request as unauthenticated |
+| `--header` | `-H` | string | | Headers used to evaluate auth skip (repeatable) |
+| `--format` | `-f` | string | auto | Output format: `auto` or `json` |
+
+**Output Examples:**
+
+**Default:**
+```
+URL:      https://management.azure.com/subscriptions?api-version=2020-01-01
+Auth:     bearer
+Scope:    https://management.azure.com/.default
+Service:  Azure Resource Manager
+```
+
+**JSON:**
+```json
+{
+  "url": "https://graph.microsoft.com/v1.0/me",
+  "authMode": "bearer",
+  "scope": "https://graph.microsoft.com/.default",
+  "service": "Microsoft Graph"
 }
 ```
 
@@ -316,6 +404,22 @@ azd rest get https://management.azure.com/subscriptions?api-version=2019-01-01 \
   --api-version 2020-01-01
 ```
 
+### URL Query Parameters
+
+Use `--url-param key=value` to set or append query parameters without hand-encoding them into the URL. The flag is repeatable. The first use of a key replaces any existing value on the URL, and repeating the same key appends another value:
+
+```bash
+# Add query parameters
+azd rest get https://management.azure.com/subscriptions \
+  --url-param api-version=2020-01-01 --url-param '$top=10'
+
+# Replace an existing value
+azd rest get "https://api.example.com/items?filter=all" --url-param filter=active
+
+# Repeat a key to send multiple values
+azd rest get https://api.example.com/items --url-param tag=a --url-param tag=b
+```
+
 ### No Authentication
 
 For public APIs that don't require authentication, use `--no-auth`:
@@ -339,6 +443,22 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
 ```
 
 The flag takes precedence over an `x-ms-client-request-id` value supplied with `-H`.
+
+### Timeouts and Overall Budget
+
+`--timeout` bounds a single request attempt. `--max-time` bounds the entire operation, including retries and pagination, so a slow endpoint cannot hang a script far past the point you expect:
+
+```bash
+# Cap the whole call at 20 seconds, even while paginating
+azd rest get https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01 \
+  --paginate --max-time 20s
+
+# Per-attempt timeout and overall budget together
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --timeout 5s --max-time 30s
+```
+
+The two flags are independent. `--timeout` still applies to each attempt, while `--max-time` is the ceiling for the whole run. A value of `0` (the default) means no overall limit. Exceeding the budget cancels in-flight work and returns a timeout error with a non-zero exit code.
 
 ---
 
@@ -464,6 +584,45 @@ Request completed in 234ms
 {
   "value": [...]
 }
+```
+
+---
+
+## Include Response Headers
+
+Use `--include` (or `-i`) to prepend the HTTP status line and response headers to the output, similar to `curl -i`. The header block is written to stdout ahead of the body, or to `--output-file` when that flag is set:
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --include
+```
+
+**Example:**
+```
+200 OK
+Content-Length: 1234
+Content-Type: application/json
+x-ms-request-id: 6f1c...
+
+{
+  "value": [...]
+}
+```
+
+Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
+
+## Silent Mode
+
+Use `--silent` to suppress non-error diagnostic messages that `azd rest` writes to stderr. This covers the insecure TLS warning, the "no scope found" warning, and the pagination notice. Errors, exit codes, and the response body on stdout are unaffected, so you never lose a genuine failure by silencing diagnostics.
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --silent
+```
+
+This is useful in CI logs and scripts where advisory output is noise. Unlike redirecting stderr, `--silent` keeps real error messages visible.
+
+```bash
+# Quiet output in a pipeline, errors still surface
+azd rest get https://api.example.com/data --insecure --silent > data.json
 ```
 
 ---

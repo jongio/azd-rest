@@ -13,9 +13,11 @@ type Config struct {
 	NoAuth          bool
 	APIVersion      string
 	ClientRequestID string
+	URLParams       []string
 	Headers         []string
 	Data            string
 	DataFile        string
+	FormFields      []string
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool
@@ -23,11 +25,18 @@ type Config struct {
 	Retry           int
 	Binary          bool
 	Insecure        bool
+	Silent          bool
 	Timeout         time.Duration
+	MaxTime         time.Duration
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	ShowThrottle    bool
+	Repeat          int
+	Color           string
+	WriteOut        string
+	Include         bool
 }
 
 // Defaults returns a Config populated with the default flag values.
@@ -40,5 +49,7 @@ func Defaults() Config {
 		MaxRedirects:    10,
 		MaxPages:        100,
 		MaxResponseSize: 100 * 1024 * 1024, // 100MB
+		Repeat:          1,
+		Color:           "auto",
 	}
 }
