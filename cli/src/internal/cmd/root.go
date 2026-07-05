@@ -205,6 +205,7 @@ Examples:
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
+		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
 	)
