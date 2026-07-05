@@ -154,6 +154,22 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	// Form fields (#202): build an application/x-www-form-urlencoded body from
+	// repeatable --form-field flags. This is mutually exclusive with a raw body.
+	if len(cfg.FormFields) > 0 {
+		if cfg.Data != "" || cfg.DataFile != "" {
+			return opts, nil, fmt.Errorf("--form-field cannot be combined with --data or --data-file")
+		}
+		encoded, err := encodeFormFields(cfg.FormFields)
+		if err != nil {
+			return opts, nil, err
+		}
+		opts.Body = strings.NewReader(encoded)
+		if !hasHeader(opts.Headers, contentTypeHeader) {
+			opts.Headers[contentTypeHeader] = formURLEncoded
+		}
+	}
+
 	// File handle ownership (#82): bodyFile tracks the opened file so we can
 	// provide a cleanup function to the caller. The caller MUST call cleanup
 	// after the request completes (or on error).
