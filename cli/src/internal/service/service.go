@@ -221,6 +221,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
 	}
 
+	if err := validateColorMode(cfg.Color); err != nil {
+		return err
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -309,6 +313,11 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	formatted, err := formatter.Format(resp)
 	if err != nil {
 		return fmt.Errorf("failed to format response: %w", err)
+	}
+
+	if shouldColorize(cfg, resp) {
+		fmt.Print(headerBlock + colorizeJSON(formatted))
+		return nil
 	}
 
 	return formatter.WriteOutput(headerBlock+formatted, cfg.OutputFile)

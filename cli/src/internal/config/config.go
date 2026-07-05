@@ -31,6 +31,7 @@ type Config struct {
 	MaxPages        int
 	MaxResponseSize int64
 	Repeat          int
+	Color           string
 	WriteOut        string
 	Include         bool
 }
@@ -46,5 +47,6 @@ func Defaults() Config {
 		MaxPages:        100,
 		MaxResponseSize: 100 * 1024 * 1024, // 100MB
 		Repeat:          1,
+		Color:           "auto",
 	}
 }
