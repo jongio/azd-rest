@@ -42,6 +42,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
+| `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
 | `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
@@ -200,6 +201,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
+
+# Mask sensitive JSON fields before display or save (dotted path, * for arrays)
+azd rest get https://myvault.vault.azure.net/secrets/db?api-version=7.4 --redact value
 
 # Custom scope for non-Azure endpoint
 azd rest get https://api.myservice.com/data --scope https://myservice.com/.default

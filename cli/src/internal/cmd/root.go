@@ -49,6 +49,7 @@ var (
 	colorMode       string
 	writeOut        string
 	include         bool
+	redactPaths     []string
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -194,6 +195,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
+	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -255,6 +257,7 @@ func snapshotConfig() config.Config {
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
+		Redact:          redactPaths,
 	}
 }
 

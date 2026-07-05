@@ -36,6 +36,7 @@ type Config struct {
 	Color           string
 	WriteOut        string
 	Include         bool
+	Redact          []string
 }
 
 // Defaults returns a Config populated with the default flag values.
