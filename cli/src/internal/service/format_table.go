@@ -36,10 +36,17 @@ func renderTable(body []byte) (string, error) {
 		return "No results.\n", nil
 	}
 
-	columns, allObjects := tableColumns(rows)
+	header, data := buildTableData(rows)
+	return formatTable(header, data), nil
+}
 
-	var header []string
-	var data [][]string
+// buildTableData computes the header and string cell matrix for a set of rows.
+// It is shared by the table and csv renderers so both use the same column
+// ordering and cell formatting. When every row is an object, columns follow the
+// automatic priority-plus-alphabetical layout; otherwise a single "value"
+// column holds each scalar row.
+func buildTableData(rows []any) (header []string, data [][]string) {
+	columns, allObjects := tableColumns(rows)
 	if allObjects {
 		header = columns
 		for _, row := range rows {
@@ -50,14 +57,14 @@ func renderTable(body []byte) (string, error) {
 			}
 			data = append(data, cells)
 		}
-	} else {
-		header = []string{"value"}
-		for _, row := range rows {
-			data = append(data, []string{tableCellString(row)})
-		}
+		return header, data
 	}
 
-	return formatTable(header, data), nil
+	header = []string{"value"}
+	for _, row := range rows {
+		data = append(data, []string{tableCellString(row)})
+	}
+	return header, data
 }
 
 // extractTableRows normalizes a parsed JSON value into a slice of row values.
