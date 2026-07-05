@@ -31,6 +31,7 @@ func resetGlobalFlags() {
 	headers = []string{}
 	data = ""
 	dataFile = ""
+	formFields = []string{}
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false

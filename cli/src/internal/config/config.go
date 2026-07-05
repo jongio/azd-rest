@@ -16,6 +16,7 @@ type Config struct {
 	Headers         []string
 	Data            string
 	DataFile        string
+	FormFields      []string
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool
