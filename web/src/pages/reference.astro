@@ -91,6 +91,7 @@ const base = import.meta.env.BASE_URL;
             </thead>
             <tbody>
               <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> (pretty JSON), <code>json</code> (compact), <code>raw</code>, <code>table</code>, <code>jsonl</code> (one object per line)</td></tr>
+              <tr><td><code>--table-columns</code></td><td></td><td>string</td><td>""</td><td>Comma-separated columns to show, in order, for <code>--format table</code>. Missing fields render as empty cells. Ignored for other formats.</td></tr>
               <tr><td><code>--output-file</code></td><td></td><td>string</td><td>""</td><td>Write response to file</td></tr>
               <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
               <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>bool</td><td>false</td><td>Show headers, timing, request details (tokens redacted)</td></tr>
