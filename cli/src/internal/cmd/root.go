@@ -15,6 +15,7 @@ import (
 	"github.com/jongio/azd-rest/src/internal/skills"
 	"github.com/jongio/azd-rest/src/internal/version"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // Global flags - retained for cobra binding; snapshotted into config.Config
@@ -36,11 +37,16 @@ var (
 	retry           int
 	binary          bool
 	insecure        bool
+	silent          bool
 	timeout         time.Duration
+	maxTime         time.Duration
 	followRedirects bool
 	maxRedirects    int
 	maxPages        int
 	maxResponseSize int64
+	colorMode       string
+	writeOut        string
+	include         bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -124,6 +130,17 @@ Examples:
   azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`,
 	})
 
+	// Capture the SDK-provided persistent flags so environment-variable defaults
+	// are applied only to the extension's own flags (#172).
+	sdkFlagNames := map[string]bool{}
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		sdkFlagNames[f.Name] = true
+	})
+
+	// extensionFlagNames is populated after the extension flags are registered
+	// below; the PersistentPreRunE closure reads it at execution time.
+	var extensionFlagNames []string
+
 	// Chain extension-specific PersistentPreRunE after SDK's built-in one
 	sdkPreRunE := rootCmd.PersistentPreRunE
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -131,6 +148,11 @@ Examples:
 			if err := sdkPreRunE(cmd, args); err != nil {
 				return err
 			}
+		}
+		// Apply AZD_REST_<FLAG> environment defaults before any request runs, so
+		// an invalid value fails fast with exit code 2 (#172).
+		if err := applyEnvDefaults(cmd.Flags(), extensionFlagNames, os.LookupEnv); err != nil {
+			return err
 		}
 		// Install Copilot skill
 		if err := skills.InstallSkill(); err != nil {
@@ -152,17 +174,30 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
+	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Suppress non-error diagnostic messages on stderr (warnings and notices)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
+	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
+	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
+	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
+
+	// Record the extension's own persistent flag names (those not added by the
+	// SDK) so environment-variable defaults apply only to them (#172).
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if !sdkFlagNames[f.Name] {
+			extensionFlagNames = append(extensionFlagNames, f.Name)
+		}
+	})
 
 	// Add HTTP method subcommands from the table (#68)
 	for _, def := range httpMethods {
@@ -171,10 +206,14 @@ Examples:
 
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
+		NewScopeCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
+		NewDoctorCommand(),
+		NewGraphCommand(),
+		NewWhoamiCommand(),
 	)
 
 	return rootCmd
@@ -200,11 +239,16 @@ func snapshotConfig() config.Config {
 		Retry:           retry,
 		Binary:          binary,
 		Insecure:        insecure,
+		Silent:          silent,
 		Timeout:         timeout,
+		MaxTime:         maxTime,
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
+		Color:           colorMode,
+		WriteOut:        writeOut,
+		Include:         include,
 	}
 }
 

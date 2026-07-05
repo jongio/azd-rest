@@ -53,10 +53,6 @@ func TestHasHeader(t *testing.T) {
 	}
 }
 
-func newTestService() *RequestService {
-	return NewRequestService(nil, nil)
-}
-
 func TestBuildRequestOptions_FormFieldsBody(t *testing.T) {
 	svc := newTestService()
 	cfg := config.Config{

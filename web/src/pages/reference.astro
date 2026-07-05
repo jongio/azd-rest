@@ -36,6 +36,10 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>azd rest delete &lt;url&gt;</code></td><td>Execute a DELETE request</td></tr>
               <tr><td><code>azd rest head &lt;url&gt;</code></td><td>Execute a HEAD request (headers only)</td></tr>
               <tr><td><code>azd rest options &lt;url&gt;</code></td><td>Execute an OPTIONS request</td></tr>
+              <tr><td><code>azd rest doctor</code></td><td>Diagnose authentication and scope detection issues</td></tr>
+              <tr><td><code>azd rest graph &lt;kql-query&gt;</code></td><td>Run an Azure Resource Graph (KQL) query</td></tr>
+              <tr><td><code>azd rest whoami</code></td><td>Show the authenticated Azure identity</td></tr>
+              <tr><td><code>azd rest scope &lt;url&gt;</code></td><td>Preview the detected OAuth scope and auth mode for a URL</td></tr>
               <tr><td><code>azd rest version</code></td><td>Display extension version</td></tr>
             </tbody>
           </table>
@@ -72,7 +76,8 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--data</code></td><td><code>-d</code></td><td>string</td><td>""</td><td>Request body (JSON string)</td></tr>
               <tr><td><code>--data-file</code></td><td></td><td>string</td><td>""</td><td>Read request body from file. Also accepts <code>@file</code> shorthand.</td></tr>
               <tr><td><code>--form-field</code></td><td></td><td>string[]</td><td>[]</td><td>Add an <code>application/x-www-form-urlencoded</code> field (repeatable). Format: <code>key=value</code>. Repeat a key for multi-valued fields. Cannot be combined with <code>--data</code> or <code>--data-file</code>.</td></tr>
-              <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>
+              <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout for a single attempt. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>
+              <tr><td><code>--max-time</code></td><td></td><td>duration</td><td>0</td><td>Overall time budget across retries and pagination. <code>0</code> disables the limit.</td></tr>
               <tr><td><code>--insecure</code></td><td><code>-k</code></td><td>bool</td><td>false</td><td>Skip TLS certificate verification</td></tr>
             </tbody>
           </table>
@@ -85,10 +90,12 @@ const base = import.meta.env.BASE_URL;
               <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> (pretty JSON), <code>json</code> (compact), <code>raw</code></td></tr>
+              <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> (pretty JSON), <code>json</code> (compact), <code>raw</code>, <code>table</code>, <code>jsonl</code> (one object per line)</td></tr>
               <tr><td><code>--output-file</code></td><td></td><td>string</td><td>""</td><td>Write response to file</td></tr>
               <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
               <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>bool</td><td>false</td><td>Show headers, timing, request details (tokens redacted)</td></tr>
+              <tr><td><code>--color</code></td><td></td><td>string</td><td>auto</td><td>Colorize JSON output: <code>auto</code> (TTY only, honors <code>NO_COLOR</code>), <code>always</code>, <code>never</code></td></tr>
+              <tr><td><code>--write-out</code></td><td><code>-w</code></td><td>string</td><td>""</td><td>Print curl-style response metadata to stderr. See <a href="#write-out">Write-Out Variables</a>.</td></tr>
             </tbody>
           </table>
         </div>
@@ -104,6 +111,73 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--retry</code></td><td>int</td><td>3</td><td>Retry attempts with exponential backoff for transient errors</td></tr>
               <tr><td><code>--follow-redirects</code></td><td>bool</td><td>true</td><td>Follow HTTP redirects</td></tr>
               <tr><td><code>--max-redirects</code></td><td>int</td><td>10</td><td>Maximum redirect hops</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="write-out">Write-Out Variables</h3>
+        <p>
+          <code>--write-out</code> / <code>-w</code> prints a curl-style template to stderr after
+          the request completes, so stdout stays clean for the response body. Use it in scripts and
+          CI to capture the status code, timing, or size without parsing verbose output. The
+          escape sequences <code>\n</code> and <code>\t</code> expand to newline and tab. Unknown
+          <code>%&#123;...&#125;</code> tokens are left as-is.
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Variable</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>%&#123;http_code&#125;</code></td><td>Response status code (e.g. <code>200</code>)</td></tr>
+              <tr><td><code>%&#123;http_status&#125;</code></td><td>Full status line (e.g. <code>200 OK</code>)</td></tr>
+              <tr><td><code>%&#123;time_total&#125;</code></td><td>Total request time in seconds</td></tr>
+              <tr><td><code>%&#123;time_total_ms&#125;</code></td><td>Total request time in milliseconds</td></tr>
+              <tr><td><code>%&#123;size_download&#125;</code></td><td>Response body size in bytes</td></tr>
+              <tr><td><code>%&#123;content_type&#125;</code></td><td>Response <code>Content-Type</code></td></tr>
+              <tr><td><code>%&#123;method&#125;</code></td><td>Request method</td></tr>
+              <tr><td><code>%&#123;url&#125;</code></td><td>Final request URL</td></tr>
+              <tr><td><code>%&#123;header.NAME&#125;</code></td><td>Named response header value (sensitive headers redacted)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <CodeBlock code={`# Print only the status code
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --write-out "%{http_code}\\n" > body.json
+
+# Status and timing on one line
+azd rest get https://graph.microsoft.com/v1.0/me \\
+  --write-out "%{http_code} %{time_total}s %{size_download}B\\n"`} language="bash" />
+      </section>
+
+      <!-- Scope Command -->
+      <section class="section">
+        <h2>Scope Command</h2>
+        <p>
+          Preview how <code>azd rest</code> would authenticate a request to a URL without sending it.
+          The command reports the resolved authentication mode, the OAuth scope, and the matched Azure
+          service when known. It makes no network call, and honors <code>--scope</code>, <code>--no-auth</code>,
+          and <code>-H</code> headers.
+        </p>
+        <CodeBlock code={`# Preview the scope for a Management API URL
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
+
+# See the effect of --no-auth
+azd rest scope https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Machine-readable output
+azd rest scope https://graph.microsoft.com/v1.0/me --format json`} language="bash" />
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Flag</th><th>Short</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--scope</code></td><td><code>-s</code></td><td>string</td><td>(auto)</td><td>Override the OAuth scope reported for the URL</td></tr>
+              <tr><td><code>--no-auth</code></td><td></td><td>bool</td><td>false</td><td>Report the request as unauthenticated</td></tr>
+              <tr><td><code>--header</code></td><td><code>-H</code></td><td>string[]</td><td>[]</td><td>Headers used to evaluate auth skip (repeatable)</td></tr>
+              <tr><td><code>--format</code></td><td><code>-f</code></td><td>string</td><td>auto</td><td>Output format: <code>auto</code> or <code>json</code></td></tr>
             </tbody>
           </table>
         </div>
