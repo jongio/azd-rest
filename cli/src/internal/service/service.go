@@ -217,6 +217,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if cfg.Repeat < 1 {
+		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
+	}
+
 	if err := validateColorMode(cfg.Color); err != nil {
 		return err
 	}
@@ -239,6 +243,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if cfg.Paginate && cfg.Verbose {
 		writeDiagnostic(os.Stderr, cfg.Silent, "> Pagination enabled (max %d pages)\n", cfg.MaxPages)
+	}
+
+	if cfg.Repeat > 1 {
+		return s.executeRepeat(ctx, cfg, httpClient, opts)
 	}
 
 	resp, err := httpClient.Execute(ctx, opts)
