@@ -42,7 +42,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
 | `--output-file` | | "" | Write response to file |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -184,6 +184,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 
 # Table output for arrays and ARM value[] responses
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
+
+# Newline-delimited JSON (one object per line) for piping to jq -c
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
 # Custom scope for non-Azure endpoint
 azd rest get https://api.myservice.com/data --scope https://myservice.com/.default
