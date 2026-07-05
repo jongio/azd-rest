@@ -140,6 +140,19 @@ app ID, audience, granted scopes, and expiry. The raw token is never printed.
 Use `--scope` to inspect a token for a different service and `--format json`
 for machine-readable output.
 
+## Diagnostics
+
+When a request fails with an auth error, run the doctor to find out whether the
+problem is your credentials, your scope, or something else:
+
+```bash
+azd rest doctor
+```
+
+It checks scope detection, acquires a token for the management API, and decodes
+the token's tenant and expiry. Add `--format json` for machine-readable output.
+The command exits non-zero if any check fails, so you can gate scripts on it.
+
 ## Examples
 
 ```bash
@@ -200,4 +213,7 @@ azd rest whoami
 # Cap the whole call, including retries and pagination
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --paginate --max-time 20s
+
+# Diagnose authentication issues
+azd rest doctor
 ```

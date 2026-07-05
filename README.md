@@ -122,6 +122,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
+
+# Diagnose authentication issues
+azd rest doctor
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.
