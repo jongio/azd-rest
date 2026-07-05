@@ -30,6 +30,7 @@ type Config struct {
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	WriteOut        string
 	Include         bool
 }
 
