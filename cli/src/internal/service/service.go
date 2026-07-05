@@ -279,6 +279,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeThrottleInfo(os.Stderr, resp.Headers)
 	}
 
+	if cfg.DumpHeaders != "" {
+		if err := dumpResponseHeaders(cfg.DumpHeaders, resp); err != nil {
+			return err
+		}
+	}
+
 	if err := s.writeResponseOutput(cfg, resp); err != nil {
 		return err
 	}
@@ -363,6 +369,23 @@ func buildResponseHeaderBlock(resp *client.Response) string {
 	}
 	b.WriteString("\n")
 	return b.String()
+}
+
+// dumpResponseHeaders writes the response status line and headers to the path
+// named by --dump-headers. A path of "-" writes to stderr so it does not mix
+// with body output on stdout. Sensitive header values are redacted the same way
+// the --include path redacts them.
+func dumpResponseHeaders(path string, resp *client.Response) error {
+	block := buildResponseHeaderBlock(resp)
+	if path == "-" {
+		_, err := fmt.Fprint(os.Stderr, block)
+		return err
+	}
+	// #nosec G304 -- User-specified file path via --dump-headers flag is intentional.
+	if err := os.WriteFile(path, []byte(block), 0o600); err != nil {
+		return fmt.Errorf("failed to write response headers to %s: %w", path, err)
+	}
+	return nil
 }
 
 // RedactSensitiveHeader re-exports from client for MCP use.
