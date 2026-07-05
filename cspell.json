@@ -45,6 +45,7 @@
     "magefile",
     "nosec",
     "ossrdbms",
+    "pflag",
     "pwsh",
     "rest",
     "scloud",
