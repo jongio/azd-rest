@@ -101,12 +101,27 @@ azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
 # Microsoft Graph
 azd rest get https://graph.microsoft.com/v1.0/me
 
+# Azure Resource Graph (KQL) query
+azd rest graph "Resources | summarize count() by type"
+
+# Show the signed-in Azure identity (tenant, app, scopes, expiry)
+azd rest whoami
+
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Preview the detected scope without sending a request
+azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
+
+# Table output (works with arrays and ARM value[] responses)
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
+
+# Newline-delimited JSON (one object per line) for piping to jq -c
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.
