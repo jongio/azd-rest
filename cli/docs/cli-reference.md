@@ -200,7 +200,7 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`. |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
@@ -559,6 +559,14 @@ Use `--format yaml` to render a JSON response as YAML with two-space indentation
 
 ```bash
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format yaml
+```
+
+### CSV
+
+Use `--format csv` to export arrays and ARM `value[]` responses as RFC 4180 CSV with a header row. Column order matches `--format table`, nested values are written as compact JSON, and scalar lists use a single `value` column:
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format csv
 ```
 
 ### Query JSON Responses
