@@ -267,7 +267,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "jsonl"), then delegates everything else to azd-core.
+	// (currently "table" and "jsonl"), then delegates everything else to azd-core.
+	if cfg.OutputFormat == "table" {
+		out, err := renderTable(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
 	if cfg.OutputFormat == "jsonl" {
 		out, err := renderJSONL(resp.Body)
 		if err != nil {

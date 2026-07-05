@@ -117,6 +117,9 @@ azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
 
+# Table output (works with arrays and ARM value[] responses)
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
+
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 ```
