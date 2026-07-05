@@ -85,7 +85,7 @@ func (s *RequestService) executeRepeat(ctx context.Context, cfg config.Config, h
 		return fmt.Errorf("all %d requests failed", cfg.Repeat)
 	}
 
-	return writeResponse(cfg, lastResp)
+	return s.writeResponseOutput(cfg, lastResp)
 }
 
 // writeRepeatSummary prints the repeat run statistics to w.
