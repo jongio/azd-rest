@@ -155,10 +155,11 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	}
 
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
-	// repeatable --form-field flags. This is mutually exclusive with a raw body.
+	// repeatable --form-field flags. This is mutually exclusive with a raw body
+	// or a JSON field body.
 	if len(cfg.FormFields) > 0 {
-		if cfg.Data != "" || cfg.DataFile != "" {
-			return opts, nil, fmt.Errorf("--form-field cannot be combined with --data or --data-file")
+		if cfg.Data != "" || cfg.DataFile != "" || len(cfg.JSONFields) > 0 {
+			return opts, nil, fmt.Errorf("--form-field cannot be combined with --data, --data-file, or --json-field")
 		}
 		encoded, err := encodeFormFields(cfg.FormFields)
 		if err != nil {
@@ -167,6 +168,22 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Body = strings.NewReader(encoded)
 		if !hasHeader(opts.Headers, contentTypeHeader) {
 			opts.Headers[contentTypeHeader] = formURLEncoded
+		}
+	}
+
+	// JSON fields (#211): build an application/json body from repeatable
+	// --json-field flags. This is mutually exclusive with a raw body.
+	if len(cfg.JSONFields) > 0 {
+		if cfg.Data != "" || cfg.DataFile != "" {
+			return opts, nil, fmt.Errorf("--json-field cannot be combined with --data or --data-file")
+		}
+		encoded, err := encodeJSONFields(cfg.JSONFields)
+		if err != nil {
+			return opts, nil, err
+		}
+		opts.Body = strings.NewReader(encoded)
+		if !hasHeader(opts.Headers, contentTypeHeader) {
+			opts.Headers[contentTypeHeader] = applicationJSON
 		}
 	}
 

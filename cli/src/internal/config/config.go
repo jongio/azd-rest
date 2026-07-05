@@ -17,6 +17,7 @@ type Config struct {
 	Data            string
 	DataFile        string
 	FormFields      []string
+	JSONFields      []string
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool

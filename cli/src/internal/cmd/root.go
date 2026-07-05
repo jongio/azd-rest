@@ -30,6 +30,7 @@ var (
 	data            string
 	dataFile        string
 	formFields      []string
+	jsonFields      []string
 	outputFile      string
 	outputFormat    string
 	verbose         bool
@@ -175,6 +176,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
+	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a field to an application/json body (repeatable). key=value for a string, key:=value for raw JSON")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
@@ -236,6 +238,7 @@ func snapshotConfig() config.Config {
 		Data:            data,
 		DataFile:        dataFile,
 		FormFields:      formFields,
+		JSONFields:      jsonFields,
 		OutputFile:      outputFile,
 		OutputFormat:    outputFormat,
 		Verbose:         verbose,
