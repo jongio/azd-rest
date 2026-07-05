@@ -31,6 +31,7 @@ type Config struct {
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	ShowThrottle    bool
 	Repeat          int
 	Color           string
 	WriteOut        string

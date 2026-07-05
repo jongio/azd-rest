@@ -275,6 +275,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	if cfg.ShowThrottle {
+		writeThrottleInfo(os.Stderr, resp.Headers)
+	}
+
 	if err := s.writeResponseOutput(cfg, resp); err != nil {
 		return err
 	}

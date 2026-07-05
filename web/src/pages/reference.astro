@@ -111,6 +111,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--retry</code></td><td>int</td><td>3</td><td>Retry attempts with exponential backoff for transient errors</td></tr>
               <tr><td><code>--follow-redirects</code></td><td>bool</td><td>true</td><td>Follow HTTP redirects</td></tr>
               <tr><td><code>--max-redirects</code></td><td>int</td><td>10</td><td>Maximum redirect hops</td></tr>
+              <tr><td><code>--show-throttle</code></td><td>bool</td><td>false</td><td>Print Azure rate-limit and quota headers (<code>x-ms-ratelimit-remaining-*</code>) to stderr, with a warning when remaining quota is low</td></tr>
               <tr><td><code>--repeat</code></td><td>int</td><td>1</td><td>Send the request N times and print latency stats (min/mean/p50/p95/p99/max) to stderr; only the last response body goes to stdout</td></tr>
             </tbody>
           </table>
