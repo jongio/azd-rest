@@ -5,6 +5,7 @@ package service
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -232,6 +233,22 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		opts.Headers[key] = value
+	}
+
+	// JSON body fields (#215): assemble a JSON body from repeatable --json-field
+	// and --json-field-raw flags. This is mutually exclusive with other bodies.
+	if len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 {
+		if cfg.Data != "" || cfg.DataFile != "" || len(cfg.FormFields) > 0 {
+			return opts, nil, fmt.Errorf("--json-field/--json-field-raw cannot be combined with --data, --data-file, or --form-field")
+		}
+		jsonBody, err := buildJSONBody(cfg.JSONFields, cfg.JSONFieldsRaw)
+		if err != nil {
+			return opts, nil, err
+		}
+		opts.Body = bytes.NewReader(jsonBody)
+		if !hasHeader(opts.Headers, contentTypeHeader) {
+			opts.Headers[contentTypeHeader] = applicationJSON
+		}
 	}
 
 	// The --client-request-id flag is authoritative and overrides a matching -H header.

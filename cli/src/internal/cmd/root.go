@@ -34,6 +34,8 @@ var (
 	dataFile        string
 	query           string
 	formFields      []string
+	jsonFields      []string
+	jsonFieldsRaw   []string
 	outputFile      string
 	outputFormat    string
 	verbose         bool
@@ -185,6 +187,8 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
+	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
+	rootCmd.PersistentFlags().StringArrayVar(&jsonFieldsRaw, "json-field-raw", []string{}, "Add a raw JSON field to a JSON request body (repeatable, format: key:=json; dotted keys nest)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
@@ -250,6 +254,8 @@ func snapshotConfig() config.Config {
 		DataFile:        dataFile,
 		Query:           query,
 		FormFields:      formFields,
+		JSONFields:      jsonFields,
+		JSONFieldsRaw:   jsonFieldsRaw,
 		OutputFile:      outputFile,
 		OutputFormat:    outputFormat,
 		Verbose:         verbose,

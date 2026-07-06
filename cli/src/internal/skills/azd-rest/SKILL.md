@@ -43,6 +43,8 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
+| `--json-field` | | [] | Add a string field to a JSON body (repeatable, key=value; dotted keys nest) |
+| `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
 | `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml |
 | `--verbose` | `-v` | false | Show request/response details |
@@ -176,6 +178,12 @@ azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{r
 
 # POST with body from file
 azd rest post https://api.example.com/resource --data-file request.json
+
+# Build a JSON body from key=value fields (raw values keep their JSON type)
+azd rest post https://api.example.com/resource \
+  --json-field name=example \
+  --json-field-raw enabled:=true \
+  --json-field sku.name=Standard_LRS
 
 # PATCH for partial update
 azd rest patch https://management.azure.com/.../storageAccounts/{name}?api-version=2021-04-01 \
