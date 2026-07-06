@@ -133,6 +133,54 @@ func TestExecuteRequest_RawFormatOutput(t *testing.T) {
 	assert.Contains(t, string(written), rawBody)
 }
 
+func TestExecuteRequest_QueryFiltersJSONOutput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"value":[{"name":"one"},{"name":"two"}]}`))
+	}))
+	defer server.Close()
+
+	resetGlobalFlags()
+	noAuth = true
+	query = "value[].name"
+	outputFormat = "json"
+	tmpDir := t.TempDir()
+	outputFile = filepath.Join(tmpDir, "query.json")
+	timeout = 10 * time.Second
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	err := executeRequest(cmd, "GET", server.URL+"/query")
+	require.NoError(t, err)
+
+	written, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+	assert.JSONEq(t, `["one","two"]`, string(written))
+}
+
+func TestExecuteRequest_QueryRequiresJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`plain text`))
+	}))
+	defer server.Close()
+
+	resetGlobalFlags()
+	noAuth = true
+	query = "value"
+	timeout = 10 * time.Second
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	err := executeRequest(cmd, "GET", server.URL+"/plain")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a JSON response")
+}
+
 // TestExecuteRequest_VerboseOutput verifies the verbose flag path includes
 // headers/timing information.
 func TestExecuteRequest_VerboseOutput(t *testing.T) {

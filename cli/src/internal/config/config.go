@@ -12,10 +12,13 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	ClientRequestID string
 	URLParams       []string
 	Headers         []string
+	HeaderFile      string
 	Data            string
 	DataFile        string
+	Query           string
 	FormFields      []string
 	JSONFields      []string
 	JSONFieldsRaw   []string
@@ -38,6 +41,7 @@ type Config struct {
 	Color           string
 	WriteOut        string
 	Include         bool
+	DumpHeaders     string
 }
 
 // Defaults returns a Config populated with the default flag values.

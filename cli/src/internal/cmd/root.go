@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
+	"github.com/google/uuid"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
@@ -25,10 +26,13 @@ var (
 	scope           string
 	noAuth          bool
 	apiVersion      string
+	clientRequestID string
 	urlParams       []string
 	headers         []string
+	headerFile      string
 	data            string
 	dataFile        string
+	query           string
 	formFields      []string
 	jsonFields      []string
 	jsonFieldsRaw   []string
@@ -51,6 +55,7 @@ var (
 	colorMode       string
 	writeOut        string
 	include         bool
+	dumpHeaders     string
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -172,15 +177,20 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringVar(&apiVersion, "api-version", "", "Set or replace the api-version query parameter")
+	rootCmd.PersistentFlags().StringVar(&clientRequestID, "client-request-id", "", "Set the x-ms-client-request-id header for Azure request correlation. Pass the flag without a value to generate a random ID.")
+	// Passing --client-request-id without a value generates a fresh ID for this invocation.
+	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
+	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
+	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFieldsRaw, "json-field-raw", []string{}, "Add a raw JSON field to a JSON request body (repeatable, format: key:=json; dotted keys nest)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
@@ -198,6 +208,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
+	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -235,10 +246,13 @@ func snapshotConfig() config.Config {
 		Scope:           scope,
 		NoAuth:          noAuth,
 		APIVersion:      apiVersion,
+		ClientRequestID: clientRequestID,
 		URLParams:       urlParams,
 		Headers:         headers,
+		HeaderFile:      headerFile,
 		Data:            data,
 		DataFile:        dataFile,
+		Query:           query,
 		FormFields:      formFields,
 		JSONFields:      jsonFields,
 		JSONFieldsRaw:   jsonFieldsRaw,
@@ -261,6 +275,7 @@ func snapshotConfig() config.Config {
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
+		DumpHeaders:     dumpHeaders,
 	}
 }
 
