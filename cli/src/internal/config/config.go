@@ -12,11 +12,16 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	ClientRequestID string
 	URLParams       []string
 	Headers         []string
+	HeaderFile      string
 	Data            string
 	DataFile        string
+	Query           string
 	FormFields      []string
+	JSONFields      []string
+	JSONFieldsRaw   []string
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool
@@ -37,6 +42,8 @@ type Config struct {
 	WriteOut        string
 	Include         bool
 	Redact          []string
+	TableColumns    []string
+	DumpHeaders     string
 }
 
 // Defaults returns a Config populated with the default flag values.
