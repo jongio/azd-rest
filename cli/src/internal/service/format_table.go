@@ -16,6 +16,11 @@ var tableColumnPriority = []string{
 	"subscriptionId", "kind", "status", "provisioningState",
 }
 
+// listWrapperKeys are the object keys whose array value is treated as the
+// list of rows to render for the table, jsonl, and yaml output formats. This
+// covers ARM-style responses that wrap results under one of these keys.
+var listWrapperKeys = []string{"value", "data", "results", "items"}
+
 // renderTable renders a JSON response body as an aligned text table using the
 // automatic column layout.
 func renderTable(body []byte) (string, error) {
@@ -93,7 +98,7 @@ func extractTableRows(parsed any) []any {
 	case []any:
 		return v
 	case map[string]any:
-		for _, key := range []string{"value", "data", "results", "items"} {
+		for _, key := range listWrapperKeys {
 			if arr, ok := v[key].([]any); ok {
 				return arr
 			}

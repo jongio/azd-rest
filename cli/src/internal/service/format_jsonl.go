@@ -45,7 +45,7 @@ func extractJSONLRows(parsed any) []any {
 	case []any:
 		return v
 	case map[string]any:
-		for _, key := range []string{"value", "data", "results", "items"} {
+		for _, key := range listWrapperKeys {
 			if arr, ok := v[key].([]any); ok {
 				return arr
 			}
