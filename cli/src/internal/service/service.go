@@ -4,7 +4,9 @@
 package service
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,10 +16,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmespath-community/go-jmespath"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
 )
+
+// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+const clientRequestIDHeader = "x-ms-client-request-id"
 
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
@@ -49,6 +55,68 @@ func DefaultTokenProviderFactory() (client.TokenProvider, error) {
 // DefaultHTTPClientFactory is the production factory using the real HTTP client.
 func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
 	return client.NewClient(tp, insecure, timeout)
+}
+
+// loadHeaderFile reads headers from a file, one "Key: Value" per line. Blank
+// lines and lines beginning with "#" are ignored. It returns a clear error for
+// a missing file or a malformed line.
+func loadHeaderFile(path string) (map[string]string, error) {
+	file, err := os.Open(path) // #nosec G304 -- User-specified file path via --header-file flag is intentional.
+	if err != nil {
+		return nil, fmt.Errorf("failed to open header file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	result := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid header on line %d of %s: %q (expected Key: Value)", lineNum, path, line)
+		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return nil, fmt.Errorf("invalid header on line %d of %s: %q (empty header name)", lineNum, path, line)
+		}
+		result[key] = strings.TrimSpace(parts[1])
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read header file: %w", err)
+	}
+	return result, nil
+}
+
+func applyQueryToResponse(resp *client.Response, expression string) error {
+	if expression == "" {
+		return nil
+	}
+	if !strings.Contains(strings.ToLower(resp.Headers.Get("Content-Type")), "json") && !client.IsJSON(resp.Body) {
+		return fmt.Errorf("--query requires a JSON response")
+	}
+
+	var data any
+	if err := json.Unmarshal(resp.Body, &data); err != nil {
+		return fmt.Errorf("failed to parse JSON response for --query: %w", err)
+	}
+
+	result, err := jmespath.Search(expression, data)
+	if err != nil {
+		return fmt.Errorf("invalid --query expression: %w", err)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("failed to encode --query result: %w", err)
+	}
+
+	resp.Body = body
+	return nil
 }
 
 // writeDiagnostic writes a non-error advisory message (warning or notice) to w
@@ -143,6 +211,18 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		Paginate:        cfg.Paginate,
 	}
 
+	// Load headers from --header-file first so an inline -H header with the
+	// same key wins on conflict (parsed below).
+	if cfg.HeaderFile != "" {
+		fileHeaders, err := loadHeaderFile(cfg.HeaderFile)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range fileHeaders {
+			opts.Headers[key] = value
+		}
+	}
+
 	// Parse headers
 	for _, header := range cfg.Headers {
 		parts := strings.SplitN(header, ":", 2)
@@ -152,6 +232,11 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		opts.Headers[key] = value
+	}
+
+	// The --client-request-id flag is authoritative and overrides a matching -H header.
+	if cfg.ClientRequestID != "" {
+		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
 	}
 
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
@@ -241,6 +326,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// Echo the correlation ID so it can be quoted in an Azure support request.
+	if cfg.ClientRequestID != "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -275,8 +365,20 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	if cfg.Query != "" {
+		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
+			return err
+		}
+	}
+
 	if cfg.ShowThrottle {
 		writeThrottleInfo(os.Stderr, resp.Headers)
+	}
+
+	if cfg.DumpHeaders != "" {
+		if err := dumpResponseHeaders(cfg.DumpHeaders, resp); err != nil {
+			return err
+		}
 	}
 
 	if err := s.writeResponseOutput(cfg, resp); err != nil {
@@ -371,6 +473,23 @@ func buildResponseHeaderBlock(resp *client.Response) string {
 	}
 	b.WriteString("\n")
 	return b.String()
+}
+
+// dumpResponseHeaders writes the response status line and headers to the path
+// named by --dump-headers. A path of "-" writes to stderr so it does not mix
+// with body output on stdout. Sensitive header values are redacted the same way
+// the --include path redacts them.
+func dumpResponseHeaders(path string, resp *client.Response) error {
+	block := buildResponseHeaderBlock(resp)
+	if path == "-" {
+		_, err := fmt.Fprint(os.Stderr, block)
+		return err
+	}
+	// #nosec G304 -- User-specified file path via --dump-headers flag is intentional.
+	if err := os.WriteFile(path, []byte(block), 0o600); err != nil {
+		return fmt.Errorf("failed to write response headers to %s: %w", path, err)
+	}
+	return nil
 }
 
 // RedactSensitiveHeader re-exports from client for MCP use.
