@@ -39,6 +39,7 @@ type Config struct {
 	Color           string
 	WriteOut        string
 	Include         bool
+	DumpHeaders     string
 }
 
 // Defaults returns a Config populated with the default flag values.
