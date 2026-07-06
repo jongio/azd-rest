@@ -186,7 +186,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")

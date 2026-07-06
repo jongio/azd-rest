@@ -198,7 +198,7 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response). |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
@@ -531,6 +531,14 @@ Use `--format raw` for raw response (no JSON parsing):
 
 ```bash
 azd rest get https://api.example.com/data --format raw
+```
+
+### YAML Output
+
+Use `--format yaml` to render a JSON response as YAML with two-space indentation and stable key order. Arrays and ARM `value` wrapper responses render as a YAML sequence of rows, and a single resource renders as a mapping:
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format yaml
 ```
 
 ### Query JSON Responses

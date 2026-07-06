@@ -415,7 +415,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table" and "jsonl"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", and "yaml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTable(resp.Body)
 		if err != nil {
@@ -426,6 +426,14 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 
 	if cfg.OutputFormat == "jsonl" {
 		out, err := renderJSONL(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "yaml" {
+		out, err := renderYAML(resp.Body)
 		if err != nil {
 			return err
 		}
