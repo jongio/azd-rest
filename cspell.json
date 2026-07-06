@@ -37,6 +37,7 @@
     "hostnames",
     "httpclient",
     "IMDS",
+    "jmespath",
     "jongio",
     "jsonl",
     "keyvault",

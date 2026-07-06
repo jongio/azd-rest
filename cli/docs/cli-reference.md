@@ -191,6 +191,7 @@ These flags are available for all HTTP method commands:
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
 | `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
+| `--query` | `-q` | string | "" | JMESPath query to apply to JSON responses. |
 
 ### Response Configuration
 
@@ -529,6 +530,20 @@ Use `--format raw` for raw response (no JSON parsing):
 
 ```bash
 azd rest get https://api.example.com/data --format raw
+```
+
+### Query JSON Responses
+
+Use `--query` to select data from JSON responses with JMESPath:
+
+```bash
+# Return subscription display names
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[].displayName"
+
+# Return the first item
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[0]"
 ```
 
 ### Binary Content
