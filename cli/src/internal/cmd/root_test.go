@@ -17,6 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testCRIDHeader is the Azure correlation header asserted by the client-request-id tests.
+const testCRIDHeader = "x-ms-client-request-id"
+
 // resetGlobalFlags resets all global flags to their default values.
 //
 // WARNING: These tests mutate package-level global flag variables and must NOT
@@ -27,6 +30,7 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	clientRequestID = ""
 	urlParams = []string{}
 	headers = []string{}
 	data = ""
@@ -273,6 +277,40 @@ func TestBuildRequestOptions_APIVersionReplacesExistingValue(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01", opts.URL)
+}
+
+func TestBuildRequestOptions_ClientRequestIDSetsHeader(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	clientRequestID = "my-correlation-id"
+
+	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+
+	require.NoError(t, err)
+	assert.Equal(t, "my-correlation-id", opts.Headers[testCRIDHeader])
+}
+
+func TestBuildRequestOptions_ClientRequestIDOverridesHeaderFlag(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+	clientRequestID = "flag-id"
+	headers = []string{"x-ms-client-request-id: header-id"}
+
+	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+
+	require.NoError(t, err)
+	assert.Equal(t, "flag-id", opts.Headers[testCRIDHeader])
+}
+
+func TestBuildRequestOptions_NoClientRequestIDByDefault(t *testing.T) {
+	resetGlobalFlags()
+	noAuth = true
+
+	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+
+	require.NoError(t, err)
+	_, ok := opts.Headers[testCRIDHeader]
+	assert.False(t, ok)
 }
 
 func TestBuildRequestOptions_URLParamAddsQueryParameter(t *testing.T) {

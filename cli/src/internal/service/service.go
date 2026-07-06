@@ -19,6 +19,9 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
+// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+const clientRequestIDHeader = "x-ms-client-request-id"
+
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
 type TokenProviderFactory func() (client.TokenProvider, error)
@@ -154,6 +157,11 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	// The --client-request-id flag is authoritative and overrides a matching -H header.
+	if cfg.ClientRequestID != "" {
+		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
+	}
+
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
 	// repeatable --form-field flags. This is mutually exclusive with a raw body.
 	if len(cfg.FormFields) > 0 {
@@ -239,6 +247,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if err := validateColorMode(cfg.Color); err != nil {
 		return err
+	}
+
+	// Echo the correlation ID so it can be quoted in an Azure support request.
+	if cfg.ClientRequestID != "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
 	}
 
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
