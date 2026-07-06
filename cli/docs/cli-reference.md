@@ -178,6 +178,7 @@ These flags are available for all HTTP method commands:
 | `--scope` | `-s` | string | (auto-detected) | OAuth scope for authentication. Auto-detected for Azure services if not provided. |
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
 | `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
+| `--client-request-id` | | string | "" | Set the `x-ms-client-request-id` header for Azure request correlation. Pass the flag without a value to generate a random ID. |
 | `--url-param` | | string[] | [] | Set or append a URL query parameter (repeatable, format: `key=value`). |
 
 ### Request Configuration
@@ -427,6 +428,22 @@ For public APIs that don't require authentication, use `--no-auth`:
 ```bash
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 ```
+
+### Client Request ID
+
+Azure support engineers often ask for the `x-ms-client-request-id` value to trace a call through the service logs. Use `--client-request-id` to set it, and the value is echoed to stderr so you can copy it into a support ticket:
+
+```bash
+# Provide your own correlation ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
+
+# Pass the flag without a value to generate a random ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id
+```
+
+The flag takes precedence over an `x-ms-client-request-id` value supplied with `-H`.
 
 ### Timeouts and Overall Budget
 
