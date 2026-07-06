@@ -29,6 +29,7 @@ var (
 	clientRequestID string
 	urlParams       []string
 	headers         []string
+	headerFile      string
 	data            string
 	dataFile        string
 	query           string
@@ -178,6 +179,7 @@ Examples:
 	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
+	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
@@ -241,6 +243,7 @@ func snapshotConfig() config.Config {
 		ClientRequestID: clientRequestID,
 		URLParams:       urlParams,
 		Headers:         headers,
+		HeaderFile:      headerFile,
 		Data:            data,
 		DataFile:        dataFile,
 		Query:           query,

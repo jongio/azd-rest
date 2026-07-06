@@ -15,6 +15,7 @@ type Config struct {
 	ClientRequestID string
 	URLParams       []string
 	Headers         []string
+	HeaderFile      string
 	Data            string
 	DataFile        string
 	Query           string

@@ -4,6 +4,7 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -54,6 +55,41 @@ func DefaultTokenProviderFactory() (client.TokenProvider, error) {
 // DefaultHTTPClientFactory is the production factory using the real HTTP client.
 func DefaultHTTPClientFactory(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
 	return client.NewClient(tp, insecure, timeout)
+}
+
+// loadHeaderFile reads headers from a file, one "Key: Value" per line. Blank
+// lines and lines beginning with "#" are ignored. It returns a clear error for
+// a missing file or a malformed line.
+func loadHeaderFile(path string) (map[string]string, error) {
+	file, err := os.Open(path) // #nosec G304 -- User-specified file path via --header-file flag is intentional.
+	if err != nil {
+		return nil, fmt.Errorf("failed to open header file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	result := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid header on line %d of %s: %q (expected Key: Value)", lineNum, path, line)
+		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return nil, fmt.Errorf("invalid header on line %d of %s: %q (empty header name)", lineNum, path, line)
+		}
+		result[key] = strings.TrimSpace(parts[1])
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read header file: %w", err)
+	}
+	return result, nil
 }
 
 func applyQueryToResponse(resp *client.Response, expression string) error {
@@ -173,6 +209,18 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		Retry:           cfg.Retry,
 		MaxResponseSize: cfg.MaxResponseSize,
 		Paginate:        cfg.Paginate,
+	}
+
+	// Load headers from --header-file first so an inline -H header with the
+	// same key wins on conflict (parsed below).
+	if cfg.HeaderFile != "" {
+		fileHeaders, err := loadHeaderFile(cfg.HeaderFile)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range fileHeaders {
+			opts.Headers[key] = value
+		}
 	}
 
 	// Parse headers

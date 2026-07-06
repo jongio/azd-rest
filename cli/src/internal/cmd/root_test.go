@@ -33,6 +33,7 @@ func resetGlobalFlags() {
 	clientRequestID = ""
 	urlParams = []string{}
 	headers = []string{}
+	headerFile = ""
 	data = ""
 	dataFile = ""
 	query = ""

@@ -186,6 +186,7 @@ These flags are available for all HTTP method commands:
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
+| `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
@@ -655,6 +656,29 @@ azd rest get https://api.example.com/resource \
 ```
 
 **Format:** `Key:Value` (colon separates key from value)
+
+### Headers from a File
+
+Keep a reusable header set in a file and load it with `--header-file`. Use one `Key: Value` per line. Blank lines and lines that start with `#` are ignored:
+
+```bash
+# headers.txt
+# Shared headers for the widgets API
+Accept: application/json
+X-Api-Version: 2
+
+azd rest get https://api.example.com/widgets --header-file headers.txt
+```
+
+Inline `--header` values take precedence, so you can load a base set from a file and override a single entry on the command line:
+
+```bash
+azd rest get https://api.example.com/widgets \
+  --header-file headers.txt \
+  --header "Accept: application/xml"
+```
+
+A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
 
 ### Content-Type
 
