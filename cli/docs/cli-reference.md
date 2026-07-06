@@ -178,6 +178,7 @@ These flags are available for all HTTP method commands:
 | `--scope` | `-s` | string | (auto-detected) | OAuth scope for authentication. Auto-detected for Azure services if not provided. |
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
 | `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
+| `--client-request-id` | | string | "" | Set the `x-ms-client-request-id` header for Azure request correlation. Pass the flag without a value to generate a random ID. |
 | `--url-param` | | string[] | [] | Set or append a URL query parameter (repeatable, format: `key=value`). |
 
 ### Request Configuration
@@ -185,11 +186,13 @@ These flags are available for all HTTP method commands:
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
+| `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
 | `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
+| `--query` | `-q` | string | "" | JMESPath query to apply to JSON responses. |
 
 ### Response Configuration
 
@@ -427,6 +430,22 @@ For public APIs that don't require authentication, use `--no-auth`:
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 ```
 
+### Client Request ID
+
+Azure support engineers often ask for the `x-ms-client-request-id` value to trace a call through the service logs. Use `--client-request-id` to set it, and the value is echoed to stderr so you can copy it into a support ticket:
+
+```bash
+# Provide your own correlation ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
+
+# Pass the flag without a value to generate a random ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id
+```
+
+The flag takes precedence over an `x-ms-client-request-id` value supplied with `-H`.
+
 ### Timeouts and Overall Budget
 
 `--timeout` bounds a single request attempt. `--max-time` bounds the entire operation, including retries and pagination, so a slow endpoint cannot hang a script far past the point you expect:
@@ -512,6 +531,20 @@ Use `--format raw` for raw response (no JSON parsing):
 
 ```bash
 azd rest get https://api.example.com/data --format raw
+```
+
+### Query JSON Responses
+
+Use `--query` to select data from JSON responses with JMESPath:
+
+```bash
+# Return subscription display names
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[].displayName"
+
+# Return the first item
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[0]"
 ```
 
 ### Binary Content
@@ -623,6 +656,29 @@ azd rest get https://api.example.com/resource \
 ```
 
 **Format:** `Key:Value` (colon separates key from value)
+
+### Headers from a File
+
+Keep a reusable header set in a file and load it with `--header-file`. Use one `Key: Value` per line. Blank lines and lines that start with `#` are ignored:
+
+```bash
+# headers.txt
+# Shared headers for the widgets API
+Accept: application/json
+X-Api-Version: 2
+
+azd rest get https://api.example.com/widgets --header-file headers.txt
+```
+
+Inline `--header` values take precedence, so you can load a base set from a file and override a single entry on the command line:
+
+```bash
+azd rest get https://api.example.com/widgets \
+  --header-file headers.txt \
+  --header "Accept: application/xml"
+```
+
+A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
 
 ### Content-Type
 
