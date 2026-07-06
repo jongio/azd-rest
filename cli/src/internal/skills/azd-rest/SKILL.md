@@ -37,6 +37,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 |------|-------|---------|-------------|
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
+| `--client-request-id` | | "" | Set the x-ms-client-request-id header for Azure request correlation (pass without a value to generate a random ID) |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
 | `--header-file` | | "" | Read headers from a file (one Key: Value per line; blank lines and # comments ignored; -H overrides) |
 | `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
@@ -185,6 +186,10 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 
 # Public API without auth
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
+
+# Correlate a call for an Azure support request
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
 
 # Preview the detected scope without sending a request
 azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01

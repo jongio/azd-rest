@@ -6,6 +6,7 @@ package service
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,10 +16,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmespath-community/go-jmespath"
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
 )
+
+// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+const clientRequestIDHeader = "x-ms-client-request-id"
 
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
@@ -85,6 +90,33 @@ func loadHeaderFile(path string) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to read header file: %w", err)
 	}
 	return result, nil
+}
+
+func applyQueryToResponse(resp *client.Response, expression string) error {
+	if expression == "" {
+		return nil
+	}
+	if !strings.Contains(strings.ToLower(resp.Headers.Get("Content-Type")), "json") && !client.IsJSON(resp.Body) {
+		return fmt.Errorf("--query requires a JSON response")
+	}
+
+	var data any
+	if err := json.Unmarshal(resp.Body, &data); err != nil {
+		return fmt.Errorf("failed to parse JSON response for --query: %w", err)
+	}
+
+	result, err := jmespath.Search(expression, data)
+	if err != nil {
+		return fmt.Errorf("invalid --query expression: %w", err)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("failed to encode --query result: %w", err)
+	}
+
+	resp.Body = body
+	return nil
 }
 
 // writeDiagnostic writes a non-error advisory message (warning or notice) to w
@@ -202,6 +234,11 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	// The --client-request-id flag is authoritative and overrides a matching -H header.
+	if cfg.ClientRequestID != "" {
+		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
+	}
+
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
 	// repeatable --form-field flags. This is mutually exclusive with a raw body.
 	if len(cfg.FormFields) > 0 {
@@ -289,6 +326,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// Echo the correlation ID so it can be quoted in an Azure support request.
+	if cfg.ClientRequestID != "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -321,6 +363,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 			return fmt.Errorf("overall time budget of %s exceeded (--max-time): %w", cfg.MaxTime, err)
 		}
 		return err
+	}
+
+	if cfg.Query != "" {
+		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
+			return err
+		}
 	}
 
 	if cfg.ShowThrottle {

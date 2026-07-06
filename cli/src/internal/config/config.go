@@ -12,11 +12,13 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	ClientRequestID string
 	URLParams       []string
 	Headers         []string
 	HeaderFile      string
 	Data            string
 	DataFile        string
+	Query           string
 	FormFields      []string
 	OutputFile      string
 	OutputFormat    string
