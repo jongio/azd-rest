@@ -21,13 +21,24 @@ var tableColumnPriority = []string{
 // covers ARM-style responses that wrap results under one of these keys.
 var listWrapperKeys = []string{"value", "data", "results", "items"}
 
-// renderTable renders a JSON response body as an aligned text table.
+// renderTable renders a JSON response body as an aligned text table using the
+// automatic column layout.
+func renderTable(body []byte) (string, error) {
+	return renderTableWithColumns(body, nil)
+}
+
+// renderTableWithColumns renders a JSON response body as an aligned text table.
 //
 // It accepts a top-level JSON array, or an object that wraps rows under a
 // common key (value, data, results, or items), or a single object (rendered as
 // one row). Rows that are objects become columns; rows that are scalars render
 // under a single "value" column.
-func renderTable(body []byte) (string, error) {
+//
+// When selected is non-empty and every row is an object, only those columns are
+// rendered, in the given order, instead of the automatic layout. A selected
+// column that is missing from a row renders as an empty cell. Blank names are
+// ignored; if nothing usable remains, the automatic layout is used.
+func renderTableWithColumns(body []byte, selected []string) (string, error) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
 
@@ -46,6 +57,9 @@ func renderTable(body []byte) (string, error) {
 	var header []string
 	var data [][]string
 	if allObjects {
+		if cleaned := cleanColumnNames(selected); len(cleaned) > 0 {
+			columns = cleaned
+		}
 		header = columns
 		for _, row := range rows {
 			obj, _ := row.(map[string]any)
@@ -63,6 +77,19 @@ func renderTable(body []byte) (string, error) {
 	}
 
 	return formatTable(header, data), nil
+}
+
+// cleanColumnNames trims surrounding spaces from requested column names and
+// drops empty entries so "--table-columns name, location" behaves the same as
+// "--table-columns name,location".
+func cleanColumnNames(selected []string) []string {
+	cleaned := make([]string, 0, len(selected))
+	for _, col := range selected {
+		if trimmed := strings.TrimSpace(col); trimmed != "" {
+			cleaned = append(cleaned, trimmed)
+		}
+	}
+	return cleaned
 }
 
 // extractTableRows normalizes a parsed JSON value into a slice of row values.

@@ -41,6 +41,7 @@ type Config struct {
 	Color           string
 	WriteOut        string
 	Include         bool
+	TableColumns    []string
 	DumpHeaders     string
 }
 
