@@ -45,6 +45,7 @@ type Config struct {
 	Redact          []string
 	TableColumns    []string
 	DumpHeaders     string
+	RawOutput       bool
 }
 
 // Defaults returns a Config populated with the default flag values.
