@@ -202,6 +202,7 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
+| `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
@@ -578,6 +579,21 @@ Use `--binary` flag to handle binary content without transformation:
 ```bash
 azd rest get https://example.com/image.png --binary --output-file image.png
 ```
+
+### Redacting Response Fields
+
+Use `--redact` to replace sensitive JSON values with a fixed placeholder before the response is printed or written to `--output-file`. The flag is repeatable and uses dotted paths, where `*` matches every element of an array:
+
+```bash
+# Mask the value of a Key Vault secret
+azd rest get "https://myvault.vault.azure.net/secrets/db?api-version=7.4" --redact value
+
+# Mask a field inside every item of an ARM list response
+azd rest get "https://management.azure.com/subscriptions/.../providers/...?api-version=2023-01-01" \
+  --redact value.*.properties.connectionString
+```
+
+Redaction runs for the `json`, `auto`, `table`, and `jsonl` formats. Raw and binary output is left unchanged, with a note on stderr, because it cannot be parsed as JSON. A path that matches nothing is a safe no-op.
 
 ### Save to File
 

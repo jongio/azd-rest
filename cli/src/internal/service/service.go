@@ -414,6 +414,20 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
+	// Redaction (#216): mask matched JSON response fields before formatting.
+	// Raw and binary output cannot be parsed as JSON, so it is left unchanged
+	// with a note on stderr.
+	if len(cfg.Redact) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if redacted, err := redactJSONBody(resp.Body, cfg.Redact); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = redacted
+		}
+	}
+
 	// When --include is set, prepend the HTTP status line and response headers
 	// to the output (curl -i style). Sensitive header values are redacted.
 	var headerBlock string
