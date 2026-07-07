@@ -47,7 +47,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
 | `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -225,6 +225,9 @@ azd rest get https://myvault.vault.azure.net/secrets/db?api-version=7.4 --redact
 
 # YAML output for arrays, ARM value[] responses, and single resources
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format yaml
+
+# CSV export for spreadsheets and data tools
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format csv
 
 # Custom scope for non-Azure endpoint
 azd rest get https://api.myservice.com/data --scope https://myservice.com/.default

@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const valueKey = "value"
+
 // tableColumnPriority lists keys that are shown first (in this order) when a
 // row object contains them. Remaining keys follow in alphabetical order. This
 // gives resource listings a predictable, readable column layout.
@@ -17,9 +19,9 @@ var tableColumnPriority = []string{
 }
 
 // listWrapperKeys are the object keys whose array value is treated as the
-// list of rows to render for the table, jsonl, and yaml output formats. This
-// covers ARM-style responses that wrap results under one of these keys.
-var listWrapperKeys = []string{"value", "data", "results", "items"}
+// list of rows to render for the table, jsonl, yaml, and csv output formats.
+// This covers ARM-style responses that wrap results under one of these keys.
+var listWrapperKeys = []string{valueKey, "data", "results", "items"}
 
 // renderTable renders a JSON response body as an aligned text table using the
 // automatic column layout.
@@ -70,7 +72,7 @@ func renderTableWithColumns(body []byte, selected []string) (string, error) {
 			data = append(data, cells)
 		}
 	} else {
-		header = []string{"value"}
+		header = []string{valueKey}
 		for _, row := range rows {
 			data = append(data, []string{tableCellString(row)})
 		}
