@@ -123,6 +123,10 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
+# Flatten a response to dotted paths, then grep for one field
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --flatten
+
 # Diagnose authentication issues
 azd rest doctor
 ```

@@ -25,6 +25,7 @@ type Config struct {
 	OutputFile      string
 	OutputFormat    string
 	Verbose         bool
+	Flatten         bool
 	Paginate        bool
 	Retry           int
 	Binary          bool
