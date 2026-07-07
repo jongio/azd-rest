@@ -37,12 +37,17 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 |------|-------|---------|-------------|
 | `--scope` | `-s` | auto | OAuth scope (auto-detected for Azure services) |
 | `--no-auth` | | false | Skip authentication for public APIs |
+| `--client-request-id` | | "" | Set the x-ms-client-request-id header for Azure request correlation (pass without a value to generate a random ID) |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
+| `--header-file` | | "" | Read headers from a file (one Key: Value per line; blank lines and # comments ignored; -H overrides) |
 | `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
+| `--json-field` | | [] | Add a string field to a JSON body (repeatable, key=value; dotted keys nest) |
+| `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl |
+| `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -176,6 +181,12 @@ azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{r
 # POST with body from file
 azd rest post https://api.example.com/resource --data-file request.json
 
+# Build a JSON body from key=value fields (raw values keep their JSON type)
+azd rest post https://api.example.com/resource \
+  --json-field name=example \
+  --json-field-raw enabled:=true \
+  --json-field sku.name=Standard_LRS
+
 # PATCH for partial update
 azd rest patch https://management.azure.com/.../storageAccounts/{name}?api-version=2021-04-01 \
   --data '{"tags":{"environment":"production"}}'
@@ -186,12 +197,19 @@ azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/
 # Public API without auth
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
+# Correlate a call for an Azure support request
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
+
 # Preview the detected scope without sending a request
 azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 
 # Custom headers + save response
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
+
+# Reuse a header set from a file
+azd rest get https://api.example.com/widgets --header-file headers.txt
 
 # Verbose output with timing details
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose
@@ -201,6 +219,12 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
+
+# Mask sensitive JSON fields before display or save (dotted path, * for arrays)
+azd rest get https://myvault.vault.azure.net/secrets/db?api-version=7.4 --redact value
+
+# YAML output for arrays, ARM value[] responses, and single resources
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format yaml
 
 # Custom scope for non-Azure endpoint
 azd rest get https://api.myservice.com/data --scope https://myservice.com/.default

@@ -178,6 +178,7 @@ These flags are available for all HTTP method commands:
 | `--scope` | `-s` | string | (auto-detected) | OAuth scope for authentication. Auto-detected for Azure services if not provided. |
 | `--no-auth` | | bool | false | Skip authentication (no bearer token). Useful for public APIs. |
 | `--api-version` | | string | "" | Set or replace the `api-version` query parameter. |
+| `--client-request-id` | | string | "" | Set the `x-ms-client-request-id` header for Azure request correlation. Pass the flag without a value to generate a random ID. |
 | `--url-param` | | string[] | [] | Set or append a URL query parameter (repeatable, format: `key=value`). |
 
 ### Request Configuration
@@ -185,18 +186,23 @@ These flags are available for all HTTP method commands:
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
+| `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
+| `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
+| `--json-field-raw` | | string[] | [] | Add a raw JSON field to a JSON request body (repeatable, format: `key:=json`). Dotted keys nest. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
 | `--max-time` | | duration | 0 | Overall time budget across retries and pagination. `0` disables the limit. |
 | `--insecure` | `-k` | bool | false | Skip TLS certificate verification (not recommended for production). |
+| `--query` | `-q` | string | "" | JMESPath query to apply to JSON responses. |
 
 ### Response Configuration
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response). |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
+| `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
@@ -430,6 +436,22 @@ For public APIs that don't require authentication, use `--no-auth`:
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 ```
 
+### Client Request ID
+
+Azure support engineers often ask for the `x-ms-client-request-id` value to trace a call through the service logs. Use `--client-request-id` to set it, and the value is echoed to stderr so you can copy it into a support ticket:
+
+```bash
+# Provide your own correlation ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id my-trace-001
+
+# Pass the flag without a value to generate a random ID
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --client-request-id
+```
+
+The flag takes precedence over an `x-ms-client-request-id` value supplied with `-H`.
+
 ### Timeouts and Overall Budget
 
 `--timeout` bounds a single request attempt. `--max-time` bounds the entire operation, including retries and pagination, so a slow endpoint cannot hang a script far past the point you expect:
@@ -476,6 +498,20 @@ azd rest post https://api.example.com/resource --data-file @request.json
 - For JSON, ensure the file contains valid JSON
 - Binary files are supported when using `--binary` flag
 
+### JSON Body Fields
+
+Use `--json-field` and `--json-field-raw` to build a JSON body from `key=value` pairs instead of writing raw JSON. `--json-field` sets a string value, and `--json-field-raw` parses the value as JSON so numbers, booleans, arrays, objects, and null keep their type. Dotted keys build nested objects, and repeated prefixes merge into the same parent object. `Content-Type: application/json` is set when you do not provide one:
+
+```bash
+azd rest post https://api.example.com/resource \
+  --json-field name=example \
+  --json-field-raw enabled:=true \
+  --json-field-raw retries:=3 \
+  --json-field sku.name=Standard_LRS
+```
+
+This sends `{"name":"example","enabled":true,"retries":3,"sku":{"name":"Standard_LRS"}}`. These flags cannot be combined with `--data`, `--data-file`, or `--form-field`.
+
 ---
 
 ## Response Formatting
@@ -517,6 +553,28 @@ Use `--format raw` for raw response (no JSON parsing):
 azd rest get https://api.example.com/data --format raw
 ```
 
+### YAML Output
+
+Use `--format yaml` to render a JSON response as YAML with two-space indentation and stable key order. Arrays and ARM `value` wrapper responses render as a YAML sequence of rows, and a single resource renders as a mapping:
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format yaml
+```
+
+### Query JSON Responses
+
+Use `--query` to select data from JSON responses with JMESPath:
+
+```bash
+# Return subscription display names
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[].displayName"
+
+# Return the first item
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --query "value[0]"
+```
+
 ### Binary Content
 
 Use `--binary` flag to handle binary content without transformation:
@@ -524,6 +582,21 @@ Use `--binary` flag to handle binary content without transformation:
 ```bash
 azd rest get https://example.com/image.png --binary --output-file image.png
 ```
+
+### Redacting Response Fields
+
+Use `--redact` to replace sensitive JSON values with a fixed placeholder before the response is printed or written to `--output-file`. The flag is repeatable and uses dotted paths, where `*` matches every element of an array:
+
+```bash
+# Mask the value of a Key Vault secret
+azd rest get "https://myvault.vault.azure.net/secrets/db?api-version=7.4" --redact value
+
+# Mask a field inside every item of an ARM list response
+azd rest get "https://management.azure.com/subscriptions/.../providers/...?api-version=2023-01-01" \
+  --redact value.*.properties.connectionString
+```
+
+Redaction runs for the `json`, `auto`, `table`, and `jsonl` formats. Raw and binary output is left unchanged, with a note on stderr, because it cannot be parsed as JSON. A path that matches nothing is a safe no-op.
 
 ### Save to File
 
@@ -652,6 +725,29 @@ azd rest get https://api.example.com/resource \
 ```
 
 **Format:** `Key:Value` (colon separates key from value)
+
+### Headers from a File
+
+Keep a reusable header set in a file and load it with `--header-file`. Use one `Key: Value` per line. Blank lines and lines that start with `#` are ignored:
+
+```bash
+# headers.txt
+# Shared headers for the widgets API
+Accept: application/json
+X-Api-Version: 2
+
+azd rest get https://api.example.com/widgets --header-file headers.txt
+```
+
+Inline `--header` values take precedence, so you can load a base set from a file and override a single entry on the command line:
+
+```bash
+azd rest get https://api.example.com/widgets \
+  --header-file headers.txt \
+  --header "Accept: application/xml"
+```
+
+A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
 
 ### Content-Type
 
