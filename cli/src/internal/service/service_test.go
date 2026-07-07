@@ -234,3 +234,65 @@ func TestExecute_MaxTimeDisabledByDefault(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", server.URL)
 	require.NoError(t, err)
 }
+
+func TestBuildRequestOptions_AllowHostPermitsMatch(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.AllowedHosts = []string{"management.azure.com"}
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://management.azure.com/subscriptions?api-version=2021-04-01")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2021-04-01", opts.URL)
+}
+
+func TestBuildRequestOptions_AllowHostRejectsMismatch(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.AllowedHosts = []string{"management.azure.com"}
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://evil.example.com/data")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "evil.example.com")
+	assert.Contains(t, err.Error(), "allow-host")
+}
+
+func TestBuildRequestOptions_AllowHostIgnoresPort(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.AllowedHosts = []string{"localhost"}
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://localhost:8443/probe")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+}
+
+func TestBuildRequestOptions_AllowHostWildcard(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.AllowedHosts = []string{"*.vault.azure.net"}
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://kv.vault.azure.net/secrets/x")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+}
+
+func TestBuildRequestOptions_AllowHostUnsetAllowsAny(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://anything.example.com/x")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+}

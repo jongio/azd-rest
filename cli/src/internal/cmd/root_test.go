@@ -56,6 +56,7 @@ func resetGlobalFlags() {
 	repeat = defaults.Repeat
 	writeOut = ""
 	include = false
+	allowHosts = []string{}
 }
 
 func TestNewRootCmd(t *testing.T) {

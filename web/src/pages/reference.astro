@@ -120,6 +120,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--max-redirects</code></td><td>int</td><td>10</td><td>Maximum redirect hops</td></tr>
               <tr><td><code>--show-throttle</code></td><td>bool</td><td>false</td><td>Print Azure rate-limit and quota headers (<code>x-ms-ratelimit-remaining-*</code>) to stderr, with a warning when remaining quota is low</td></tr>
               <tr><td><code>--repeat</code></td><td>int</td><td>1</td><td>Send the request N times and print latency stats (min/mean/p50/p95/p99/max) to stderr; only the last response body goes to stdout</td></tr>
+              <tr><td><code>--allow-host</code></td><td>string[]</td><td>[]</td><td>Restrict requests to hosts matching a pattern (repeatable; leading <code>*.</code> matches subdomains). Env: <code>AZD_REST_ALLOWED_HOSTS</code> (comma separated)</td></tr>
             </tbody>
           </table>
         </div>

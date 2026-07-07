@@ -55,6 +55,7 @@ var (
 	colorMode       string
 	writeOut        string
 	include         bool
+	allowHosts      []string
 	redactPaths     []string
 	tableColumns    []string
 	dumpHeaders     string
@@ -165,6 +166,10 @@ Examples:
 		if err := applyEnvDefaults(cmd.Flags(), extensionFlagNames, os.LookupEnv); err != nil {
 			return err
 		}
+		// AZD_REST_ALLOWED_HOSTS is a comma separated default for --allow-host (#219).
+		if err := applyAllowedHostsEnv(cmd.Flags(), os.LookupEnv); err != nil {
+			return err
+		}
 		// Install Copilot skill
 		if err := skills.InstallSkill(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to install copilot skill: %v\n", err)
@@ -210,6 +215,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
+	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
@@ -217,7 +223,7 @@ Examples:
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
 	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if !sdkFlagNames[f.Name] {
+		if !sdkFlagNames[f.Name] && f.Name != "allow-host" {
 			extensionFlagNames = append(extensionFlagNames, f.Name)
 		}
 	})
@@ -279,6 +285,7 @@ func snapshotConfig() config.Config {
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
+		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,

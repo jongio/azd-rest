@@ -41,6 +41,7 @@ type Config struct {
 	Color           string
 	WriteOut        string
 	Include         bool
+	AllowedHosts    []string
 	Redact          []string
 	TableColumns    []string
 	DumpHeaders     string

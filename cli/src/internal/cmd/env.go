@@ -65,3 +65,40 @@ func applyEnvDefaults(flags *pflag.FlagSet, names []string, lookup func(string) 
 	}
 	return nil
 }
+
+// allowedHostsEnv is the environment variable that supplies a comma separated
+// default for the repeatable --allow-host flag (#219).
+const allowedHostsEnv = "AZD_REST_ALLOWED_HOSTS"
+
+// applyAllowedHostsEnv sets --allow-host from AZD_REST_ALLOWED_HOSTS when the
+// flag was not provided on the command line. The value is a comma separated
+// list of host patterns; blank entries are ignored. The lookup function is
+// injectable so tests can supply values without touching the process
+// environment.
+func applyAllowedHostsEnv(flags *pflag.FlagSet, lookup func(string) (string, bool)) error {
+	flag := flags.Lookup("allow-host")
+	if flag == nil || flag.Changed {
+		return nil
+	}
+	value, ok := lookup(allowedHostsEnv)
+	if !ok || strings.TrimSpace(value) == "" {
+		return nil
+	}
+	applied := false
+	for _, part := range strings.Split(value, ",") {
+		host := strings.TrimSpace(part)
+		if host == "" {
+			continue
+		}
+		if err := flag.Value.Set(host); err != nil {
+			return &configError{fmt.Errorf(
+				"invalid value %q for %s (default for --allow-host): %w", host, allowedHostsEnv, err,
+			)}
+		}
+		applied = true
+	}
+	if applied {
+		flag.Changed = true
+	}
+	return nil
+}
