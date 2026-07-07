@@ -123,6 +123,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
+# Minify the response to one line, for example to append one record per call to a log
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -c >> audit.log
+
 # Diagnose authentication issues
 azd rest doctor
 ```
