@@ -32,6 +32,7 @@ var (
 	headerFile      string
 	data            string
 	dataFile        string
+	dataFormat      string
 	query           string
 	formFields      []string
 	jsonFields      []string
@@ -192,6 +193,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
+	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
@@ -262,6 +264,7 @@ func snapshotConfig() config.Config {
 		HeaderFile:      headerFile,
 		Data:            data,
 		DataFile:        dataFile,
+		DataFormat:      dataFormat,
 		Query:           query,
 		FormFields:      formFields,
 		JSONFields:      jsonFields,

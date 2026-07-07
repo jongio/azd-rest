@@ -251,6 +251,20 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	// --data-format (#236) selects how --data / --data-file is interpreted before
+	// it is sent. The default is JSON (raw passthrough). YAML is parsed and
+	// re-encoded as a JSON body.
+	dataFormat := cfg.DataFormat
+	if dataFormat == "" {
+		dataFormat = dataFormatJSON
+	}
+	if dataFormat != dataFormatJSON && dataFormat != dataFormatYAML {
+		return opts, nil, &dataFormatError{fmt.Errorf("--data-format must be %q or %q, got %q", dataFormatJSON, dataFormatYAML, dataFormat)}
+	}
+	if dataFormat == dataFormatYAML && (len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 || len(cfg.FormFields) > 0) {
+		return opts, nil, &dataFormatError{fmt.Errorf("--data-format yaml cannot be combined with --form-field, --json-field, or --json-field-raw")}
+	}
+
 	// JSON body fields (#215): assemble a JSON body from repeatable --json-field
 	// and --json-field-raw flags. This is mutually exclusive with other bodies.
 	if len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 {
@@ -292,7 +306,25 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	// provide a cleanup function to the caller. The caller MUST call cleanup
 	// after the request completes (or on error).
 	var bodyFile *os.File
-	if cfg.DataFile != "" {
+	switch {
+	case dataFormat == dataFormatYAML:
+		// #236: read the whole body, convert YAML to a JSON body, and default the
+		// Content-Type to application/json. No file handle is kept open here.
+		raw, readErr := readRequestBody(cfg)
+		if readErr != nil {
+			return opts, nil, readErr
+		}
+		if len(raw) > 0 {
+			jsonBody, convErr := yamlToJSON(raw)
+			if convErr != nil {
+				return opts, nil, &dataFormatError{fmt.Errorf("failed to parse the request body as YAML: %w", convErr)}
+			}
+			opts.Body = bytes.NewReader(jsonBody)
+			if !hasHeader(opts.Headers, contentTypeHeader) {
+				opts.Headers[contentTypeHeader] = applicationJSON
+			}
+		}
+	case cfg.DataFile != "":
 		filePath := cfg.DataFile
 		if strings.HasPrefix(cfg.DataFile, "@") {
 			filePath = strings.TrimPrefix(cfg.DataFile, "@")
@@ -303,7 +335,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		}
 		bodyFile = file
 		opts.Body = file
-	} else if cfg.Data != "" {
+	case cfg.Data != "":
 		opts.Body = strings.NewReader(cfg.Data)
 	}
 
