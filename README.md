@@ -104,6 +104,9 @@ azd rest get https://graph.microsoft.com/v1.0/me
 # Azure Resource Graph (KQL) query
 azd rest graph "Resources | summarize count() by type"
 
+# Azure Resource Graph query from a file
+azd rest graph --query-file resources.kql
+
 # Show the signed-in Azure identity (tenant, app, scopes, expiry)
 azd rest whoami
 

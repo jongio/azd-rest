@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -68,27 +69,36 @@ func NewGraphCommand() *cobra.Command {
 		top              int
 		skip             int
 		skipToken        string
+		queryFile        string
 	)
 
 	cmd := &cobra.Command{
-		Use:   "graph <kql-query>",
+		Use:   "graph [kql-query]",
 		Short: "Run an Azure Resource Graph query",
 		Long: `Run an Azure Resource Graph query using Kusto Query Language (KQL).
 
 The query runs against every subscription you can access unless you narrow it
 with --subscription or --management-group. Authentication and the api-version
-are handled for you.`,
+are handled for you. Pass the query as an argument or read it from a file with
+--query-file.`,
 		Example: `  # Count resources by type
   azd rest graph "Resources | summarize count() by type"
+
+  # Read a query from a file
+  azd rest graph --query-file resources.kql
 
   # Scope to specific subscriptions and return the first 5 rows
   azd rest graph "Resources | project name, type" --subscription <sub-id> --top 5
 
   # Continue a paged result set
   azd rest graph "Resources | project name" --skip-token <token>`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runGraph(cmd, args[0], subscriptions, managementGroups, top, skip, skipToken)
+			query, err := resolveGraphQuery(args, queryFile)
+			if err != nil {
+				return err
+			}
+			return runGraph(cmd, query, subscriptions, managementGroups, top, skip, skipToken)
 		},
 	}
 
@@ -97,8 +107,31 @@ are handled for you.`,
 	cmd.Flags().IntVar(&top, "top", 0, "Maximum number of rows to return (maps to options.$top)")
 	cmd.Flags().IntVar(&skip, "skip", 0, "Number of rows to skip (maps to options.$skip)")
 	cmd.Flags().StringVar(&skipToken, "skip-token", "", "Continuation token from a previous response (maps to options.$skipToken)")
+	cmd.Flags().StringVar(&queryFile, "query-file", "", "Read the KQL query from a file instead of the positional argument")
 
 	return cmd
+}
+
+func resolveGraphQuery(args []string, queryFile string) (string, error) {
+	if queryFile != "" {
+		if len(args) > 0 {
+			return "", fmt.Errorf("--query-file cannot be combined with a positional query")
+		}
+		data, err := os.ReadFile(queryFile) // #nosec G304 -- User-specified query file path is intentional.
+		if err != nil {
+			return "", fmt.Errorf("failed to read --query-file %s: %w", queryFile, err)
+		}
+		query := string(data)
+		if strings.TrimSpace(query) == "" {
+			return "", fmt.Errorf("--query-file %s is empty", queryFile)
+		}
+		return query, nil
+	}
+
+	if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
+		return "", fmt.Errorf("query is required; pass a KQL argument or --query-file")
+	}
+	return args[0], nil
 }
 
 // runGraph builds the Resource Graph request body and delegates to the request
