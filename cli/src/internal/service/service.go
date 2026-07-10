@@ -428,6 +428,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
 	}
 
+	// --fail (#233): after the body and metadata have been written, return a
+	// non-zero exit for an error status so scripts and CI can detect failures.
+	if cfg.Fail && resp.StatusCode >= 400 {
+		return &httpFailError{status: resp.StatusCode}
+	}
+
 	return nil
 }
 
