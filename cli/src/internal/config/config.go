@@ -18,6 +18,7 @@ type Config struct {
 	HeaderFile      string
 	Data            string
 	DataFile        string
+	DataFormat      string
 	Query           string
 	FormFields      []string
 	JSONFields      []string

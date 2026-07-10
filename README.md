@@ -129,6 +129,10 @@ name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=
 # Minify the response to one line, for example to append one record per call to a log
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -c >> audit.log
 
+# Send a YAML request body (converted to JSON automatically)
+azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --data-file group.yaml --data-format yaml
+
 # Diagnose authentication issues
 azd rest doctor
 
