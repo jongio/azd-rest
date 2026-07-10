@@ -354,6 +354,9 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
 	}
+	if cfg.RepeatDelay < 0 {
+		return fmt.Errorf("--repeat-delay cannot be negative, got %s", cfg.RepeatDelay)
+	}
 
 	if err := validateColorMode(cfg.Color); err != nil {
 		return err

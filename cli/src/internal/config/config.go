@@ -38,6 +38,7 @@ type Config struct {
 	MaxResponseSize int64
 	ShowThrottle    bool
 	Repeat          int
+	RepeatDelay     time.Duration
 	Color           string
 	WriteOut        string
 	Include         bool
