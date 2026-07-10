@@ -126,6 +126,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Read a single field into a shell variable without piping through jq -r
 name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --query displayName -r)
 
+# Minify the response to one line, for example to append one record per call to a log
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -c >> audit.log
+
 # Diagnose authentication issues
 azd rest doctor
 

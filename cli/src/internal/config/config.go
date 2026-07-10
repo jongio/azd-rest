@@ -47,6 +47,7 @@ type Config struct {
 	DumpHeaders     string
 	Fail            bool
 	RawOutput       bool
+	Compact         bool
 }
 
 // Defaults returns a Config populated with the default flag values.

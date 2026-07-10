@@ -473,6 +473,9 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
+		if cfg.Compact {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --compact needs JSON output; leaving binary output unchanged\n")
+		}
 		if cfg.Include {
 			data := make([]byte, 0, len(headerBlock)+len(resp.Body))
 			data = append(data, headerBlock...)
@@ -514,6 +517,16 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 			return err
 		}
 		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	// --compact (#235): minify JSON to a single line for the auto and json
+	// formats and --query output. Raw, binary, table, jsonl, yaml, and csv are
+	// left untouched. A non-JSON body is left unchanged with a note on stderr.
+	if cfg.Compact && cfg.OutputFormat != formatRaw {
+		if compacted, ok := compactJSONBody(resp.Body); ok {
+			return formatter.WriteOutput(headerBlock+compacted+"\n", cfg.OutputFile)
+		}
+		writeDiagnostic(os.Stderr, cfg.Silent, "> --compact needs a JSON response; leaving output unchanged\n")
 	}
 
 	formatted, err := formatter.Format(resp)

@@ -61,6 +61,7 @@ var (
 	dumpHeaders     string
 	fail            bool
 	rawOutput       bool
+	compact         bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -223,6 +224,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
+	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -295,6 +297,7 @@ func snapshotConfig() config.Config {
 		DumpHeaders:     dumpHeaders,
 		Fail:            fail,
 		RawOutput:       rawOutput,
+		Compact:         compact,
 	}
 }
 
