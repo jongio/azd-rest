@@ -123,12 +123,21 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
+# Read a single field into a shell variable without piping through jq -r
+name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --query displayName -r)
+
+# Minify the response to one line, for example to append one record per call to a log
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -c >> audit.log
+
 # Send a YAML request body (converted to JSON automatically)
 azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --data-file group.yaml --data-format yaml
 
 # Diagnose authentication issues
 azd rest doctor
+
+# Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.
