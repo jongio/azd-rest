@@ -32,6 +32,7 @@ var (
 	headerFile      string
 	data            string
 	dataFile        string
+	dataFormat      string
 	query           string
 	formFields      []string
 	jsonFields      []string
@@ -60,6 +61,9 @@ var (
 	redactPaths     []string
 	tableColumns    []string
 	dumpHeaders     string
+	fail            bool
+	rawOutput       bool
+	compact         bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -193,6 +197,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
+	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
@@ -221,6 +226,9 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
+	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
+	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -264,6 +272,7 @@ func snapshotConfig() config.Config {
 		HeaderFile:      headerFile,
 		Data:            data,
 		DataFile:        dataFile,
+		DataFormat:      dataFormat,
 		Query:           query,
 		FormFields:      formFields,
 		JSONFields:      jsonFields,
@@ -292,6 +301,9 @@ func snapshotConfig() config.Config {
 		Redact:          redactPaths,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
+		Fail:            fail,
+		RawOutput:       rawOutput,
+		Compact:         compact,
 	}
 }
 

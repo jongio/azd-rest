@@ -251,6 +251,20 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	// --data-format (#236) selects how --data / --data-file is interpreted before
+	// it is sent. The default is JSON (raw passthrough). YAML is parsed and
+	// re-encoded as a JSON body.
+	dataFormat := cfg.DataFormat
+	if dataFormat == "" {
+		dataFormat = dataFormatJSON
+	}
+	if dataFormat != dataFormatJSON && dataFormat != dataFormatYAML {
+		return opts, nil, &dataFormatError{fmt.Errorf("--data-format must be %q or %q, got %q", dataFormatJSON, dataFormatYAML, dataFormat)}
+	}
+	if dataFormat == dataFormatYAML && (len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 || len(cfg.FormFields) > 0) {
+		return opts, nil, &dataFormatError{fmt.Errorf("--data-format yaml cannot be combined with --form-field, --json-field, or --json-field-raw")}
+	}
+
 	// JSON body fields (#215): assemble a JSON body from repeatable --json-field
 	// and --json-field-raw flags. This is mutually exclusive with other bodies.
 	if len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 {
@@ -292,7 +306,25 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	// provide a cleanup function to the caller. The caller MUST call cleanup
 	// after the request completes (or on error).
 	var bodyFile *os.File
-	if cfg.DataFile != "" {
+	switch {
+	case dataFormat == dataFormatYAML:
+		// #236: read the whole body, convert YAML to a JSON body, and default the
+		// Content-Type to application/json. No file handle is kept open here.
+		raw, readErr := readRequestBody(cfg)
+		if readErr != nil {
+			return opts, nil, readErr
+		}
+		if len(raw) > 0 {
+			jsonBody, convErr := yamlToJSON(raw)
+			if convErr != nil {
+				return opts, nil, &dataFormatError{fmt.Errorf("failed to parse the request body as YAML: %w", convErr)}
+			}
+			opts.Body = bytes.NewReader(jsonBody)
+			if !hasHeader(opts.Headers, contentTypeHeader) {
+				opts.Headers[contentTypeHeader] = applicationJSON
+			}
+		}
+	case cfg.DataFile != "":
 		filePath := cfg.DataFile
 		if strings.HasPrefix(cfg.DataFile, "@") {
 			filePath = strings.TrimPrefix(cfg.DataFile, "@")
@@ -303,7 +335,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		}
 		bodyFile = file
 		opts.Body = file
-	} else if cfg.Data != "" {
+	case cfg.Data != "":
 		opts.Body = strings.NewReader(cfg.Data)
 	}
 
@@ -357,6 +389,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if err := validateColorMode(cfg.Color); err != nil {
 		return err
+	}
+
+	// --raw-output (#234) only makes sense with --query. Reject the combination
+	// up front (exit 2, no network call) so the flag never silently does nothing.
+	if cfg.RawOutput && cfg.Query == "" {
+		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
 	// Echo the correlation ID so it can be quoted in an Azure support request.
@@ -422,6 +460,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
 	}
 
+	// --fail (#233): after the body and metadata have been written, return a
+	// non-zero exit for an error status so scripts and CI can detect failures.
+	if cfg.Fail && resp.StatusCode >= 400 {
+		return &httpFailError{status: resp.StatusCode}
+	}
+
 	return nil
 }
 
@@ -429,6 +473,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 // choosing the raw path for binary content and the formatter path otherwise.
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
+
+	// --raw-output (#234): after --query, print a string result unquoted and an
+	// array of strings one per line. Other shapes fall through to JSON so
+	// nothing is silently mangled.
+	if cfg.RawOutput {
+		if text, ok := rawOutputText(resp.Body); ok {
+			return formatter.WriteRawOutput([]byte(text), cfg.OutputFile)
+		}
+	}
 
 	// Redaction (#216): mask matched JSON response fields before formatting.
 	// Raw and binary output cannot be parsed as JSON, so it is left unchanged
@@ -471,6 +524,9 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	if cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type")) {
+		if cfg.Compact {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --compact needs JSON output; leaving binary output unchanged\n")
+		}
 		if cfg.Include {
 			data := make([]byte, 0, len(headerBlock)+len(resp.Body))
 			data = append(data, headerBlock...)
@@ -512,6 +568,16 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 			return err
 		}
 		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	// --compact (#235): minify JSON to a single line for the auto and json
+	// formats and --query output. Raw, binary, table, jsonl, yaml, and csv are
+	// left untouched. A non-JSON body is left unchanged with a note on stderr.
+	if cfg.Compact && cfg.OutputFormat != formatRaw {
+		if compacted, ok := compactJSONBody(resp.Body); ok {
+			return formatter.WriteOutput(headerBlock+compacted+"\n", cfg.OutputFile)
+		}
+		writeDiagnostic(os.Stderr, cfg.Silent, "> --compact needs a JSON response; leaving output unchanged\n")
 	}
 
 	formatted, err := formatter.Format(resp)

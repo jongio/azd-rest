@@ -18,6 +18,7 @@ type Config struct {
 	HeaderFile      string
 	Data            string
 	DataFile        string
+	DataFormat      string
 	Query           string
 	FormFields      []string
 	JSONFields      []string
@@ -46,6 +47,9 @@ type Config struct {
 	Redact          []string
 	TableColumns    []string
 	DumpHeaders     string
+	Fail            bool
+	RawOutput       bool
+	Compact         bool
 }
 
 // Defaults returns a Config populated with the default flag values.
