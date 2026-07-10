@@ -55,6 +55,8 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--insecure` | `-k` | false | Skip TLS certificate verification |
 | `--timeout` | `-t` | 30s | Request timeout for a single attempt (e.g., 30s, 5m, 1h) |
 | `--max-time` | | 0 | Overall time budget across retries and pagination (0 disables the limit) |
+| `--repeat` | | 1 | Send the request N times and report latency statistics |
+| `--repeat-delay` | | 0s | Wait between repeated requests when `--repeat` is greater than 1 |
 | `--follow-redirects` | | true | Follow HTTP redirects |
 | `--max-redirects` | | 10 | Maximum redirect hops |
 | `--allow-host` | | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). Env: `AZD_REST_ALLOWED_HOSTS` (comma separated) |

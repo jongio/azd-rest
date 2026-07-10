@@ -54,6 +54,7 @@ func resetGlobalFlags() {
 	maxResponseSize = defaults.MaxResponseSize
 	showThrottle = false
 	repeat = defaults.Repeat
+	repeatDelay = defaults.RepeatDelay
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
@@ -92,6 +93,22 @@ func TestNewRootCmd_SilentFlag(t *testing.T) {
 	require.NotNil(t, flag, "--silent persistent flag should be registered")
 	assert.Equal(t, "false", flag.DefValue, "--silent should default to false")
 	assert.Empty(t, flag.Shorthand, "--silent should have no short alias")
+}
+
+func TestNewRootCmd_RepeatDelayFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("repeat-delay")
+	require.NotNil(t, flag, "--repeat-delay persistent flag should be registered")
+	assert.Equal(t, "0s", flag.DefValue, "--repeat-delay should default to zero")
+}
+
+func TestSnapshotConfig_RepeatDelay(t *testing.T) {
+	resetGlobalFlags()
+	repeatDelay = 2 * time.Second
+	cfg := snapshotConfig()
+	assert.Equal(t, 2*time.Second, cfg.RepeatDelay)
 }
 
 func TestSnapshotConfig_Silent(t *testing.T) {

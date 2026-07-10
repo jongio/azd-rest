@@ -214,9 +214,11 @@ These flags are available for all HTTP method commands:
 |------|------|---------|-------------|
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
+| `--repeat` | int | 1 | Send the request N times and report latency statistics. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 | `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |
+| `--repeat-delay` | duration | 0s | Wait between repeated requests when `--repeat` is greater than 1. |
 
 ### Environment Variable Defaults
 
@@ -230,6 +232,8 @@ The variable name is the flag name upper-cased, with dashes replaced by undersco
 | `--api-version` | `AZD_REST_API_VERSION` |
 | `--timeout` | `AZD_REST_TIMEOUT` |
 | `--retry` | `AZD_REST_RETRY` |
+| `--repeat` | `AZD_REST_REPEAT` |
+| `--repeat-delay` | `AZD_REST_REPEAT_DELAY` |
 | `--format` | `AZD_REST_FORMAT` |
 | `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
 
@@ -816,6 +820,9 @@ azd rest get https://api.example.com/resource
 
 # Custom retry count
 azd rest get https://api.example.com/resource --retry 5
+
+# Pace repeated requests
+azd rest get https://api.example.com/resource --repeat 3 --repeat-delay 2s
 
 # Disable retries
 azd rest get https://api.example.com/resource --retry 0
