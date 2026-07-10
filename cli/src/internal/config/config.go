@@ -46,6 +46,7 @@ type Config struct {
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	RawOutput       bool
 }
 
 // Defaults returns a Config populated with the default flag values.
