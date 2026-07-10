@@ -98,6 +98,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--compact</code></td><td><code>-c</code></td><td>bool</td><td>false</td><td>Minify JSON output to a single line with no extra whitespace. Applies to <code>auto</code> and <code>json</code> formats and <code>--query</code> results. Non-JSON, binary, <code>raw</code>, <code>table</code>, <code>jsonl</code>, <code>yaml</code>, and <code>csv</code> are left unchanged.</td></tr>
               <tr><td><code>--table-columns</code></td><td></td><td>string</td><td>""</td><td>Comma-separated columns to show, in order, for <code>--format table</code>. Missing fields render as empty cells. Ignored for other formats.</td></tr>
               <tr><td><code>--output-file</code></td><td></td><td>string</td><td>""</td><td>Write response to file</td></tr>
+              <tr><td><code>--raw-output</code></td><td><code>-r</code></td><td>bool</td><td>false</td><td>With <code>--query</code>, print a string result unquoted and an array of strings one per line, like <code>jq -r</code>. Requires <code>--query</code>.</td></tr>
               <tr><td><code>--redact</code></td><td></td><td>string[]</td><td>[]</td><td>Mask a JSON response field before output (repeatable). Dotted path, <code>*</code> matches array elements. Applies to <code>json</code>, <code>auto</code>, <code>table</code>, and <code>jsonl</code>.</td></tr>
               <tr><td><code>--dump-headers</code></td><td></td><td>string</td><td>""</td><td>Write response status line and headers to a file (use <code>-</code> for stderr). Sensitive values are redacted.</td></tr>
               <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
@@ -122,6 +123,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--show-throttle</code></td><td>bool</td><td>false</td><td>Print Azure rate-limit and quota headers (<code>x-ms-ratelimit-remaining-*</code>) to stderr, with a warning when remaining quota is low</td></tr>
               <tr><td><code>--repeat</code></td><td>int</td><td>1</td><td>Send the request N times and print latency stats (min/mean/p50/p95/p99/max) to stderr; only the last response body goes to stdout</td></tr>
               <tr><td><code>--allow-host</code></td><td>string[]</td><td>[]</td><td>Restrict requests to hosts matching a pattern (repeatable; leading <code>*.</code> matches subdomains). Env: <code>AZD_REST_ALLOWED_HOSTS</code> (comma separated)</td></tr>
+              <tr><td><code>--fail</code></td><td>bool</td><td>false</td><td>Exit with code <code>22</code> when the response status is 400 or higher. The response body is still printed, so error details stay visible.</td></tr>
             </tbody>
           </table>
         </div>
@@ -304,8 +306,9 @@ azd rest get https://api.example.com/resource --retry 0`} language="bash" />
             </thead>
             <tbody>
               <tr><td><code>0</code></td><td>Success</td></tr>
-              <tr><td><code>1</code></td><td>Request failed (HTTP error, network error)</td></tr>
+              <tr><td><code>1</code></td><td>Request failed (network error, invalid response)</td></tr>
               <tr><td><code>2</code></td><td>Invalid arguments or configuration</td></tr>
+              <tr><td><code>22</code></td><td>Response status was 400 or higher and <code>--fail</code> was set</td></tr>
             </tbody>
           </table>
         </div>
