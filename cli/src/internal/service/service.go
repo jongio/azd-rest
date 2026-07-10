@@ -497,6 +497,25 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// Flatten (#237): collapse a JSON response into a single-level object keyed
+	// by dotted paths. Like redaction it needs the JSON output path, so binary,
+	// raw, and the structured formats (table, jsonl, yaml, csv) are left
+	// unchanged with a note on stderr.
+	if cfg.Flatten {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		onJSONPath := cfg.OutputFormat == string(client.FormatAuto) || cfg.OutputFormat == string(client.FormatJSON)
+		switch {
+		case isBinary || !onJSONPath:
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --flatten needs the JSON output path; leaving this response unchanged\n")
+		default:
+			if flattened, err := flattenJSONBody(resp.Body); err != nil {
+				writeDiagnostic(os.Stderr, cfg.Silent, "> --flatten could not parse the response as JSON; leaving it unchanged\n")
+			} else {
+				resp.Body = flattened
+			}
+		}
+	}
+
 	// When --include is set, prepend the HTTP status line and response headers
 	// to the output (curl -i style). Sensitive header values are redacted.
 	var headerBlock string

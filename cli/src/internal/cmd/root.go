@@ -41,6 +41,7 @@ var (
 	outputFormat    string
 	verbose         bool
 	paginate        bool
+	flatten         bool
 	retry           int
 	binary          bool
 	insecure        bool
@@ -205,6 +206,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml, csv")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
+	rootCmd.PersistentFlags().BoolVar(&flatten, "flatten", false, "Flatten a JSON response into a single-level object keyed by dotted paths (e.g. properties.state, value[0].name)")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
@@ -278,6 +280,7 @@ func snapshotConfig() config.Config {
 		OutputFile:      outputFile,
 		OutputFormat:    outputFormat,
 		Verbose:         verbose,
+		Flatten:         flatten,
 		Paginate:        paginate,
 		Retry:           retry,
 		Binary:          binary,
