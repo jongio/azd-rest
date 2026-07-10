@@ -59,6 +59,7 @@ var (
 	redactPaths     []string
 	tableColumns    []string
 	dumpHeaders     string
+	fail            bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -219,6 +220,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
+	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -289,6 +291,7 @@ func snapshotConfig() config.Config {
 		Redact:          redactPaths,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
+		Fail:            fail,
 	}
 }
 
