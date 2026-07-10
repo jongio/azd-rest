@@ -37,6 +37,7 @@ azd rest version
 | `delete` | Execute a DELETE request |
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
+| `request` | Execute a request with a custom HTTP method |
 | `scope` | Preview the detected OAuth scope and auth mode for a URL |
 | `version` | Display the extension version |
 
@@ -163,6 +164,24 @@ azd rest options <url> [flags]
 **Examples:**
 ```bash
 azd rest options https://api.example.com/resource
+```
+
+### `azd rest request <method> <url>`
+
+Execute a request with a custom HTTP method while keeping the same auth, retry, formatting, and safety behavior as the named method commands.
+
+**Usage:**
+```bash
+azd rest request <method> <url> [flags]
+```
+
+**Examples:**
+```bash
+# Send an uncommon method name
+azd rest request PURGE https://management.azure.com/... --api-version 2024-01-01
+
+# Lowercase input is normalized before the request is sent
+azd rest request merge https://api.example.com/resource --no-auth
 ```
 
 ---

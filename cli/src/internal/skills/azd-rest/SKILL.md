@@ -29,6 +29,8 @@ azd rest <method> <url> [flags]
 
 Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`
 
+Use `azd rest request <method> <url>` for uncommon method names such as `PURGE`, `MERGE`, or `LINK`.
+
 Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for a URL without sending a request.
 
 ## Flags
