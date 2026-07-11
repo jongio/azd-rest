@@ -36,11 +36,15 @@ func resetGlobalFlags() {
 	headerFile = ""
 	data = ""
 	dataFile = ""
+	dataFormat = "json"
 	query = ""
 	formFields = []string{}
+	jsonFields = []string{}
+	jsonFieldsRaw = []string{}
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false
+	flatten = false
 	paginate = false
 	retry = defaults.Retry
 	binary = false
@@ -54,9 +58,17 @@ func resetGlobalFlags() {
 	maxResponseSize = defaults.MaxResponseSize
 	showThrottle = false
 	repeat = defaults.Repeat
+	colorMode = defaults.Color
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	expectedHeaders = []string{}
+	fail = false
+	rawOutput = false
+	compact = false
 }
 
 func TestNewRootCmd(t *testing.T) {

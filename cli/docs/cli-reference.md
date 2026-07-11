@@ -205,6 +205,7 @@ These flags are available for all HTTP method commands:
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
+| `--expect-header` | | string[] | [] | Require a response header, optionally with an exact value. Repeatable. Formats: `Name`, `Name=value`, or `Name: value`. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 | `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
@@ -676,6 +677,20 @@ x-ms-request-id: 6f1c...
 ```
 
 Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
+
+## Expect Response Headers
+
+Use `--expect-header` to fail the command when a response does not include a required header or exact header value. Header names are matched case-insensitively, and sensitive header values are redacted in error messages.
+
+```bash
+# Require a response header
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header Content-Type
+
+# Require an exact response header value
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header "Content-Type=application/json"
+```
 
 ## Silent Mode
 
