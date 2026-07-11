@@ -47,6 +47,7 @@ type Config struct {
 	Redact          []string
 	TableColumns    []string
 	DumpHeaders     string
+	MetadataFile    string
 	Fail            bool
 	RawOutput       bool
 	Compact         bool

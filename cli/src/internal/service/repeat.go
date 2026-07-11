@@ -85,6 +85,10 @@ func (s *RequestService) executeRepeat(ctx context.Context, cfg config.Config, h
 		return fmt.Errorf("all %d requests failed", cfg.Repeat)
 	}
 
+	if err := writeResponseMetadata(cfg.MetadataFile, opts.Method, opts.URL, lastResp); err != nil {
+		return err
+	}
+
 	return s.writeResponseOutput(cfg, lastResp)
 }
 

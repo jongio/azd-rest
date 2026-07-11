@@ -117,6 +117,10 @@ azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
 
+# Save structured response metadata for scripts or audit logs
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --metadata-file metadata.json
+
 # Table output (works with arrays and ARM value[] responses)
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
 
