@@ -497,6 +497,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// Secret redaction (#265): mask the value of any key that looks sensitive
+	// anywhere in the response. Like --redact it needs parsed JSON, so raw and
+	// binary output are left unchanged with a note on stderr. It runs after
+	// --redact so both can apply in one invocation.
+	if cfg.RedactSecrets {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if redacted, err := redactSecretsJSONBody(resp.Body); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = redacted
+		}
+	}
+
 	// Flatten (#237): collapse a JSON response into a single-level object keyed
 	// by dotted paths. Like redaction it needs the JSON output path, so binary,
 	// raw, and the structured formats (table, jsonl, yaml, csv) are left

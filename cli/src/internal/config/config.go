@@ -45,6 +45,7 @@ type Config struct {
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	RedactSecrets   bool
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
