@@ -460,6 +460,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
 	}
 
+	// --validate-schema (#267): after the body has been written, check the
+	// response against a JSON Schema and return non-zero when it does not
+	// conform so contract checks in CI can fail the build.
+	if cfg.ValidateSchema != "" {
+		if err := validateResponseSchema(os.Stderr, resp.Body, cfg.ValidateSchema); err != nil {
+			return err
+		}
+	}
+
 	// --fail (#233): after the body and metadata have been written, return a
 	// non-zero exit for an error status so scripts and CI can detect failures.
 	if cfg.Fail && resp.StatusCode >= 400 {
