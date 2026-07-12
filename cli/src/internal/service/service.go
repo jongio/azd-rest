@@ -436,6 +436,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// Capture the original response body before --query rewrites it so --expect
+	// asserts on the full response regardless of what --query prints (#269).
+	originalBody := resp.Body
+
 	if cfg.Query != "" {
 		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
 			return err
@@ -458,6 +462,16 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if cfg.WriteOut != "" {
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+	}
+
+	// --expect (#269): after the body has been written, assert JMESPath
+	// expressions against the original response and return a non-zero exit when
+	// one does not hold. Evaluated before --fail so an explicit body assertion
+	// is reported ahead of the coarser status-code gate.
+	if len(cfg.Expect) > 0 {
+		if err := evaluateExpectations(originalBody, resp.Headers.Get("Content-Type"), cfg.Expect); err != nil {
+			return err
+		}
 	}
 
 	// --fail (#233): after the body and metadata have been written, return a

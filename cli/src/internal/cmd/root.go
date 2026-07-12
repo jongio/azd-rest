@@ -62,6 +62,7 @@ var (
 	tableColumns    []string
 	dumpHeaders     string
 	fail            bool
+	expect          []string
 	rawOutput       bool
 	compact         bool
 )
@@ -227,6 +228,7 @@ Examples:
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
 
@@ -302,6 +304,7 @@ func snapshotConfig() config.Config {
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
 		Fail:            fail,
+		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
 	}
