@@ -48,6 +48,7 @@ type Config struct {
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	ValidateSchema  string
 	RawOutput       bool
 	Compact         bool
 }
