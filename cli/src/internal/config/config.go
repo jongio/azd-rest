@@ -50,6 +50,8 @@ type Config struct {
 	Fail            bool
 	RawOutput       bool
 	Compact         bool
+	CacheTTL        string
+	NoCache         bool
 }
 
 // Defaults returns a Config populated with the default flag values.
