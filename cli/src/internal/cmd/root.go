@@ -48,6 +48,7 @@ var (
 	silent          bool
 	timeout         time.Duration
 	maxTime         time.Duration
+	maxLatency      string
 	followRedirects bool
 	maxRedirects    int
 	maxPages        int
@@ -213,6 +214,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Suppress non-error diagnostic messages on stderr (warnings and notices)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
 	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
+	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail with exit code 28 when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
@@ -288,6 +290,7 @@ func snapshotConfig() config.Config {
 		Silent:          silent,
 		Timeout:         timeout,
 		MaxTime:         maxTime,
+		MaxLatency:      maxLatency,
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,

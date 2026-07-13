@@ -397,6 +397,13 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	// --max-latency (#280): parse the budget up front so an invalid value exits
+	// with code 2 before any network call is made. A zero budget disables it.
+	maxLatencyBudget, err := parseMaxLatency(cfg.MaxLatency)
+	if err != nil {
+		return err
+	}
+
 	// Echo the correlation ID so it can be quoted in an Azure support request.
 	if cfg.ClientRequestID != "" {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
@@ -464,6 +471,14 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// non-zero exit for an error status so scripts and CI can detect failures.
 	if cfg.Fail && resp.StatusCode >= 400 {
 		return &httpFailError{status: resp.StatusCode}
+	}
+
+	// --max-latency (#280): the response has been written, so only the exit code
+	// changes. A request slower than the budget exits 28, letting CI gate on
+	// performance without aborting the request mid-flight.
+	if maxLatencyBudget > 0 && resp.Duration > maxLatencyBudget {
+		writeDiagnostic(os.Stderr, cfg.Silent, "> response took %s, over the --max-latency budget of %s\n", resp.Duration, maxLatencyBudget)
+		return &maxLatencyExceededError{budget: maxLatencyBudget, actual: resp.Duration}
 	}
 
 	return nil

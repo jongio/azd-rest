@@ -34,6 +34,7 @@ type Config struct {
 	Silent          bool
 	Timeout         time.Duration
 	MaxTime         time.Duration
+	MaxLatency      string
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int

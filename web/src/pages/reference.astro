@@ -83,6 +83,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--json-field-raw</code></td><td></td><td>string[]</td><td>[]</td><td>Add a raw JSON field to a JSON request body (repeatable). Format: <code>key:=json</code>. Dotted keys nest.</td></tr>
               <tr><td><code>--timeout</code></td><td><code>-t</code></td><td>duration</td><td>30s</td><td>Request timeout for a single attempt. Examples: <code>30s</code>, <code>5m</code>, <code>1h</code></td></tr>
               <tr><td><code>--max-time</code></td><td></td><td>duration</td><td>0</td><td>Overall time budget across retries and pagination. <code>0</code> disables the limit.</td></tr>
+              <tr><td><code>--max-latency</code></td><td></td><td>duration</td><td>""</td><td>Fail with exit code <code>28</code> when a completed response took longer than this duration (e.g. <code>500ms</code>, <code>2s</code>). The body is still printed. Empty disables the check.</td></tr>
               <tr><td><code>--insecure</code></td><td><code>-k</code></td><td>bool</td><td>false</td><td>Skip TLS certificate verification</td></tr>
             </tbody>
           </table>
@@ -311,6 +312,7 @@ azd rest get https://api.example.com/resource --retry 0`} language="bash" />
               <tr><td><code>1</code></td><td>Request failed (network error, invalid response)</td></tr>
               <tr><td><code>2</code></td><td>Invalid arguments or configuration</td></tr>
               <tr><td><code>22</code></td><td>Response status was 400 or higher and <code>--fail</code> was set</td></tr>
+              <tr><td><code>28</code></td><td>Response completed but took longer than the <code>--max-latency</code> budget</td></tr>
             </tbody>
           </table>
         </div>
