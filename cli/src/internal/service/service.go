@@ -474,6 +474,18 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
+	// --count (#282): print the number of records and nothing else. It runs
+	// after --query (applied in Execute) and takes precedence over the body
+	// output, so it returns before any format dispatch. A non-JSON body is
+	// reported as a clear error.
+	if cfg.Count {
+		n, err := countRecords(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(fmt.Sprintf("%d\n", n), cfg.OutputFile)
+	}
+
 	// --raw-output (#234): after --query, print a string result unquoted and an
 	// array of strings one per line. Other shapes fall through to JSON so
 	// nothing is silently mangled.

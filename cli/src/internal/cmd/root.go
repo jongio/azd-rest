@@ -34,6 +34,7 @@ var (
 	dataFile        string
 	dataFormat      string
 	query           string
+	count           bool
 	formFields      []string
 	jsonFields      []string
 	jsonFieldsRaw   []string
@@ -199,6 +200,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
+	rootCmd.PersistentFlags().BoolVar(&count, "count", false, "Print the number of records in a JSON response and nothing else: the array length, the ARM value[] length, 1 for a single object, and 0 for null. Runs after --query. A non-JSON response reports an error.")
 	rootCmd.PersistentFlags().StringArrayVar(&formFields, "form-field", []string{}, "Add an application/x-www-form-urlencoded field (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFieldsRaw, "json-field-raw", []string{}, "Add a raw JSON field to a JSON request body (repeatable, format: key:=json; dotted keys nest)")
@@ -274,6 +276,7 @@ func snapshotConfig() config.Config {
 		DataFile:        dataFile,
 		DataFormat:      dataFormat,
 		Query:           query,
+		Count:           count,
 		FormFields:      formFields,
 		JSONFields:      jsonFields,
 		JSONFieldsRaw:   jsonFieldsRaw,
