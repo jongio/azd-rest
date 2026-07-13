@@ -20,6 +20,7 @@ type Config struct {
 	DataFile        string
 	DataFormat      string
 	Query           string
+	Template        string
 	FormFields      []string
 	JSONFields      []string
 	JSONFieldsRaw   []string

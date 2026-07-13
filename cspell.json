@@ -60,6 +60,7 @@
     "synapse",
     "tcpdump",
     "telemetry",
+    "tmpl",
     "traceparent",
     "tracestate",
     "usgovcloudapi",
