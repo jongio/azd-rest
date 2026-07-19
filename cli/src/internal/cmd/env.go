@@ -66,6 +66,9 @@ func applyEnvDefaults(flags *pflag.FlagSet, names []string, lookup func(string) 
 	return nil
 }
 
+// allowHostFlag is the name of the repeatable host-allowlist flag (#219).
+const allowHostFlag = "allow-host"
+
 // allowedHostsEnv is the environment variable that supplies a comma separated
 // default for the repeatable --allow-host flag (#219).
 const allowedHostsEnv = "AZD_REST_ALLOWED_HOSTS"
@@ -76,7 +79,7 @@ const allowedHostsEnv = "AZD_REST_ALLOWED_HOSTS"
 // injectable so tests can supply values without touching the process
 // environment.
 func applyAllowedHostsEnv(flags *pflag.FlagSet, lookup func(string) (string, bool)) error {
-	flag := flags.Lookup("allow-host")
+	flag := flags.Lookup(allowHostFlag)
 	if flag == nil || flag.Changed {
 		return nil
 	}

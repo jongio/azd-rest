@@ -233,7 +233,7 @@ Examples:
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
 	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if !sdkFlagNames[f.Name] && f.Name != "allow-host" {
+		if !sdkFlagNames[f.Name] && f.Name != allowHostFlag {
 			extensionFlagNames = append(extensionFlagNames, f.Name)
 		}
 	})
@@ -242,6 +242,12 @@ Examples:
 	for _, def := range httpMethods {
 		rootCmd.AddCommand(newHTTPMethodCommand(def))
 	}
+
+	// The config command reports the extension's own persistent flags plus
+	// --allow-host, which carries its own AZD_REST_ALLOWED_HOSTS default. Build a
+	// fresh slice so the config command never aliases extensionFlagNames, which
+	// the PersistentPreRunE closure reads to apply environment defaults (#172).
+	configFlagNames := append(append([]string{}, extensionFlagNames...), allowHostFlag)
 
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
@@ -253,6 +259,7 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewConfigCommand(configFlagNames),
 	)
 
 	return rootCmd
