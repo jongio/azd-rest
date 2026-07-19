@@ -59,6 +59,7 @@ var (
 	include         bool
 	allowHosts      []string
 	redactPaths     []string
+	omitPaths       []string
 	tableColumns    []string
 	dumpHeaders     string
 	fail            bool
@@ -224,6 +225,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().StringArrayVar(&omitPaths, "omit", []string{}, "Remove a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
@@ -299,6 +301,7 @@ func snapshotConfig() config.Config {
 		Include:         include,
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
+		Omit:            omitPaths,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
 		Fail:            fail,

@@ -497,6 +497,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// Omission: remove matched JSON response fields entirely before formatting.
+	// This is the structural complement to --redact: redaction masks the value in
+	// place, omission drops the key (or array elements). Raw and binary output
+	// cannot be parsed as JSON, so it is left unchanged with a note on stderr.
+	if len(cfg.Omit) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if omitted, err := omitJSONBody(resp.Body, cfg.Omit); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = omitted
+		}
+	}
+
 	// Flatten (#237): collapse a JSON response into a single-level object keyed
 	// by dotted paths. Like redaction it needs the JSON output path, so binary,
 	// raw, and the structured formats (table, jsonl, yaml, csv) are left

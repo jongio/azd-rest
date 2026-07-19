@@ -47,6 +47,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
 | `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
+| `--omit` | | [] | Remove a JSON response field before output (repeatable, dotted path, * matches array elements) |
 | `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
