@@ -484,12 +484,12 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// Redaction (#216): mask matched JSON response fields before formatting.
-	// Raw and binary output cannot be parsed as JSON, so it is left unchanged
-	// with a note on stderr.
+	// Raw, XML, and binary output cannot be parsed as JSON, so it is left
+	// unchanged with a note on stderr.
 	if len(cfg.Redact) > 0 {
 		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
-		if isBinary || cfg.OutputFormat == formatRaw {
-			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact needs parsed JSON; leaving raw or binary output unchanged\n")
+		if isBinary || cfg.OutputFormat == formatRaw || cfg.OutputFormat == formatXML {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact needs parsed JSON; leaving raw, XML, or binary output unchanged\n")
 		} else if redacted, err := redactJSONBody(resp.Body, cfg.Redact); err != nil {
 			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact could not parse the response as JSON; leaving it unchanged\n")
 		} else {
@@ -499,7 +499,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 
 	// Flatten (#237): collapse a JSON response into a single-level object keyed
 	// by dotted paths. Like redaction it needs the JSON output path, so binary,
-	// raw, and the structured formats (table, jsonl, yaml, csv) are left
+	// raw, and the structured formats (table, jsonl, yaml, csv, xml) are left
 	// unchanged with a note on stderr.
 	if cfg.Flatten {
 		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
@@ -537,7 +537,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table", "jsonl", "yaml", and "csv"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", "yaml", "csv", and "xml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTableWithColumns(resp.Body, cfg.TableColumns)
 		if err != nil {
@@ -570,8 +570,16 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		return formatter.WriteOutput(out, cfg.OutputFile)
 	}
 
+	if cfg.OutputFormat == formatXML {
+		out, err := renderXML(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
 	// --compact (#235): minify JSON to a single line for the auto and json
-	// formats and --query output. Raw, binary, table, jsonl, yaml, and csv are
+	// formats and --query output. Raw, binary, table, jsonl, yaml, csv, and xml are
 	// left untouched. A non-JSON body is left unchanged with a note on stderr.
 	if cfg.Compact && cfg.OutputFormat != formatRaw {
 		if compacted, ok := compactJSONBody(resp.Body); ok {
