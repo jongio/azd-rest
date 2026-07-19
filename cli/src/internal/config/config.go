@@ -13,6 +13,7 @@ type Config struct {
 	NoAuth          bool
 	APIVersion      string
 	ClientRequestID string
+	Traceparent     string
 	URLParams       []string
 	Headers         []string
 	HeaderFile      string
