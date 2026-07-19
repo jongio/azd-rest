@@ -383,6 +383,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if cfg.ReadOnly {
+		if err := validateReadOnlyMethod(method); err != nil {
+			return err
+		}
+	}
+
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
 	}
@@ -467,6 +473,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 
 	return nil
+}
+
+// validateReadOnlyMethod rejects mutating request methods when read-only mode is enabled.
+func validateReadOnlyMethod(method string) error {
+	normalized := strings.ToUpper(method)
+	if safeMethods[normalized] {
+		return nil
+	}
+	return fmt.Errorf("--read-only blocks %s requests; allowed methods are %s", normalized, safeMethodList)
 }
 
 // writeResponseOutput renders the response body to stdout or --output-file,

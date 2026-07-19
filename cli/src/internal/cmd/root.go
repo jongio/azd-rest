@@ -52,6 +52,7 @@ var (
 	maxRedirects    int
 	maxPages        int
 	maxResponseSize int64
+	readOnlyMode    bool
 	showThrottle    bool
 	repeat          int
 	colorMode       string
@@ -217,6 +218,7 @@ Examples:
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+	rootCmd.PersistentFlags().BoolVar(&readOnlyMode, "read-only", false, "Allow only read-only HTTP methods: GET, HEAD, and OPTIONS")
 	rootCmd.PersistentFlags().BoolVar(&showThrottle, "show-throttle", false, "Print Azure rate-limit and quota headers to stderr, with a low-quota warning")
 	rootCmd.PersistentFlags().IntVar(&repeat, "repeat", defaults.Repeat, "Send the request N times and report latency statistics")
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
@@ -292,6 +294,7 @@ func snapshotConfig() config.Config {
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
+		ReadOnly:        readOnlyMode,
 		ShowThrottle:    showThrottle,
 		Repeat:          repeat,
 		Color:           colorMode,
