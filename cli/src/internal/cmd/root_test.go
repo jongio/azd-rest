@@ -30,6 +30,7 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	baseURL = ""
 	clientRequestID = ""
 	urlParams = []string{}
 	headers = []string{}
@@ -99,6 +100,13 @@ func TestSnapshotConfig_Silent(t *testing.T) {
 	silent = true
 	cfg := snapshotConfig()
 	assert.True(t, cfg.Silent, "snapshotConfig should carry the silent flag")
+}
+
+func TestSnapshotConfig_BaseURL(t *testing.T) {
+	resetGlobalFlags()
+	baseURL = "https://management.azure.com"
+	cfg := snapshotConfig()
+	assert.Equal(t, "https://management.azure.com", cfg.BaseURL)
 }
 
 func TestBuildRequestOptions_Headers(t *testing.T) {
