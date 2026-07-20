@@ -1,0 +1,358 @@
+---
+import Layout from '../components/Layout.astro';
+
+const description = 'Build an azd rest command by choosing method, URL, auth, body, query, output, and diagnostic flags.';
+---
+
+<Layout title="Command Builder" description={description}>
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Command Builder</h1>
+      <p class="page-intro">
+        Choose common options and copy a ready-to-run <code>azd rest</code> command.
+      </p>
+    </div>
+
+    <div class="builder-layout">
+      <form class="builder-form" id="command-builder">
+        <fieldset>
+          <legend>Request</legend>
+          <div class="field-grid">
+            <label>
+              <span>Method</span>
+              <select name="method">
+                <option value="get">GET</option>
+                <option value="post">POST</option>
+                <option value="put">PUT</option>
+                <option value="patch">PATCH</option>
+                <option value="delete">DELETE</option>
+                <option value="head">HEAD</option>
+                <option value="options">OPTIONS</option>
+              </select>
+            </label>
+
+            <label>
+              <span>URL</span>
+              <input
+                name="url"
+                type="url"
+                value="https://management.azure.com/subscriptions"
+                placeholder="https://management.azure.com/subscriptions"
+              />
+            </label>
+
+            <label>
+              <span>API version</span>
+              <input name="apiVersion" type="text" value="2020-01-01" placeholder="2020-01-01" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Authentication and output</legend>
+          <div class="field-grid">
+            <label>
+              <span>Auth mode</span>
+              <select name="authMode">
+                <option value="auto">Auto-detect Azure scope</option>
+                <option value="no-auth">No auth</option>
+                <option value="custom-scope">Custom scope</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Custom scope</span>
+              <input name="scope" type="text" placeholder="https://management.azure.com/.default" />
+            </label>
+
+            <label>
+              <span>Format</span>
+              <select name="format">
+                <option value="">auto</option>
+                <option value="json">json</option>
+                <option value="raw">raw</option>
+                <option value="table">table</option>
+                <option value="jsonl">jsonl</option>
+                <option value="yaml">yaml</option>
+                <option value="csv">csv</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Body, headers, and query</legend>
+          <div class="field-grid">
+            <label>
+              <span>JMESPath query</span>
+              <input name="query" type="text" placeholder="value[].displayName" />
+            </label>
+
+            <label>
+              <span>Output file</span>
+              <input name="outputFile" type="text" placeholder="subscriptions.json" />
+            </label>
+          </div>
+
+          <label>
+            <span>Request body</span>
+            <textarea name="body" rows="4" placeholder='{"location":"eastus"}'></textarea>
+          </label>
+
+          <label>
+            <span>Headers, one per line</span>
+            <textarea name="headers" rows="4" placeholder="Accept: application/json&#10;If-Match: &quot;etag&quot;"></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Common switches</legend>
+          <div class="checkbox-grid">
+            <label><input name="paginate" type="checkbox" /> <span>Paginate</span></label>
+            <label><input name="fail" type="checkbox" /> <span>Fail on HTTP errors</span></label>
+            <label><input name="verbose" type="checkbox" /> <span>Verbose diagnostics</span></label>
+            <label><input name="include" type="checkbox" /> <span>Include response headers</span></label>
+            <label><input name="compact" type="checkbox" /> <span>Compact JSON</span></label>
+            <label><input name="rawOutput" type="checkbox" /> <span>Raw query output</span></label>
+          </div>
+        </fieldset>
+      </form>
+
+      <aside class="command-panel" aria-live="polite">
+        <div class="command-panel-header">
+          <h2>Generated command</h2>
+          <button id="copy-command" type="button">Copy</button>
+        </div>
+        <pre id="generated-command">azd rest get 'https://management.azure.com/subscriptions?api-version=2020-01-01'</pre>
+        <p id="copy-status" class="copy-status" role="status"></p>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const form = document.querySelector('#command-builder');
+  const output = document.querySelector('#generated-command');
+  const copyButton = document.querySelector('#copy-command');
+  const copyStatus = document.querySelector('#copy-status');
+
+  const quote = (value) => {
+    if (!value) return "''";
+    return `'${value.replaceAll("'", "'\\''")}'`;
+  };
+
+  const addFlag = (parts, name, value) => {
+    if (!value) return;
+    parts.push(`--${name}`, quote(value));
+  };
+
+  const appendApiVersion = (rawUrl, apiVersion) => {
+    if (!apiVersion) return rawUrl;
+    try {
+      const parsed = new URL(rawUrl);
+      parsed.searchParams.set('api-version', apiVersion);
+      return parsed.toString();
+    } catch {
+      const separator = rawUrl.includes('?') ? '&' : '?';
+      return `${rawUrl}${separator}api-version=${encodeURIComponent(apiVersion)}`;
+    }
+  };
+
+  const buildCommand = () => {
+    const data = new FormData(form);
+    const method = data.get('method') || 'get';
+    const url = appendApiVersion(String(data.get('url') || ''), String(data.get('apiVersion') || '').trim());
+    const parts = ['azd', 'rest', method, quote(url)];
+    const authMode = data.get('authMode');
+
+    if (authMode === 'no-auth') {
+      parts.push('--no-auth');
+    }
+    if (authMode === 'custom-scope') {
+      addFlag(parts, 'scope', String(data.get('scope') || '').trim());
+    }
+
+    addFlag(parts, 'format', String(data.get('format') || '').trim());
+    addFlag(parts, 'query', String(data.get('query') || '').trim());
+    addFlag(parts, 'output-file', String(data.get('outputFile') || '').trim());
+    addFlag(parts, 'data', String(data.get('body') || '').trim());
+
+    const headers = String(data.get('headers') || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    for (const header of headers) {
+      parts.push('--header', quote(header));
+    }
+
+    for (const flag of ['paginate', 'fail', 'verbose', 'include', 'compact']) {
+      if (data.get(flag)) {
+        parts.push(`--${flag}`);
+      }
+    }
+    if (data.get('rawOutput')) {
+      parts.push('--raw-output');
+    }
+
+    output.textContent = parts.join(' ');
+  };
+
+  form?.addEventListener('input', buildCommand);
+  form?.addEventListener('change', buildCommand);
+  copyButton?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(output?.textContent || '');
+      copyStatus.textContent = 'Copied command.';
+    } catch {
+      copyStatus.textContent = 'Copy failed. Select the command and copy it manually.';
+    }
+  });
+
+  buildCommand();
+</script>
+
+<style>
+  @import '../styles/pages.css';
+
+  .builder-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.8fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .builder-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  fieldset {
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: var(--color-bg-primary);
+  }
+
+  legend {
+    padding: 0 0.5rem;
+    color: var(--color-text-primary);
+    font-weight: 700;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+
+  label span {
+    font-size: 0.9rem;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.5rem;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    padding: 0.75rem;
+    font: inherit;
+  }
+
+  textarea {
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+  }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .checkbox-grid label {
+    flex-direction: row;
+    align-items: center;
+    font-weight: 500;
+  }
+
+  .checkbox-grid input {
+    width: auto;
+  }
+
+  .command-panel {
+    position: sticky;
+    top: 1rem;
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: var(--color-bg-secondary);
+  }
+
+  .command-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .command-panel h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  .command-panel button {
+    border: 1px solid var(--color-border-default);
+    border-radius: 0.5rem;
+    background: var(--color-interactive-default);
+    color: var(--color-text-inverse);
+    cursor: pointer;
+    font-weight: 700;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .command-panel pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-radius: 0.5rem;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    padding: 1rem;
+  }
+
+  .copy-status {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    margin: 0.75rem 0 0;
+  }
+
+  @media (max-width: 900px) {
+    .builder-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .command-panel {
+      position: static;
+    }
+  }
+</style>
