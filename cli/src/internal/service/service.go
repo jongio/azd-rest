@@ -397,6 +397,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
 	// Echo the correlation ID so it can be quoted in an Azure support request.
 	if cfg.ClientRequestID != "" {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
@@ -458,6 +462,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if cfg.WriteOut != "" {
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+	}
+
+	if err := checkExpectedHeaders(resp, cfg.ExpectedHeaders); err != nil {
+		return err
 	}
 
 	// --fail (#233): after the body and metadata have been written, return a
