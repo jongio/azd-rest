@@ -123,6 +123,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
+# dotenv KEY=value lines to eval into your shell or feed a CI job / docker --env-file
+azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --format dotenv
+
 # Read a single field into a shell variable without piping through jq -r
 name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --query displayName -r)
 

@@ -41,6 +41,7 @@
     "jmespath",
     "jongio",
     "jsonl",
+    "dotenv",
     "keyvault",
     "kusto",
     "ldflags",
