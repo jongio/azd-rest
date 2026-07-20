@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
@@ -122,6 +123,36 @@ func NewHeadCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[5
 
 // NewOptionsCommand returns the OPTIONS subcommand.
 func NewOptionsCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[6]) }
+
+// NewRequestCommand returns the generic request subcommand for uncommon HTTP methods.
+func NewRequestCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "request <method> <url>",
+		Short: "Execute a request with a custom HTTP method",
+		Long: `Execute a request with any HTTP method while reusing the same authentication,
+retry, formatting, and safety behavior as the named method commands.
+
+Examples:
+  azd rest request PURGE https://management.azure.com/... --api-version 2024-01-01
+  azd rest request merge https://api.example.com/resource --no-auth`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			method, err := normalizeRequestMethod(args[0])
+			if err != nil {
+				return err
+			}
+			return executeRequest(cmd, method, args[1])
+		},
+	}
+}
+
+func normalizeRequestMethod(method string) (string, error) {
+	normalized := strings.ToUpper(strings.TrimSpace(method))
+	if normalized == "" {
+		return "", fmt.Errorf("method is required")
+	}
+	return normalized, nil
+}
 
 // NewRootCmd creates the root command for azd rest
 func NewRootCmd() *cobra.Command {
@@ -245,6 +276,7 @@ Examples:
 
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
+		NewRequestCommand(),
 		NewScopeCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),

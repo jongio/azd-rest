@@ -78,10 +78,57 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "request", "scope", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
+}
+
+func TestNormalizeRequestMethod(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "uppercase is unchanged", input: "PURGE", want: "PURGE"},
+		{name: "lowercase is uppercased", input: "merge", want: "MERGE"},
+		{name: "spaces are trimmed", input: "  link  ", want: "LINK"},
+		{name: "empty is rejected", input: "  ", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeRequestMethod(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRequestCommandExecutesCustomMethod(t *testing.T) {
+	resetGlobalFlags()
+	var gotMethod string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	noAuth = true
+	outputFile = filepath.Join(t.TempDir(), "response.json")
+
+	cmd := NewRequestCommand()
+	cmd.SetArgs([]string{"purge", server.URL + "/cache"})
+
+	require.NoError(t, cmd.Execute())
+	assert.Equal(t, "PURGE", gotMethod)
 }
 
 func TestNewRootCmd_SilentFlag(t *testing.T) {
