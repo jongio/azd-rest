@@ -28,6 +28,7 @@ var (
 	apiVersion      string
 	clientRequestID string
 	urlParams       []string
+	urlParamFile    string
 	headers         []string
 	headerFile      string
 	data            string
@@ -193,6 +194,7 @@ Examples:
 	// Passing --client-request-id without a value generates a fresh ID for this invocation.
 	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
+	rootCmd.PersistentFlags().StringVar(&urlParamFile, "url-param-file", "", "Read URL query parameters from a file (one key=value per line; blank lines and # comments ignored). --url-param overrides on conflict.")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
@@ -268,6 +270,7 @@ func snapshotConfig() config.Config {
 		APIVersion:      apiVersion,
 		ClientRequestID: clientRequestID,
 		URLParams:       urlParams,
+		URLParamFile:    urlParamFile,
 		Headers:         headers,
 		HeaderFile:      headerFile,
 		Data:            data,
