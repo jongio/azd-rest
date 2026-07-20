@@ -137,6 +137,9 @@ azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
 
+# Mask any sensitive-looking field (passwords, keys, tokens) before sharing a response
+azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4 --redact-secrets
+
 # Diagnose authentication issues
 azd rest doctor
 
