@@ -296,3 +296,40 @@ func TestBuildRequestOptions_AllowHostUnsetAllowsAny(t *testing.T) {
 	}
 	require.NoError(t, err)
 }
+
+func TestResolveRequestURL_BaseURLWithLeadingSlash(t *testing.T) {
+	got, err := resolveRequestURL("/subscriptions", "https://management.azure.com")
+	require.NoError(t, err)
+	assert.Equal(t, "https://management.azure.com/subscriptions", got)
+}
+
+func TestResolveRequestURL_BaseURLWithRelativePath(t *testing.T) {
+	got, err := resolveRequestURL("users?api-version=1", "https://example.com/api")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/api/users?api-version=1", got)
+}
+
+func TestResolveRequestURL_AbsoluteURLIgnoresBaseURL(t *testing.T) {
+	got, err := resolveRequestURL("https://graph.microsoft.com/v1.0/me", "not a base URL")
+	require.NoError(t, err)
+	assert.Equal(t, "https://graph.microsoft.com/v1.0/me", got)
+}
+
+func TestResolveRequestURL_BaseURLRequiresSchemeAndHost(t *testing.T) {
+	_, err := resolveRequestURL("/subscriptions", "management.azure.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--base-url must include scheme and host")
+}
+
+func TestBuildRequestOptions_BaseURLBeforeQueryFlags(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.BaseURL = "https://management.azure.com"
+	cfg.APIVersion = "2024-01-01"
+	cfg.URLParams = []string{"filter=active"}
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "/subscriptions")
+	require.NoError(t, err)
+	defer cleanup()
+	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01&filter=active", opts.URL)
+}

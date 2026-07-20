@@ -145,6 +145,33 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 	return parsed.String(), nil
 }
 
+func resolveRequestURL(rawURL, baseURL string) (string, error) {
+	if baseURL == "" {
+		return rawURL, nil
+	}
+
+	request, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid request URL: %w", err)
+	}
+	if request.IsAbs() {
+		return rawURL, nil
+	}
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid --base-url: %w", err)
+	}
+	if base.Scheme == "" || base.Host == "" {
+		return "", fmt.Errorf("--base-url must include scheme and host")
+	}
+	if !strings.HasPrefix(rawURL, "/") && base.Path != "" && !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+
+	return base.ResolveReference(request).String(), nil
+}
+
 // applyURLParams sets or appends query parameters from repeatable key=value flags.
 // The first occurrence of a key replaces any existing value on the URL; further
 // occurrences of the same key append, so multi-valued parameters are possible.
@@ -183,7 +210,12 @@ func applyURLParams(rawURL string, params []string) (string, error) {
 // the file after the request completes. The returned cleanup function handles
 // this - call it on error paths. On success paths the caller should defer it.
 func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url string) (client.RequestOptions, func(), error) {
-	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
+	requestURL, err := resolveRequestURL(url, cfg.BaseURL)
+	if err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+
+	requestURL, err = applyAPIVersion(requestURL, cfg.APIVersion)
 	if err != nil {
 		return client.RequestOptions{}, nil, err
 	}
@@ -361,7 +393,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	}
 
 	// Check if auth should be skipped
-	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, cfg.NoAuth)
+	opts.SkipAuth = client.ShouldSkipAuth(requestURL, opts.Headers, cfg.NoAuth)
 
 	// Create token provider only when authentication is needed
 	if !opts.SkipAuth {
