@@ -397,6 +397,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	// --template (#279): compile the template up front so invalid syntax or a
+	// missing @file exits with code 2 before any network call is made. The
+	// compiled result is discarded here and rebuilt when the body is rendered.
+	if cfg.Template != "" {
+		if _, err := parseTemplate(cfg.Template); err != nil {
+			return err
+		}
+	}
+
 	// Echo the correlation ID so it can be quoted in an Azure support request.
 	if cfg.ClientRequestID != "" {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
@@ -473,6 +482,17 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 // choosing the raw path for binary content and the formatter path otherwise.
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
+
+	// --template (#279): render the response through a Go text/template. It runs
+	// after --query (applied in Execute) and takes precedence over --format and
+	// the other output modes, so it returns before any of them run.
+	if cfg.Template != "" {
+		rendered, err := renderTemplate(cfg.Template, resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(rendered, cfg.OutputFile)
+	}
 
 	// --raw-output (#234): after --query, print a string result unquoted and an
 	// array of strings one per line. Other shapes fall through to JSON so
