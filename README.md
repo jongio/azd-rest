@@ -140,6 +140,9 @@ azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg
 # Diagnose authentication issues
 azd rest doctor
 
+# Show the effective configuration and AZD_REST_* env var mappings
+azd rest config
+
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 ```
