@@ -48,6 +48,7 @@ type Config struct {
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	Diff            string
 	RawOutput       bool
 	Compact         bool
 }
