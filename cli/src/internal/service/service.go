@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,8 +25,14 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
-// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
-const clientRequestIDHeader = "x-ms-client-request-id"
+const (
+	// TraceparentAutoValue tells BuildRequestOptions to generate a fresh W3C traceparent header.
+	TraceparentAutoValue = "generate"
+
+	// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+	clientRequestIDHeader = "x-ms-client-request-id"
+	traceparentHeader     = "traceparent"
+)
 
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
@@ -286,6 +294,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
 	}
 
+	// The --traceparent flag is authoritative and overrides a matching -H header.
+	if cfg.Traceparent != "" {
+		value, traceErr := prepareTraceparentHeader(cfg.Traceparent)
+		if traceErr != nil {
+			return opts, nil, traceErr
+		}
+		opts.Headers[traceparentHeader] = value
+	}
+
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
 	// repeatable --form-field flags. This is mutually exclusive with a raw body.
 	if len(cfg.FormFields) > 0 {
@@ -467,6 +484,92 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 
 	return nil
+}
+
+func prepareTraceparentHeader(value string) (string, error) {
+	if value == TraceparentAutoValue {
+		return generateTraceparent()
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if err := validateTraceparent(normalized); err != nil {
+		return "", err
+	}
+	return normalized, nil
+}
+
+func generateTraceparent() (string, error) {
+	traceID, err := randomNonZeroHex(16)
+	if err != nil {
+		return "", err
+	}
+	parentID, err := randomNonZeroHex(8)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("00-%s-%s-01", traceID, parentID), nil
+}
+
+func randomNonZeroHex(length int) (string, error) {
+	buf := make([]byte, length)
+	for {
+		if _, err := rand.Read(buf); err != nil {
+			return "", fmt.Errorf("failed to generate traceparent: %w", err)
+		}
+		if !allZeroBytes(buf) {
+			return hex.EncodeToString(buf), nil
+		}
+	}
+}
+
+func validateTraceparent(value string) error {
+	parts := strings.Split(value, "-")
+	if len(parts) != 4 {
+		return fmt.Errorf("invalid traceparent %q: expected version, trace ID, parent ID, and flags", value)
+	}
+	if parts[0] != "00" {
+		return fmt.Errorf("invalid traceparent %q: only version 00 is supported", value)
+	}
+	if !isLowerHex(parts[1], 32) || allZeroHex(parts[1]) {
+		return fmt.Errorf("invalid traceparent %q: trace ID must be 32 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[2], 16) || allZeroHex(parts[2]) {
+		return fmt.Errorf("invalid traceparent %q: parent ID must be 16 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[3], 2) {
+		return fmt.Errorf("invalid traceparent %q: trace flags must be 2 lowercase hex characters", value)
+	}
+	return nil
+}
+
+func isLowerHex(value string, length int) bool {
+	if len(value) != length {
+		return false
+	}
+	for _, ch := range value {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroHex(value string) bool {
+	for _, ch := range value {
+		if ch != '0' {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroBytes(value []byte) bool {
+	for _, b := range value {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // writeResponseOutput renders the response body to stdout or --output-file,
