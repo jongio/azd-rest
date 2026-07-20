@@ -378,6 +378,14 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 
 // Execute performs the full request lifecycle: build options, execute, format output.
 func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method, url string) error {
+	if cfg.RedactFile != "" {
+		paths, err := loadRedactFile(cfg.RedactFile)
+		if err != nil {
+			return err
+		}
+		cfg.Redact = append(paths, cfg.Redact...)
+	}
+
 	// Warn prominently when TLS verification is disabled.
 	if cfg.Insecure {
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
