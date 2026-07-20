@@ -175,6 +175,40 @@ func applyURLParams(rawURL string, params []string) (string, error) {
 	return parsed.String(), nil
 }
 
+// loadURLParamFile reads URL parameters from a file, one "key=value" per line.
+// Blank lines and lines beginning with "#" are ignored.
+func loadURLParamFile(path string) ([]string, error) {
+	file, err := os.Open(path) // #nosec G304 -- User-specified file path via --url-param-file flag is intentional.
+	if err != nil {
+		return nil, fmt.Errorf("failed to open URL parameter file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	var result []string
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid URL parameter on line %d of %s: %q (expected key=value)", lineNum, path, line)
+		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return nil, fmt.Errorf("invalid URL parameter on line %d of %s: %q (empty parameter name)", lineNum, path, line)
+		}
+		result = append(result, key+"="+strings.TrimSpace(parts[1]))
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read URL parameter file: %w", err)
+	}
+	return result, nil
+}
+
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
 // The caller owns the returned Body (if it is an *os.File, it must be closed).
 //
@@ -186,6 +220,17 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
 	if err != nil {
 		return client.RequestOptions{}, nil, err
+	}
+
+	if cfg.URLParamFile != "" {
+		fileParams, err := loadURLParamFile(cfg.URLParamFile)
+		if err != nil {
+			return client.RequestOptions{}, nil, err
+		}
+		requestURL, err = applyURLParams(requestURL, fileParams)
+		if err != nil {
+			return client.RequestOptions{}, nil, err
+		}
 	}
 
 	requestURL, err = applyURLParams(requestURL, cfg.URLParams)

@@ -14,6 +14,7 @@ type Config struct {
 	APIVersion      string
 	ClientRequestID string
 	URLParams       []string
+	URLParamFile    string
 	Headers         []string
 	HeaderFile      string
 	Data            string
