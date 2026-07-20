@@ -64,6 +64,8 @@ var (
 	fail            bool
 	rawOutput       bool
 	compact         bool
+	cacheTTL        string
+	noCache         bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -229,6 +231,8 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
+	rootCmd.PersistentFlags().StringVar(&cacheTTL, "cache-ttl", "", "Cache successful GET responses on disk and serve repeats within this window (Go duration, e.g. 30s, 5m, 1h; 0 or empty disables caching)")
+	rootCmd.PersistentFlags().BoolVar(&noCache, "no-cache", false, "Bypass the cached response and refresh the entry with a fresh request (only meaningful with --cache-ttl)")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
@@ -253,6 +257,7 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewCacheCommand(),
 	)
 
 	return rootCmd
@@ -304,6 +309,8 @@ func snapshotConfig() config.Config {
 		Fail:            fail,
 		RawOutput:       rawOutput,
 		Compact:         compact,
+		CacheTTL:        cacheTTL,
+		NoCache:         noCache,
 	}
 }
 

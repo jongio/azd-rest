@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
@@ -402,6 +403,34 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprintf(os.Stderr, "%s: %s\n", clientRequestIDHeader, cfg.ClientRequestID)
 	}
 
+	// --cache-ttl (#283): parse first so an invalid duration fails fast with
+	// exit code 2 before any request work happens.
+	cacheTTL, err := parseCacheTTL(cfg.CacheTTL)
+	if err != nil {
+		return err
+	}
+
+	// Caching applies only to a single GET. Repeat runs measure latency and
+	// always hit the network. On a hit within the window the cached status,
+	// headers, and body are served with no network call or token acquisition.
+	cacheEnabled := cacheTTL > 0 && cfg.Repeat == 1 && strings.EqualFold(method, http.MethodGet)
+	var cacheCtx cacheContext
+	cacheReady := false
+	if cacheEnabled {
+		if derived, buildErr := newCacheContext(cfg, method, url); buildErr == nil {
+			cacheCtx = derived
+			cacheReady = true
+			if !cfg.NoCache {
+				if cached, hit := readCache(cacheCtx.dir, cacheCtx.key, cacheTTL); hit {
+					if cfg.Verbose {
+						writeDiagnostic(os.Stderr, cfg.Silent, "> served from cache (max age %s)\n", cacheTTL)
+					}
+					return s.handleResponse(cfg, method, cacheCtx.finalURL, cached)
+				}
+			}
+		}
+	}
+
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
@@ -436,6 +465,22 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// --cache-ttl (#283): store only successful GET responses. A write failure
+	// is a note, not a request failure, so the response is still served.
+	if cacheReady && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if writeErr := writeCache(cacheCtx.dir, cacheCtx.key, resp); writeErr != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "Warning: failed to write response cache: %v\n", writeErr)
+		}
+	}
+
+	return s.handleResponse(cfg, opts.Method, opts.URL, resp)
+}
+
+// handleResponse runs the shared post-response pipeline for both live and
+// cached responses: apply --query, emit throttle and header diagnostics, write
+// the body, expand --write-out, and honor --fail. method and finalURL feed
+// --write-out so a cache hit reports the same request metadata as a live call.
+func (s *RequestService) handleResponse(cfg config.Config, method, finalURL string, resp *client.Response) error {
 	if cfg.Query != "" {
 		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
 			return err
@@ -457,7 +502,7 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 
 	if cfg.WriteOut != "" {
-		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, method, finalURL, resp))
 	}
 
 	// --fail (#233): after the body and metadata have been written, return a
