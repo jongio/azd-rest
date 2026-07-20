@@ -9,8 +9,12 @@ import (
 // redactedPlaceholder is the fixed value that replaces every redacted field.
 const redactedPlaceholder = "REDACTED"
 
-// formatRaw is the --format value for unparsed raw output.
-const formatRaw = "raw"
+const (
+	// formatRaw is the --format value for unparsed raw output.
+	formatRaw = "raw"
+	// formatXML is the --format value for XML output.
+	formatXML = "xml"
+)
 
 // redactJSONBody parses body as JSON, replaces the value at each dotted path
 // with a fixed placeholder, and returns the re-encoded JSON.

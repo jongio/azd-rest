@@ -200,7 +200,7 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
@@ -567,6 +567,12 @@ Use `--format csv` to export arrays and ARM `value[]` responses as RFC 4180 CSV 
 
 ```bash
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format csv
+```
+
+Use `--format xml` to pretty print XML responses, such as Azure Storage data-plane responses:
+
+```bash
+azd rest get https://account.blob.core.windows.net/?comp=list --format xml
 ```
 
 ### Query JSON Responses
