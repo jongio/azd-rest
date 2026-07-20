@@ -483,6 +483,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// --fields (#281): keep only the listed top-level fields. Unlike redaction
+	// and flatten, this applies across every output format (json, table, csv,
+	// yaml) and downstream pipes, so it runs before the format dispatch. Raw and
+	// binary output cannot be parsed as JSON and are left unchanged with a note.
+	if len(cfg.Fields) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --fields needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if projected, ok := projectFields(resp.Body, cfg.Fields); ok {
+			resp.Body = projected
+		} else {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --fields could not parse the response as JSON; leaving it unchanged\n")
+		}
+	}
+
 	// Redaction (#216): mask matched JSON response fields before formatting.
 	// Raw and binary output cannot be parsed as JSON, so it is left unchanged
 	// with a note on stderr.
