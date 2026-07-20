@@ -78,7 +78,7 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "scopes", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
