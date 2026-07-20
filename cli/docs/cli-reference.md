@@ -203,6 +203,7 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
+| `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
@@ -605,6 +606,22 @@ azd rest get "https://management.azure.com/subscriptions/.../providers/...?api-v
 ```
 
 Redaction runs for the `json`, `auto`, `table`, and `jsonl` formats. Raw and binary output is left unchanged, with a note on stderr, because it cannot be parsed as JSON. A path that matches nothing is a safe no-op.
+
+### Omitting Response Fields
+
+Use `--omit` to remove JSON fields entirely before the response is printed or written to `--output-file`. It is the structural complement to `--redact`: redaction masks a value in place, omission drops the key so it no longer appears. The flag is repeatable and uses the same dotted paths, where `*` matches every element of an array:
+
+```bash
+# Drop a noisy field from the response
+azd rest get "https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01" \
+  --omit value.*.properties.provisioningState
+
+# Remove several fields at once
+azd rest get "https://management.azure.com/subscriptions/{sub}?api-version=2022-12-01" \
+  --omit tags --omit managedByTenants
+```
+
+Omission runs on the same JSON output paths as redaction. Raw and binary output is left unchanged, with a note on stderr. A path that matches nothing is a safe no-op.
 
 ### Save to File
 

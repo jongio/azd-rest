@@ -137,6 +137,10 @@ azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
 
+# Remove noisy fields from the response (structural complement to --redact)
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01 \
+  --omit value.*.properties.provisioningState
+
 # Diagnose authentication issues
 azd rest doctor
 
