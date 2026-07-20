@@ -123,10 +123,14 @@ query runs against every subscription you can access unless you narrow it with
 
 ```bash
 azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
 ```
 
 | Flag | Description |
 |------|-------------|
+| `--query-file` | Read the KQL query from a file |
 | `--subscription` | Subscription ID to scope the query (repeatable) |
 | `--management-group` | Management group ID to scope the query (repeatable) |
 | `--top` | Maximum number of rows to return |
