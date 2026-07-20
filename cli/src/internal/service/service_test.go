@@ -235,6 +235,48 @@ func TestExecute_MaxTimeDisabledByDefault(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestExecute_ReadOnlyAllowsSafeMethods(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
+		t.Run(method, func(t *testing.T) {
+			cfg := baseTestConfig(t)
+			cfg.ReadOnly = true
+
+			err := newTestService().Execute(context.Background(), cfg, method, server.URL)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestExecute_ReadOnlyBlocksMutatingBeforeDependencies(t *testing.T) {
+	tokenProviderCalls := 0
+	httpClientCalls := 0
+	svc := NewRequestService(
+		func() (client.TokenProvider, error) {
+			tokenProviderCalls++
+			return nil, nil
+		},
+		func(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
+			httpClientCalls++
+			return nil
+		},
+	)
+
+	cfg := config.Defaults()
+	cfg.ReadOnly = true
+
+	err := svc.Execute(context.Background(), cfg, "POST", "https://management.azure.com/subscriptions?api-version=2021-04-01")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--read-only blocks POST requests")
+	assert.Zero(t, tokenProviderCalls, "read-only validation should run before token creation")
+	assert.Zero(t, httpClientCalls, "read-only validation should run before client creation")
+}
+
 func TestBuildRequestOptions_AllowHostPermitsMatch(t *testing.T) {
 	svc := newTestService()
 	cfg := baseTestConfig(t)
