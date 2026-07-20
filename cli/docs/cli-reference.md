@@ -205,6 +205,7 @@ These flags are available for all HTTP method commands:
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
+| `--metadata-file` | | string | "" | Write structured response metadata as JSON to a file. Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 | `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
@@ -676,6 +677,34 @@ x-ms-request-id: 6f1c...
 ```
 
 Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
+
+## Structured Response Metadata
+
+Use `--metadata-file` to write a JSON sidecar file with response metadata while keeping the response body on stdout or in `--output-file`. The file includes method, final URL, status, status code, duration in milliseconds, downloaded body size, content type, and redacted response headers.
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --output-file body.json \
+  --metadata-file metadata.json
+```
+
+Example metadata:
+
+```json
+{
+  "method": "GET",
+  "url": "https://management.azure.com/subscriptions?api-version=2020-01-01",
+  "status": "200 OK",
+  "statusCode": 200,
+  "durationMs": 234,
+  "sizeDownload": 1234,
+  "contentType": "application/json",
+  "headers": {
+    "Content-Type": ["application/json"],
+    "x-ms-request-id": ["6f1c..."]
+  }
+}
+```
 
 ## Silent Mode
 

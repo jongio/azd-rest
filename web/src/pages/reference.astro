@@ -103,6 +103,7 @@ const base = import.meta.env.BASE_URL;
               <tr><td><code>--redact</code></td><td></td><td>string[]</td><td>[]</td><td>Mask a JSON response field before output (repeatable). Dotted path, <code>*</code> matches array elements. Applies to <code>json</code>, <code>auto</code>, <code>table</code>, and <code>jsonl</code>.</td></tr>
               <tr><td><code>--flatten</code></td><td></td><td>bool</td><td>false</td><td>Flatten a JSON response into a single-level object keyed by dotted paths (<code>properties.provisioningState</code>, <code>value[0].name</code>). Leaf values keep their type. Applies to the <code>json</code> and <code>auto</code> output paths and composes with <code>--query</code>.</td></tr>
               <tr><td><code>--dump-headers</code></td><td></td><td>string</td><td>""</td><td>Write response status line and headers to a file (use <code>-</code> for stderr). Sensitive values are redacted.</td></tr>
+              <tr><td><code>--metadata-file</code></td><td></td><td>string</td><td>""</td><td>Write structured response metadata as JSON to a file. Sensitive header values are redacted.</td></tr>
               <tr><td><code>--binary</code></td><td></td><td>bool</td><td>false</td><td>Stream as binary without transformation</td></tr>
               <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>bool</td><td>false</td><td>Show headers, timing, request details (tokens redacted)</td></tr>
               <tr><td><code>--color</code></td><td></td><td>string</td><td>auto</td><td>Colorize JSON output: <code>auto</code> (TTY only, honors <code>NO_COLOR</code>), <code>always</code>, <code>never</code></td></tr>
@@ -163,6 +164,15 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
 # Status and timing on one line
 azd rest get https://graph.microsoft.com/v1.0/me \\
   --write-out "%{http_code} %{time_total}s %{size_download}B\\n"`} language="bash" />
+
+        <h3>Structured Metadata File</h3>
+        <p>
+          Use <code>--metadata-file</code> to write a JSON sidecar with status, timing,
+          body size, content type, and redacted response headers while keeping the response body separate.
+        </p>
+        <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
+  --output-file body.json \\
+  --metadata-file metadata.json`} language="bash" />
       </section>
 
       <!-- Scope Command -->
