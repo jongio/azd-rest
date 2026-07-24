@@ -48,6 +48,7 @@ type Config struct {
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	DryRun          bool
 	RawOutput       bool
 	Compact         bool
 }
