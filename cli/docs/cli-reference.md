@@ -187,8 +187,8 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
-| `--data` | `-d` | string | "" | Request body (JSON string). |
-| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
+| `--data` | `-d` | string | "" | Request body (JSON string). Use `@-` to read the body from stdin. |
+| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. Use `-` to read from stdin. |
 | `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
 | `--json-field-raw` | | string[] | [] | Add a raw JSON field to a JSON request body (repeatable, format: `key:=json`). Dotted keys nest. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |

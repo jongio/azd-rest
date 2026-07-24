@@ -325,6 +325,17 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 			}
 		}
 	case cfg.DataFile != "":
+		if readsFromStdin(cfg.DataFile) {
+			if cfg.Data != "" {
+				return opts, nil, fmt.Errorf("--data-file - cannot be combined with --data")
+			}
+			raw, readErr := readStdinBody()
+			if readErr != nil {
+				return opts, nil, readErr
+			}
+			opts.Body = bytes.NewReader(raw)
+			break
+		}
 		filePath := cfg.DataFile
 		if strings.HasPrefix(cfg.DataFile, "@") {
 			filePath = strings.TrimPrefix(cfg.DataFile, "@")
@@ -336,7 +347,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		bodyFile = file
 		opts.Body = file
 	case cfg.Data != "":
-		opts.Body = strings.NewReader(cfg.Data)
+		if cfg.Data == "@-" {
+			raw, readErr := readStdinBody()
+			if readErr != nil {
+				return opts, nil, readErr
+			}
+			opts.Body = bytes.NewReader(raw)
+		} else {
+			opts.Body = strings.NewReader(cfg.Data)
+		}
 	}
 
 	// cleanup closes the file handle if one was opened. The caller owns this.
