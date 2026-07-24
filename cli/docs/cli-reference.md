@@ -214,6 +214,7 @@ These flags are available for all HTTP method commands:
 |------|------|---------|-------------|
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
+| `--allow-status` | string | "" | Treat matching HTTP status codes as success when `--fail` is set. Accepts comma-separated codes and ranges, such as `200-204,404`. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 | `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |

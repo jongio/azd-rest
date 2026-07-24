@@ -142,6 +142,10 @@ azd rest doctor
 
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
+
+# Treat an expected 404 as success while still failing other HTTP errors
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --fail --allow-status 404
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.
