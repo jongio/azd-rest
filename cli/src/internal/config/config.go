@@ -16,6 +16,7 @@ type Config struct {
 	URLParams       []string
 	Headers         []string
 	HeaderFile      string
+	HeaderEnv       []string
 	Data            string
 	DataFile        string
 	DataFormat      string

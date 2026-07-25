@@ -30,6 +30,7 @@ var (
 	urlParams       []string
 	headers         []string
 	headerFile      string
+	headerEnv       []string
 	data            string
 	dataFile        string
 	dataFormat      string
@@ -195,6 +196,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
+	rootCmd.PersistentFlags().StringArrayVar(&headerEnv, "header-env", []string{}, "Read a header value from an environment variable (repeatable, format: Key=ENV_VAR). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
@@ -270,6 +272,7 @@ func snapshotConfig() config.Config {
 		URLParams:       urlParams,
 		Headers:         headers,
 		HeaderFile:      headerFile,
+		HeaderEnv:       headerEnv,
 		Data:            data,
 		DataFile:        dataFile,
 		DataFormat:      dataFormat,

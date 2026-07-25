@@ -98,6 +98,75 @@ func TestBuildRequestOptions_InlineHeaderOverridesFile(t *testing.T) {
 	assert.Equal(t, testAcceptJSON, opts.Headers["Accept"])
 }
 
+func TestBuildRequestOptions_HeaderEnvLoadsHeaders(t *testing.T) {
+	t.Setenv("AZD_REST_TEST_TOKEN", "env-secret")
+	cfg := config.Config{
+		NoAuth:    true,
+		HeaderEnv: []string{"X-Api-Key=AZD_REST_TEST_TOKEN"},
+	}
+
+	opts, cleanup, err := newHeaderTestService().BuildRequestOptions(cfg, "GET", testHeaderURL)
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	require.NoError(t, err)
+	assert.Equal(t, "env-secret", opts.Headers["X-Api-Key"])
+}
+
+func TestBuildRequestOptions_InlineHeaderOverridesEnv(t *testing.T) {
+	t.Setenv("AZD_REST_TEST_ACCEPT", "application/xml")
+	cfg := config.Config{
+		NoAuth:    true,
+		HeaderEnv: []string{"Accept=AZD_REST_TEST_ACCEPT"},
+		Headers:   []string{"Accept: application/json"},
+	}
+
+	opts, cleanup, err := newHeaderTestService().BuildRequestOptions(cfg, "GET", testHeaderURL)
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	require.NoError(t, err)
+	assert.Equal(t, testAcceptJSON, opts.Headers["Accept"])
+}
+
+func TestBuildRequestOptions_HeaderEnvMissingReturnsError(t *testing.T) {
+	cfg := config.Config{NoAuth: true, HeaderEnv: []string{"X-Api-Key=AZD_REST_TEST_MISSING"}}
+
+	_, cleanup, err := newHeaderTestService().BuildRequestOptions(cfg, "GET", testHeaderURL)
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not set or empty")
+}
+
+func TestBuildRequestOptions_HeaderEnvInvalidFormatReturnsError(t *testing.T) {
+	cfg := config.Config{NoAuth: true, HeaderEnv: []string{"X-Api-Key"}}
+
+	_, cleanup, err := newHeaderTestService().BuildRequestOptions(cfg, "GET", testHeaderURL)
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --header-env format")
+}
+
+func TestBuildRequestOptions_HeaderEnvInvalidHeaderReturnsError(t *testing.T) {
+	cfg := config.Config{NoAuth: true, HeaderEnv: []string{"Bad Header=AZD_REST_TEST_TOKEN"}}
+
+	_, cleanup, err := newHeaderTestService().BuildRequestOptions(cfg, "GET", testHeaderURL)
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --header-env header name")
+}
+
 func TestBuildRequestOptions_HeaderFileMissingReturnsError(t *testing.T) {
 	cfg := config.Config{NoAuth: true, HeaderFile: filepath.Join(t.TempDir(), "nope.txt")}
 
