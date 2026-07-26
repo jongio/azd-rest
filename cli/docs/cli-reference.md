@@ -203,6 +203,7 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
+| `--limit` | | int | 0 | Limit top-level JSON arrays or ARM `value` arrays to the first N items before formatting. |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |

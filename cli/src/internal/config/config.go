@@ -50,6 +50,7 @@ type Config struct {
 	Fail            bool
 	RawOutput       bool
 	Compact         bool
+	Limit           int
 }
 
 // Defaults returns a Config populated with the default flag values.
