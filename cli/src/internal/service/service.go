@@ -474,6 +474,13 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
 
+	if cfg.NoBody {
+		if cfg.Include {
+			return formatter.WriteOutput(buildResponseHeaderBlock(resp), cfg.OutputFile)
+		}
+		return nil
+	}
+
 	// --raw-output (#234): after --query, print a string result unquoted and an
 	// array of strings one per line. Other shapes fall through to JSON so
 	// nothing is silently mangled.

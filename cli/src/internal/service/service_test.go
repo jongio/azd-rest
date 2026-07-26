@@ -161,6 +161,54 @@ func TestExecute_NoInclude_BodyOnly(t *testing.T) {
 	assert.Contains(t, body, `"result": "ok"`)
 }
 
+func TestExecute_NoBodySuppressesBodyOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer srv.Close()
+
+	tmp := filepath.Join(t.TempDir(), "out.txt")
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.NoBody = true
+	cfg.OutputFile = tmp
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/api")
+	require.NoError(t, err)
+
+	_, err = os.Stat(tmp)
+	assert.True(t, os.IsNotExist(err), "no body output should be written")
+}
+
+func TestExecute_NoBodyWithIncludeWritesHeadersOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Request-Id", "req-42")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer srv.Close()
+
+	tmp := filepath.Join(t.TempDir(), "out.txt")
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.NoBody = true
+	cfg.Include = true
+	cfg.OutputFile = tmp
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/api")
+	require.NoError(t, err)
+
+	out, err := os.ReadFile(tmp)
+	require.NoError(t, err)
+	body := string(out)
+	assert.Contains(t, body, "200 OK")
+	assert.Contains(t, body, "X-Request-Id: req-42")
+	assert.NotContains(t, body, `"result":"ok"`)
+}
+
 func TestExecute_Include_BinaryPrependsHeaders(t *testing.T) {
 	payload := []byte{0x00, 0x01, 0x02, 0x03, 0xff}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
