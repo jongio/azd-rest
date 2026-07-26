@@ -446,6 +446,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeThrottleInfo(os.Stderr, resp.Headers)
 	}
 
+	if cfg.ShowRequestIDs {
+		writeRequestIDs(os.Stderr, resp.Headers)
+	}
+
 	if cfg.DumpHeaders != "" {
 		if err := dumpResponseHeaders(cfg.DumpHeaders, resp); err != nil {
 			return err

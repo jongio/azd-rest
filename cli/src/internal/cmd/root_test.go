@@ -53,6 +53,7 @@ func resetGlobalFlags() {
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
 	showThrottle = false
+	showRequestIDs = false
 	repeat = defaults.Repeat
 	writeOut = ""
 	include = false
