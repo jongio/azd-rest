@@ -156,3 +156,121 @@ func TestRunConfig_Text(t *testing.T) {
 		t.Fatalf("text output missing env var mapping: %q", out)
 	}
 }
+
+// newSensitiveTestFlags builds a flag set containing the credential-bearing
+// persistent flags so tests can prove their values never reach the output.
+func newSensitiveTestFlags() *pflag.FlagSet {
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.StringArray(headerFlag, []string{}, "")
+	fs.String(dataFlag, "", "")
+	fs.StringArray(formFieldFlag, []string{}, "")
+	fs.StringArray(jsonFieldFlag, []string{}, "")
+	fs.StringArray(jsonFieldRawFlag, []string{}, "")
+	fs.String("format", "auto", "")
+	return fs
+}
+
+func TestReportedValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		flag     string
+		value    string
+		defValue string
+		want     string
+	}{
+		{"non-sensitive flag reported verbatim", "format", "json", "auto", "json"},
+		{"unset sensitive flag keeps its default", headerFlag, "[]", "[]", "[]"},
+		{"unset sensitive string keeps its default", dataFlag, "", "", ""},
+		{"set header is masked", headerFlag, "[Authorization: Bearer abc]", "[]", redactedValue},
+		{"set data is masked", dataFlag, `{"clientSecret":"abc"}`, "", redactedValue},
+		{"set form field is masked", formFieldFlag, "[client_secret=abc]", "[]", redactedValue},
+		{"set json field is masked", jsonFieldFlag, "[password=abc]", "[]", redactedValue},
+		{"set raw json field is masked", jsonFieldRawFlag, `[creds:={"k":"abc"}]`, "[]", redactedValue},
+		{"unknown flag reported verbatim", "does-not-exist", "value", "", "value"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := reportedValue(tt.flag, tt.value, tt.defValue)
+			if got != tt.want {
+				t.Fatalf("reportedValue(%q, %q, %q) = %q, want %q", tt.flag, tt.value, tt.defValue, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestRunConfig_DoesNotLeakEnvSuppliedSecret walks the real disclosure path: an
+// AZD_REST_* variable supplies a bearer token, applyEnvDefaults sets the flag
+// during PersistentPreRunE, and config then reports the effective value. The
+// secret must not appear in either output format, while the flag-to-env-var
+// mapping that makes the command useful must survive.
+func TestRunConfig_DoesNotLeakEnvSuppliedSecret(t *testing.T) {
+	const secret = "eyJhbGciOiJIUzI1NiJ9.super-secret-token"
+	names := []string{headerFlag, dataFlag, "format"}
+	lookup := func(key string) (string, bool) {
+		switch key {
+		case "AZD_REST_HEADER":
+			return "Authorization: Bearer " + secret, true
+		case "AZD_REST_DATA":
+			return `{"clientSecret":"` + secret + `"}`, true
+		}
+		return "", false
+	}
+
+	for _, format := range []string{formatJSON, "auto"} {
+		t.Run(format, func(t *testing.T) {
+			fs := newSensitiveTestFlags()
+			if err := applyEnvDefaults(fs, names, lookup); err != nil {
+				t.Fatalf("applyEnvDefaults: %v", err)
+			}
+
+			var buf bytes.Buffer
+			if err := runConfig(fs, names, lookup, format, &buf); err != nil {
+				t.Fatalf("runConfig: %v", err)
+			}
+
+			out := buf.String()
+			if strings.Contains(out, secret) {
+				t.Fatalf("config output leaked the secret:\n%s", out)
+			}
+			if !strings.Contains(out, redactedValue) {
+				t.Fatalf("expected %q in %s output:\n%s", redactedValue, format, out)
+			}
+			if !strings.Contains(out, "AZD_REST_HEADER") {
+				t.Fatalf("output lost the env var mapping:\n%s", out)
+			}
+			if !strings.Contains(out, sourceEnvironment) {
+				t.Fatalf("output lost the environment source:\n%s", out)
+			}
+		})
+	}
+}
+
+// TestCollectConfigEntries_NonSensitiveEnvValueStillShown guards against the
+// masking being too broad: an ordinary flag set from the environment must still
+// report its effective value, which is the point of the command.
+func TestCollectConfigEntries_NonSensitiveEnvValueStillShown(t *testing.T) {
+	fs := newSensitiveTestFlags()
+	names := []string{"format"}
+	lookup := func(key string) (string, bool) {
+		if key == "AZD_REST_FORMAT" {
+			return "json", true
+		}
+		return "", false
+	}
+
+	if err := applyEnvDefaults(fs, names, lookup); err != nil {
+		t.Fatalf("applyEnvDefaults: %v", err)
+	}
+
+	entries := collectConfigEntries(fs, names, lookup)
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0].Value != "json" {
+		t.Fatalf("non-sensitive value = %q, want %q", entries[0].Value, "json")
+	}
+	if entries[0].Source != sourceEnvironment {
+		t.Fatalf("source = %q, want %q", entries[0].Source, sourceEnvironment)
+	}
+}
