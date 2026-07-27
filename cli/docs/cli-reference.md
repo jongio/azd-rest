@@ -38,6 +38,7 @@ azd rest version
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
 | `scope` | Preview the detected OAuth scope and auth mode for a URL |
+| `graph` | Run an Azure Resource Graph query |
 | `version` | Display the extension version |
 
 ---
@@ -356,6 +357,42 @@ Service:  Azure Resource Manager
   "service": "Microsoft Graph"
 }
 ```
+
+---
+
+## `azd rest graph [kql-query]`
+
+Run an Azure Resource Graph query using Kusto Query Language. Authentication, the endpoint, and the default API version are handled for you.
+
+**Usage:**
+```bash
+azd rest graph [kql-query] [flags]
+```
+
+**Examples:**
+```bash
+# Inline query
+azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
+
+# Scope to one subscription
+azd rest graph "Resources | project name, type" --subscription <sub-id> --top 5
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--query-file` | string | "" | Read the KQL query from a file instead of a positional argument |
+| `--subscription` | string[] | [] | Subscription ID to scope the query (repeatable) |
+| `--management-group` | string[] | [] | Management group ID to scope the query (repeatable) |
+| `--top` | int | 0 | Maximum number of rows to return |
+| `--skip` | int | 0 | Number of rows to skip |
+| `--skip-token` | string | "" | Continuation token from a previous response |
+
+Pass either a positional query or `--query-file`, not both. The file is read as plain text and sent as the Resource Graph `query` field.
 
 ---
 
