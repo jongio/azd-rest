@@ -254,6 +254,7 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewJWTCommand(),
 	)
 
 	return rootCmd

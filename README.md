@@ -110,6 +110,9 @@ azd rest graph --query-file resources.kql
 # Show the signed-in Azure identity (tenant, app, scopes, expiry)
 azd rest whoami
 
+# Decode a token you already have and print its claims
+azd rest jwt "$(az account get-access-token --query accessToken -o tsv)"
+
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
 
