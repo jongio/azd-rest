@@ -252,6 +252,7 @@ Examples:
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
 		NewScopeCommand(),
+		NewScopesCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
@@ -259,6 +260,7 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewJWTCommand(),
 		NewConfigCommand(configFlagNames),
 	)
 

@@ -77,6 +77,11 @@ linters:
     goconst:
       min-len: 3
       min-occurrences: 3
+      # Tests repeat literals like "GET" for readability, and the exclusions
+      # below already drop goconst issues reported in _test.go files. Without
+      # this, test occurrences still count toward the threshold and push
+      # constants into production code that uses the literal only once.
+      ignore-tests: true
 
     exhaustive:
       default-signifies-exhaustive: true
