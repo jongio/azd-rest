@@ -57,6 +57,7 @@ func resetGlobalFlags() {
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	noBody = false
 }
 
 func TestNewRootCmd(t *testing.T) {
