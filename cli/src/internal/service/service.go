@@ -251,6 +251,13 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		opts.Headers[key] = value
 	}
 
+	if cfg.Accept != "" {
+		opts.Headers["Accept"] = cfg.Accept
+	}
+	if cfg.ContentType != "" {
+		opts.Headers[contentTypeHeader] = cfg.ContentType
+	}
+
 	// --data-format (#236) selects how --data / --data-file is interpreted before
 	// it is sent. The default is JSON (raw passthrough). YAML is parsed and
 	// re-encoded as a JSON body.
