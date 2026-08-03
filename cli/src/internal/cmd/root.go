@@ -34,6 +34,7 @@ var (
 	accept          string
 	contentType     string
 	headerFile      string
+	headerEnv       []string
 	data            string
 	dataFile        string
 	dataFormat      string
@@ -59,11 +60,13 @@ var (
 	maxResponseSize int64
 	showThrottle    bool
 	repeat          int
+	repeatDelay     time.Duration
 	colorMode       string
 	writeOut        string
 	include         bool
 	allowHosts      []string
 	redactPaths     []string
+	omitPaths       []string
 	redactFile      string
 	fields          []string
 	tableColumns    []string
@@ -210,6 +213,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&accept, "accept", "", "Set the Accept request header")
 	rootCmd.PersistentFlags().StringVar(&contentType, "content-type", "", "Set the Content-Type request header")
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
+	rootCmd.PersistentFlags().StringArrayVar(&headerEnv, "header-env", []string{}, "Read a header value from an environment variable (repeatable, format: Key=ENV_VAR). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
@@ -236,11 +240,13 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&showThrottle, "show-throttle", false, "Print Azure rate-limit and quota headers to stderr, with a low-quota warning")
 	rootCmd.PersistentFlags().BoolVar(&showRequestIDs, "show-request-ids", false, "Print common Azure request correlation response headers to stderr")
 	rootCmd.PersistentFlags().IntVar(&repeat, "repeat", defaults.Repeat, "Send the request N times and report latency statistics")
+	rootCmd.PersistentFlags().DurationVar(&repeatDelay, "repeat-delay", defaults.RepeatDelay, "Wait between repeated requests (for example: 200ms, 2s)")
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().StringArrayVar(&omitPaths, "omit", []string{}, "Remove a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringVar(&redactFile, "redact-file", "", "Read JSON response redaction paths from a file (one dotted path per line; blank lines and # comments ignored)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
@@ -305,6 +311,7 @@ func snapshotConfig() config.Config {
 		Accept:          accept,
 		ContentType:     contentType,
 		HeaderFile:      headerFile,
+		HeaderEnv:       headerEnv,
 		Data:            data,
 		DataFile:        dataFile,
 		DataFormat:      dataFormat,
@@ -330,11 +337,13 @@ func snapshotConfig() config.Config {
 		MaxResponseSize: maxResponseSize,
 		ShowThrottle:    showThrottle,
 		Repeat:          repeat,
+		RepeatDelay:     repeatDelay,
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
+		Omit:            omitPaths,
 		RedactFile:      redactFile,
 		Fields:          fields,
 		TableColumns:    tableColumns,

@@ -2,9 +2,19 @@ package service
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jongio/azd-rest/src/internal/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPercentile(t *testing.T) {
@@ -83,6 +93,64 @@ func TestSafeMethods(t *testing.T) {
 			t.Errorf("expected %s not to be a safe method", m)
 		}
 	}
+}
+
+func TestWaitRepeatDelayNoDelayReturnsImmediately(t *testing.T) {
+	start := time.Now()
+	require.NoError(t, waitRepeatDelay(context.Background(), 0))
+	assert.Less(t, time.Since(start), 20*time.Millisecond)
+}
+
+func TestWaitRepeatDelayWaits(t *testing.T) {
+	delay := 20 * time.Millisecond
+	start := time.Now()
+	require.NoError(t, waitRepeatDelay(context.Background(), delay))
+	assert.GreaterOrEqual(t, time.Since(start), delay)
+}
+
+func TestWaitRepeatDelayCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := waitRepeatDelay(ctx, time.Second)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.Canceled))
+}
+
+func TestExecuteRejectsNegativeRepeatDelay(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.RepeatDelay = -time.Millisecond
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", "http://example.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--repeat-delay")
+}
+
+func TestExecuteRepeatDelaySpacesAttempts(t *testing.T) {
+	var seen []time.Time
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		seen = append(seen, time.Now())
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.Repeat = 2
+	cfg.RepeatDelay = 25 * time.Millisecond
+	cfg.OutputFile = filepath.Join(t.TempDir(), "out.json")
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", server.URL)
+	require.NoError(t, err)
+	require.Len(t, seen, 2)
+	assert.GreaterOrEqual(t, seen[1].Sub(seen[0]), cfg.RepeatDelay)
+
+	out, err := os.ReadFile(cfg.OutputFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"ok"`)
 }
 
 func TestWriteRepeatSummary(t *testing.T) {

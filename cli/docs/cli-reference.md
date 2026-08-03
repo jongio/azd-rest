@@ -188,6 +188,9 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
+| `--header-env` | | string[] | [] | Read a header value from an environment variable (repeatable, format: `Key=ENV_VAR`). `-H` overrides on conflict. |
+| `--data` | `-d` | string | "" | Request body (JSON string). |
+| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
 | `--data` | `-d` | string | "" | Request body (JSON string). Use `@-` to read the body from stdin. |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. Use `-` to read from stdin. |
 | `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
@@ -204,6 +207,7 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
+| `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. |
@@ -217,10 +221,12 @@ These flags are available for all HTTP method commands:
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
 | `--dry-run` | bool | false | Print sanitized request details as JSON and exit without sending the HTTP request. |
+| `--repeat` | int | 1 | Send the request N times and report latency statistics. |
 | `--show-request-ids` | bool | false | Print common Azure request correlation response headers to stderr. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 | `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |
+| `--repeat-delay` | duration | 0s | Wait between repeated requests when `--repeat` is greater than 1. |
 
 ### Environment Variable Defaults
 
@@ -234,6 +240,8 @@ The variable name is the flag name upper-cased, with dashes replaced by undersco
 | `--api-version` | `AZD_REST_API_VERSION` |
 | `--timeout` | `AZD_REST_TIMEOUT` |
 | `--retry` | `AZD_REST_RETRY` |
+| `--repeat` | `AZD_REST_REPEAT` |
+| `--repeat-delay` | `AZD_REST_REPEAT_DELAY` |
 | `--format` | `AZD_REST_FORMAT` |
 | `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
 
@@ -652,6 +660,22 @@ azd rest get "https://management.azure.com/subscriptions/.../providers/...?api-v
 
 Redaction runs for the `json`, `auto`, `table`, and `jsonl` formats. Raw and binary output is left unchanged, with a note on stderr, because it cannot be parsed as JSON. A path that matches nothing is a safe no-op.
 
+### Omitting Response Fields
+
+Use `--omit` to remove JSON fields entirely before the response is printed or written to `--output-file`. It is the structural complement to `--redact`: redaction masks a value in place, omission drops the key so it no longer appears. The flag is repeatable and uses the same dotted paths, where `*` matches every element of an array:
+
+```bash
+# Drop a noisy field from the response
+azd rest get "https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01" \
+  --omit value.*.properties.provisioningState
+
+# Remove several fields at once
+azd rest get "https://management.azure.com/subscriptions/{sub}?api-version=2022-12-01" \
+  --omit tags --omit managedByTenants
+```
+
+Omission runs on the same JSON output paths as redaction. Raw and binary output is left unchanged, with a note on stderr. A path that matches nothing is a safe no-op.
+
 ### Save to File
 
 Use `--output-file` to save the response to a file:
@@ -803,6 +827,18 @@ azd rest get https://api.example.com/widgets \
 
 A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
 
+### Headers from Environment Variables
+
+Use `--header-env` for sensitive values that should not appear in shell history or process arguments:
+
+```bash
+export WIDGETS_API_KEY="secret-value"
+azd rest get https://api.example.com/widgets \
+  --header-env "X-Api-Key=WIDGETS_API_KEY"
+```
+
+The flag is repeatable and uses `Key=ENV_VAR` syntax. Missing or empty environment variables return an error before authentication or the request. Inline `--header` values take precedence over values loaded from the environment.
+
 ### Content-Type
 
 When using `--data` or `--data-file`, `Content-Type: application/json` is automatically set. Override with `--header`:
@@ -862,6 +898,9 @@ azd rest get https://api.example.com/resource
 
 # Custom retry count
 azd rest get https://api.example.com/resource --retry 5
+
+# Pace repeated requests
+azd rest get https://api.example.com/resource --repeat 3 --repeat-delay 2s
 
 # Disable retries
 azd rest get https://api.example.com/resource --retry 0

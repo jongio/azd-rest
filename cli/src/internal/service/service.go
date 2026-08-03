@@ -95,6 +95,55 @@ func loadHeaderFile(path string) (map[string]string, error) {
 	return result, nil
 }
 
+func loadHeaderEnv(entries []string, lookupEnv func(string) (string, bool)) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, entry := range entries {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid --header-env format: %s (expected Key=ENV_VAR)", entry)
+		}
+		key := strings.TrimSpace(parts[0])
+		envName := strings.TrimSpace(parts[1])
+		if !validHeaderName(key) {
+			return nil, fmt.Errorf("invalid --header-env header name: %q", key)
+		}
+		if !validEnvName(envName) {
+			return nil, fmt.Errorf("invalid --header-env environment variable name: %q", envName)
+		}
+		value, ok := lookupEnv(envName)
+		if !ok || value == "" {
+			return nil, fmt.Errorf("environment variable %s for --header-env %s is not set or empty", envName, key)
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r <= 32 || r >= 127 || strings.ContainsRune("()<>@,;:\\\"/[]?={}", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func applyQueryToResponse(resp *client.Response, expression string) error {
 	if expression == "" {
 		return nil
@@ -319,6 +368,16 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		}
 	}
 
+	if len(cfg.HeaderEnv) > 0 {
+		envHeaders, err := loadHeaderEnv(cfg.HeaderEnv, os.LookupEnv)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range envHeaders {
+			opts.Headers[key] = value
+		}
+	}
+
 	// Parse headers
 	for _, header := range cfg.Headers {
 		parts := strings.SplitN(header, ":", 2)
@@ -499,6 +558,9 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
 	}
+	if cfg.RepeatDelay < 0 {
+		return fmt.Errorf("--repeat-delay cannot be negative, got %s", cfg.RepeatDelay)
+	}
 
 	if err := validateColorMode(cfg.Color); err != nil {
 		return err
@@ -666,6 +728,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact could not parse the response as JSON; leaving it unchanged\n")
 		} else {
 			resp.Body = redacted
+		}
+	}
+
+	// Omission: remove matched JSON response fields entirely before formatting.
+	// This is the structural complement to --redact: redaction masks the value in
+	// place, omission drops the key (or array elements). Raw and binary output
+	// cannot be parsed as JSON, so it is left unchanged with a note on stderr.
+	if len(cfg.Omit) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if omitted, err := omitJSONBody(resp.Body, cfg.Omit); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = omitted
 		}
 	}
 

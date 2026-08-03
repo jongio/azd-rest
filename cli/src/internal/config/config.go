@@ -20,6 +20,7 @@ type Config struct {
 	Accept          string
 	ContentType     string
 	HeaderFile      string
+	HeaderEnv       []string
 	Data            string
 	DataFile        string
 	DataFormat      string
@@ -45,11 +46,13 @@ type Config struct {
 	MaxResponseSize int64
 	ShowThrottle    bool
 	Repeat          int
+	RepeatDelay     time.Duration
 	Color           string
 	WriteOut        string
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	Omit            []string
 	RedactFile      string
 	Fields          []string
 	TableColumns    []string
