@@ -1,0 +1,13 @@
+{
+  "total": 86.3,
+  "packages": {
+    "github.com/jongio/azd-rest/src/cmd/rest": 0,
+    "github.com/jongio/azd-rest/src/internal/client": 100,
+    "github.com/jongio/azd-rest/src/internal/cmd": 87.5,
+    "github.com/jongio/azd-rest/src/internal/config": 0,
+    "github.com/jongio/azd-rest/src/internal/service": 86.3,
+    "github.com/jongio/azd-rest/src/internal/skills": 100,
+    "github.com/jongio/azd-rest/src/internal/version": 100
+  },
+  "note": "recorded by mage coverageRecord"
+}

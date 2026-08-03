@@ -1,8 +1,6 @@
 module github.com/jongio/azd-rest
 
-go 1.26.4
-
-toolchain go1.26.5
+go 1.26.5
 
 require (
 	github.com/azure/azure-dev/cli/azd v1.29.0
@@ -85,7 +83,6 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -115,3 +112,5 @@ require (
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
+
+replace github.com/jongio/azd-core => ../../../azd-core/feat-azdext-alignment
