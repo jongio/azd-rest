@@ -38,6 +38,7 @@ func resetGlobalFlags() {
 	accept = ""
 	contentType = ""
 	headerFile = ""
+	headerEnv = []string{}
 	data = ""
 	dataFile = ""
 	query = ""

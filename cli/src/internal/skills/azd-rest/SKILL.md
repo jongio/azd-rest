@@ -40,6 +40,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--client-request-id` | | "" | Set the x-ms-client-request-id header for Azure request correlation (pass without a value to generate a random ID) |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
 | `--header-file` | | "" | Read headers from a file (one Key: Value per line; blank lines and # comments ignored; -H overrides) |
+| `--header-env` | | [] | Read a header value from an environment variable (repeatable, format: Key=ENV_VAR; -H overrides) |
 | `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |

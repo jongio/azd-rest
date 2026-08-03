@@ -20,6 +20,7 @@ type Config struct {
 	Accept          string
 	ContentType     string
 	HeaderFile      string
+	HeaderEnv       []string
 	Data            string
 	DataFile        string
 	DataFormat      string

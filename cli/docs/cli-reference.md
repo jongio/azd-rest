@@ -188,6 +188,9 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
+| `--header-env` | | string[] | [] | Read a header value from an environment variable (repeatable, format: `Key=ENV_VAR`). `-H` overrides on conflict. |
+| `--data` | `-d` | string | "" | Request body (JSON string). |
+| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
 | `--data` | `-d` | string | "" | Request body (JSON string). Use `@-` to read the body from stdin. |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. Use `-` to read from stdin. |
 | `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
@@ -801,6 +804,18 @@ azd rest get https://api.example.com/widgets \
 ```
 
 A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
+
+### Headers from Environment Variables
+
+Use `--header-env` for sensitive values that should not appear in shell history or process arguments:
+
+```bash
+export WIDGETS_API_KEY="secret-value"
+azd rest get https://api.example.com/widgets \
+  --header-env "X-Api-Key=WIDGETS_API_KEY"
+```
+
+The flag is repeatable and uses `Key=ENV_VAR` syntax. Missing or empty environment variables return an error before authentication or the request. Inline `--header` values take precedence over values loaded from the environment.
 
 ### Content-Type
 

@@ -34,6 +34,7 @@ var (
 	accept          string
 	contentType     string
 	headerFile      string
+	headerEnv       []string
 	data            string
 	dataFile        string
 	dataFormat      string
@@ -209,6 +210,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&accept, "accept", "", "Set the Accept request header")
 	rootCmd.PersistentFlags().StringVar(&contentType, "content-type", "", "Set the Content-Type request header")
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
+	rootCmd.PersistentFlags().StringArrayVar(&headerEnv, "header-env", []string{}, "Read a header value from an environment variable (repeatable, format: Key=ENV_VAR). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
@@ -303,6 +305,7 @@ func snapshotConfig() config.Config {
 		Accept:          accept,
 		ContentType:     contentType,
 		HeaderFile:      headerFile,
+		HeaderEnv:       headerEnv,
 		Data:            data,
 		DataFile:        dataFile,
 		DataFormat:      dataFormat,

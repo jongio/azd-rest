@@ -93,6 +93,55 @@ func loadHeaderFile(path string) (map[string]string, error) {
 	return result, nil
 }
 
+func loadHeaderEnv(entries []string, lookupEnv func(string) (string, bool)) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, entry := range entries {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid --header-env format: %s (expected Key=ENV_VAR)", entry)
+		}
+		key := strings.TrimSpace(parts[0])
+		envName := strings.TrimSpace(parts[1])
+		if !validHeaderName(key) {
+			return nil, fmt.Errorf("invalid --header-env header name: %q", key)
+		}
+		if !validEnvName(envName) {
+			return nil, fmt.Errorf("invalid --header-env environment variable name: %q", envName)
+		}
+		value, ok := lookupEnv(envName)
+		if !ok || value == "" {
+			return nil, fmt.Errorf("environment variable %s for --header-env %s is not set or empty", envName, key)
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r <= 32 || r >= 127 || strings.ContainsRune("()<>@,;:\\\"/[]?={}", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func applyQueryToResponse(resp *client.Response, expression string) error {
 	if expression == "" {
 		return nil
@@ -313,6 +362,16 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 			return opts, nil, err
 		}
 		for key, value := range fileHeaders {
+			opts.Headers[key] = value
+		}
+	}
+
+	if len(cfg.HeaderEnv) > 0 {
+		envHeaders, err := loadHeaderEnv(cfg.HeaderEnv, os.LookupEnv)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range envHeaders {
 			opts.Headers[key] = value
 		}
 	}
