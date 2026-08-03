@@ -29,6 +29,7 @@ var (
 	baseURL         string
 	clientRequestID string
 	urlParams       []string
+	urlParamFile    string
 	headers         []string
 	accept          string
 	contentType     string
@@ -198,6 +199,7 @@ Examples:
 	// Passing --client-request-id without a value generates a fresh ID for this invocation.
 	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
+	rootCmd.PersistentFlags().StringVar(&urlParamFile, "url-param-file", "", "Read URL query parameters from a file (one key=value per line; blank lines and # comments ignored). --url-param overrides on conflict.")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
 	rootCmd.PersistentFlags().StringVar(&accept, "accept", "", "Set the Accept request header")
 	rootCmd.PersistentFlags().StringVar(&contentType, "content-type", "", "Set the Content-Type request header")
@@ -279,6 +281,7 @@ func snapshotConfig() config.Config {
 		BaseURL:         baseURL,
 		ClientRequestID: clientRequestID,
 		URLParams:       urlParams,
+		URLParamFile:    urlParamFile,
 		Headers:         headers,
 		Accept:          accept,
 		ContentType:     contentType,

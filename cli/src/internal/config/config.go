@@ -15,6 +15,7 @@ type Config struct {
 	BaseURL         string
 	ClientRequestID string
 	URLParams       []string
+	URLParamFile    string
 	Headers         []string
 	Accept          string
 	ContentType     string

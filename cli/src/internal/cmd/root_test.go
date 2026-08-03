@@ -33,6 +33,7 @@ func resetGlobalFlags() {
 	baseURL = ""
 	clientRequestID = ""
 	urlParams = []string{}
+	urlParamFile = ""
 	headers = []string{}
 	accept = ""
 	contentType = ""
