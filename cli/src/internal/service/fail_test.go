@@ -8,16 +8,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// exitCoder mirrors the cmd.ExitCoder contract so the service tests can assert
-// the process exit code without importing the cmd package.
-type exitCoder interface {
-	error
-	ExitCode() int
-}
+// exitCoder is gone: azd normalizes every extension failure to exit 1, so the
+// service package now reports outcomes through azdext structured errors.
 
 func failTestServer(t *testing.T, status int, body string) *httptest.Server {
 	t.Helper()
@@ -30,7 +27,9 @@ func failTestServer(t *testing.T, status int, body string) *httptest.Server {
 	return srv
 }
 
-func TestExecute_Fail_ErrorStatusReturnsExit22(t *testing.T) {
+// TestExecute_Fail_ErrorStatusIsServiceError verifies that --fail on a 4xx/5xx
+// response returns a structured service error carrying the status code.
+func TestExecute_Fail_ErrorStatusIsServiceError(t *testing.T) {
 	srv := failTestServer(t, http.StatusNotFound, `{"error":"not found"}`)
 
 	cfg := baseTestConfig(t)
@@ -39,9 +38,10 @@ func TestExecute_Fail_ErrorStatusReturnsExit22(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/missing")
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder), "fail error should implement ExitCoder")
-	assert.Equal(t, 22, coder.ExitCode())
+	var svcErr *azdext.ServiceError
+	require.True(t, errors.As(err, &svcErr), "fail error should be a structured service error")
+	assert.Equal(t, ErrCodeHTTPFail, svcErr.ErrorCode)
+	assert.Equal(t, 404, svcErr.StatusCode)
 
 	// The response body is still written before the failure is returned.
 	out, readErr := os.ReadFile(cfg.OutputFile)

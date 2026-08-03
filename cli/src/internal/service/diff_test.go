@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,9 +50,9 @@ func TestDiffAgainstBaseline_DriftPrintsUnifiedDiffAndReturnsError(t *testing.T)
 	err := diffAgainstBaseline(&out, body, baseline)
 	require.Error(t, err)
 
-	// Drift is a plain error, not a usage error, so it exits 1 (no ExitCoder).
-	var coder exitCoder
-	assert.False(t, errors.As(err, &coder), "drift should not carry a usage exit code")
+	// Drift is a plain error, not a usage error.
+	var usageErr *azdext.LocalError
+	assert.False(t, errors.As(err, &usageErr), "drift should not be a usage error")
 
 	printed := out.String()
 	assert.Contains(t, printed, "--- baseline")
@@ -65,9 +66,9 @@ func TestDiffAgainstBaseline_MissingBaselineReturnsUsageError(t *testing.T) {
 	err := diffAgainstBaseline(&out, []byte(`{"a":1}`), filepath.Join(t.TempDir(), "nope.json"))
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder), "missing baseline should implement ExitCoder")
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr), "missing baseline should be a structured usage error")
+	assert.Equal(t, ErrCodeDiffUsage, usageErr.Code)
 	assert.Empty(t, out.String())
 }
 
@@ -78,9 +79,9 @@ func TestDiffAgainstBaseline_NonJSONResponseReturnsUsageError(t *testing.T) {
 	err := diffAgainstBaseline(&out, []byte("plain text body"), baseline)
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeDiffUsage, usageErr.Code)
 	assert.Contains(t, err.Error(), "requires a JSON response")
 }
 
@@ -91,9 +92,9 @@ func TestDiffAgainstBaseline_NonJSONBaselineReturnsUsageError(t *testing.T) {
 	err := diffAgainstBaseline(&out, []byte(`{"a":1}`), baseline)
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeDiffUsage, usageErr.Code)
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 

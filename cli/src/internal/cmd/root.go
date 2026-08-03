@@ -223,7 +223,7 @@ Examples:
 			}
 		}
 		// Apply AZD_REST_<FLAG> environment defaults before any request runs, so
-		// an invalid value fails fast with exit code 2 (#172).
+		// an invalid value fails fast with a structured validation error (#172).
 		if err := applyEnvDefaults(cmd.Flags(), extensionFlagNames, os.LookupEnv); err != nil {
 			return err
 		}
@@ -274,11 +274,11 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&flatten, "flatten", false, "Flatten a JSON response into a single-level object keyed by dotted paths (e.g. properties.state, value[0].name)")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
-	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
+	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe, do not use in production)")
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Suppress non-error diagnostic messages on stderr (warnings and notices)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
 	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
-	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail with exit code 28 when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
+	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")

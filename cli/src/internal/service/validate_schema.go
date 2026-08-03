@@ -15,49 +15,38 @@ import (
 // user-supplied schema. It never touches the filesystem or network.
 const schemaResourceName = "schema.json"
 
-// validateSchemaUsageError signals invalid --validate-schema usage: a missing
-// or unreadable schema file, a schema that is not valid JSON or not a valid
-// JSON Schema, or a non-JSON response. It reports exit code 2 so main can tell
-// it apart from a conformance failure, which is a plain error (exit 1).
-type validateSchemaUsageError struct{ msg string }
-
-func (e *validateSchemaUsageError) Error() string { return e.msg }
-
-// ExitCode returns 2 for invalid --validate-schema usage.
-func (e *validateSchemaUsageError) ExitCode() int { return 2 }
-
 // validateResponseSchema validates the JSON response body against the JSON
 // Schema in schemaPath. It returns nil when the response conforms. When the
 // response does not conform it writes each validation error to errOut and
 // returns a plain error so the command exits non-zero. A missing or invalid
-// schema file, or a non-JSON response, returns a validateSchemaUsageError
-// (exit 2).
+// schema file, or a non-JSON response, is invalid usage and returns a
+// structured usage error instead.
 func validateResponseSchema(errOut io.Writer, body []byte, schemaPath string) error {
 	schemaRaw, err := os.ReadFile(schemaPath) // #nosec G304 -- User-specified schema path via --validate-schema flag is intentional.
 	if err != nil {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("failed to read --validate-schema file %q: %v", schemaPath, err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("failed to read --validate-schema file %q: %v", schemaPath, err))
 	}
 
 	schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaRaw))
 	if err != nil {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("--validate-schema file %q is not valid JSON: %v", schemaPath, err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("--validate-schema file %q is not valid JSON: %v", schemaPath, err))
 	}
 
 	compiler := jsonschema.NewCompiler()
 	if err := compiler.AddResource(schemaResourceName, schemaDoc); err != nil {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("invalid JSON Schema in %q: %v", schemaPath, err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("invalid JSON Schema in %q: %v", schemaPath, err))
 	}
 	schema, err := compiler.Compile(schemaResourceName)
 	if err != nil {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("invalid JSON Schema in %q: %v", schemaPath, err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("invalid JSON Schema in %q: %v", schemaPath, err))
 	}
 
 	if !client.IsJSON(body) {
-		return &validateSchemaUsageError{msg: "--validate-schema requires a JSON response"}
+		return newValidateSchemaUsageError("--validate-schema requires a JSON response")
 	}
 	instance, err := jsonschema.UnmarshalJSON(bytes.NewReader(body))
 	if err != nil {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("failed to parse JSON response for --validate-schema: %v", err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("failed to parse JSON response for --validate-schema: %v", err))
 	}
 
 	err = schema.Validate(instance)
@@ -67,7 +56,7 @@ func validateResponseSchema(errOut io.Writer, body []byte, schemaPath string) er
 
 	var ve *jsonschema.ValidationError
 	if !errors.As(err, &ve) {
-		return &validateSchemaUsageError{msg: fmt.Sprintf("--validate-schema failed: %v", err)}
+		return newValidateSchemaUsageError(fmt.Sprintf("--validate-schema failed: %v", err))
 	}
 
 	messages := flattenSchemaErrors(ve.BasicOutput())

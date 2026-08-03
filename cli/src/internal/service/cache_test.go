@@ -16,13 +16,10 @@ import (
 
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// cacheExitCoder mirrors the cmd.ExitCoder contract so tests can assert the
-// exit code an error carries without importing the cmd package.
-type cacheExitCoder interface{ ExitCode() int }
 
 // isolateCacheDir points the user cache directory at a temp dir for the test so
 // cache reads and writes never touch a real user cache. It sets the variable
@@ -69,9 +66,9 @@ func TestParseCacheTTL(t *testing.T) {
 			got, err := parseCacheTTL(tt.raw)
 			if tt.wantErr {
 				require.Error(t, err)
-				var coder cacheExitCoder
-				require.True(t, errors.As(err, &coder), "error should carry an exit code")
-				assert.Equal(t, 2, coder.ExitCode())
+				var usageErr *azdext.LocalError
+				require.True(t, errors.As(err, &usageErr), "error should be a structured usage error")
+	assert.Equal(t, ErrCodeCacheConfig, usageErr.Code)
 				return
 			}
 			require.NoError(t, err)
@@ -552,8 +549,8 @@ func TestExecute_InvalidCacheTTL_ExitsTwoBeforeRequest(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/items")
 	require.Error(t, err)
-	var coder cacheExitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeCacheConfig, usageErr.Code)
 	assert.Equal(t, int32(0), hits.Load(), "an invalid --cache-ttl must fail before any network call")
 }

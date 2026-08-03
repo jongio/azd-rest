@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +77,7 @@ func TestApplyEnvDefaults_EmptyEnvIgnored(t *testing.T) {
 	assert.Equal(t, "", *scopeVal)
 }
 
-func TestApplyEnvDefaults_InvalidValueIsConfigError(t *testing.T) {
+func TestApplyEnvDefaults_InvalidValueIsStructuredLocalError(t *testing.T) {
 	fs, _, _ := newTestFlags()
 	env := map[string]string{"AZD_REST_RETRY": "not-a-number"}
 	lookup := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
@@ -83,10 +85,30 @@ func TestApplyEnvDefaults_InvalidValueIsConfigError(t *testing.T) {
 	err := applyEnvDefaults(fs, []string{"retry"}, lookup)
 
 	require.Error(t, err)
-	var coder ExitCoder
-	require.True(t, errors.As(err, &coder), "invalid env value should be an ExitCoder")
-	assert.Equal(t, 2, coder.ExitCode())
+	var localErr *azdext.LocalError
+	require.True(t, errors.As(err, &localErr), "invalid env value should be an azdext.LocalError")
+	assert.Equal(t, ErrCodeInvalidEnvDefault, localErr.Code)
+	assert.Equal(t, azdext.LocalErrorCategoryValidation, localErr.Category)
 	assert.Contains(t, err.Error(), "AZD_REST_RETRY")
+	assert.Contains(t, localErr.Suggestion, "AZD_REST_RETRY",
+		"the suggestion should name the variable the user has to change")
+	assert.Contains(t, localErr.Suggestion, "--retry",
+		"the suggestion should name the flag the value feeds")
+}
+
+// TestApplyEnvDefaults_InvalidValueSurvivesWrapping guards the host contract:
+// azdext.WrapError finds the LocalError through errors.As, so the error must
+// keep working after a caller wraps it with extra context.
+func TestApplyEnvDefaults_InvalidValueSurvivesWrapping(t *testing.T) {
+	fs, _, _ := newTestFlags()
+	env := map[string]string{"AZD_REST_RETRY": "not-a-number"}
+	lookup := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
+
+	err := fmt.Errorf("applying environment defaults: %w", applyEnvDefaults(fs, []string{"retry"}, lookup))
+
+	var localErr *azdext.LocalError
+	require.True(t, errors.As(err, &localErr))
+	assert.Equal(t, ErrCodeInvalidEnvDefault, localErr.Code)
 }
 
 // TestApplyEnvDefaults_UpdatesBoundGlobal verifies the env value flows through
