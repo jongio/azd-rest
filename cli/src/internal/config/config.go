@@ -54,6 +54,7 @@ type Config struct {
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	Expect          []string
 	RawOutput       bool
 	Compact         bool
 	NoBody          bool
