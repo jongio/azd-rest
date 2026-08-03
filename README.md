@@ -104,8 +104,14 @@ azd rest get https://graph.microsoft.com/v1.0/me
 # Azure Resource Graph (KQL) query
 azd rest graph "Resources | summarize count() by type"
 
+# Azure Resource Graph query from a file
+azd rest graph --query-file resources.kql
+
 # Show the signed-in Azure identity (tenant, app, scopes, expiry)
 azd rest whoami
+
+# Decode a token you already have and print its claims
+azd rest jwt "$(az account get-access-token --query accessToken -o tsv)"
 
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth
@@ -133,15 +139,33 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --data-file group.yaml --data-format yaml
 
+# Pipe a generated JSON body from stdin
+cat group.json | azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --data-file -
+
 # Flatten a response to dotted paths, then grep for one field
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
 
+# Remove noisy fields from the response (structural complement to --redact)
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01 \
+  --omit value.*.properties.provisioningState
+
 # Diagnose authentication issues
 azd rest doctor
 
+# Pace repeated requests during a quick latency check
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --repeat 3 --repeat-delay 2s
+# Show the effective configuration and AZD_REST_* env var mappings
+azd rest config
+
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
+
+# Assert on the response body in CI: fail the step unless the resource is provisioned
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --expect "properties.provisioningState=Succeeded"
 ```
 
 For the complete command and flag reference, see the [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) on the website.

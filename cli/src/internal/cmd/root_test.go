@@ -31,11 +31,16 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	baseURL = ""
 	clientRequestID = ""
 	traceparent = ""
 	urlParams = []string{}
+	urlParamFile = ""
 	headers = []string{}
+	accept = ""
+	contentType = ""
 	headerFile = ""
+	headerEnv = []string{}
 	data = ""
 	dataFile = ""
 	query = ""
@@ -55,10 +60,15 @@ func resetGlobalFlags() {
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
 	showThrottle = false
+	showRequestIDs = false
 	repeat = defaults.Repeat
+	repeatDelay = defaults.RepeatDelay
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	redactPaths = []string{}
+	redactFile = ""
+	noBody = false
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -80,7 +90,7 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "scopes", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
@@ -107,6 +117,22 @@ func TestNewRootCmd_TraceparentFlag(t *testing.T) {
 	assert.Empty(t, flag.Shorthand, "--traceparent should have no short alias")
 }
 
+func TestNewRootCmd_RepeatDelayFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("repeat-delay")
+	require.NotNil(t, flag, "--repeat-delay persistent flag should be registered")
+	assert.Equal(t, "0s", flag.DefValue, "--repeat-delay should default to zero")
+}
+
+func TestSnapshotConfig_RepeatDelay(t *testing.T) {
+	resetGlobalFlags()
+	repeatDelay = 2 * time.Second
+	cfg := snapshotConfig()
+	assert.Equal(t, 2*time.Second, cfg.RepeatDelay)
+}
+
 func TestSnapshotConfig_Silent(t *testing.T) {
 	resetGlobalFlags()
 	silent = true
@@ -119,6 +145,13 @@ func TestSnapshotConfig_Traceparent(t *testing.T) {
 	traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 	cfg := snapshotConfig()
 	assert.Equal(t, traceparent, cfg.Traceparent, "snapshotConfig should carry the traceparent flag")
+}
+
+func TestSnapshotConfig_BaseURL(t *testing.T) {
+	resetGlobalFlags()
+	baseURL = "https://management.azure.com"
+	cfg := snapshotConfig()
+	assert.Equal(t, "https://management.azure.com", cfg.BaseURL)
 }
 
 func TestBuildRequestOptions_Headers(t *testing.T) {
