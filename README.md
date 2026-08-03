@@ -150,6 +150,9 @@ azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg
 # Diagnose authentication issues
 azd rest doctor
 
+# Pace repeated requests during a quick latency check
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --repeat 3 --repeat-delay 2s
 # Show the effective configuration and AZD_REST_* env var mappings
 azd rest config
 

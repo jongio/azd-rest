@@ -60,6 +60,7 @@ var (
 	maxResponseSize int64
 	showThrottle    bool
 	repeat          int
+	repeatDelay     time.Duration
 	colorMode       string
 	writeOut        string
 	include         bool
@@ -237,6 +238,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&showThrottle, "show-throttle", false, "Print Azure rate-limit and quota headers to stderr, with a low-quota warning")
 	rootCmd.PersistentFlags().BoolVar(&showRequestIDs, "show-request-ids", false, "Print common Azure request correlation response headers to stderr")
 	rootCmd.PersistentFlags().IntVar(&repeat, "repeat", defaults.Repeat, "Send the request N times and report latency statistics")
+	rootCmd.PersistentFlags().DurationVar(&repeatDelay, "repeat-delay", defaults.RepeatDelay, "Wait between repeated requests (for example: 200ms, 2s)")
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
@@ -331,6 +333,7 @@ func snapshotConfig() config.Config {
 		MaxResponseSize: maxResponseSize,
 		ShowThrottle:    showThrottle,
 		Repeat:          repeat,
+		RepeatDelay:     repeatDelay,
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
