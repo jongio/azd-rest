@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// maxLatencyCoder mirrors the structural exit-code contract used by main so the
-// tests can assert the exit code without importing the cmd package.
-type maxLatencyCoder interface{ ExitCode() int }
+// maxLatencyCoder is gone: outcomes are asserted through azdext structured
+// errors now that azd normalizes extension exit codes to 1.
 
 func TestParseMaxLatency(t *testing.T) {
 	tests := []struct {
@@ -39,9 +39,10 @@ func TestParseMaxLatency(t *testing.T) {
 			got, err := parseMaxLatency(tt.value)
 			if tt.wantErr {
 				require.Error(t, err)
-				var coder maxLatencyCoder
-				require.True(t, errors.As(err, &coder), "config error should carry an exit code")
-				assert.Equal(t, 2, coder.ExitCode())
+				var localErr *azdext.LocalError
+				require.True(t, errors.As(err, &localErr), "config error should be structured")
+				assert.Equal(t, ErrCodeInvalidMaxLatency, localErr.Code)
+				assert.Equal(t, azdext.LocalErrorCategoryValidation, localErr.Category)
 				return
 			}
 			require.NoError(t, err)
@@ -68,9 +69,9 @@ func TestExecute_MaxLatency_SlowResponseExits28(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/slow")
 	require.Error(t, err)
 
-	var coder maxLatencyCoder
-	require.True(t, errors.As(err, &coder), "slow response should carry an exit code")
-	assert.Equal(t, 28, coder.ExitCode())
+	var svcErr *azdext.ServiceError
+	require.True(t, errors.As(err, &svcErr), "slow response should be a structured service error")
+	assert.Equal(t, ErrCodeMaxLatencyExceeded, svcErr.ErrorCode)
 
 	// The body is written before the error is returned.
 	out, readErr := os.ReadFile(tmp)
@@ -111,8 +112,8 @@ func TestExecute_MaxLatency_InvalidExitsBeforeRequest(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/never")
 	require.Error(t, err)
 
-	var coder maxLatencyCoder
-	require.True(t, errors.As(err, &coder), "invalid value should carry an exit code")
-	assert.Equal(t, 2, coder.ExitCode())
+	var localErr *azdext.LocalError
+	require.True(t, errors.As(err, &localErr), "invalid value should be a structured local error")
+	assert.Equal(t, ErrCodeInvalidMaxLatency, localErr.Code)
 	assert.False(t, called, "no request should be made when the budget is invalid")
 }

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// rawExitCoder mirrors the structural exit-code contract used by main so tests
-// can assert the exit code of a returned error without importing the cmd package.
-type rawExitCoder interface{ ExitCode() int }
+// rawExitCoder is gone: --raw-output usage failures are now reported as azdext
+// structured local errors.
 
 func TestRawOutputText(t *testing.T) {
 	tests := []struct {
@@ -44,7 +44,7 @@ func TestRawOutputText(t *testing.T) {
 }
 
 // TestExecute_RawOutput_MissingQuery verifies --raw-output without --query fails
-// with exit code 2 before any network call is made.
+// with a structured usage error before any network call is made.
 func TestExecute_RawOutput_MissingQuery(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -60,9 +60,10 @@ func TestExecute_RawOutput_MissingQuery(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, called, "no request should be made when the flag combination is invalid")
 
-	var coder rawExitCoder
-	require.True(t, errors.As(err, &coder), "error should carry an exit code")
-	assert.Equal(t, 2, coder.ExitCode())
+	var localErr *azdext.LocalError
+	require.True(t, errors.As(err, &localErr), "error should be a structured local error")
+	assert.Equal(t, ErrCodeRawOutputUsage, localErr.Code)
+	assert.Equal(t, azdext.LocalErrorCategoryValidation, localErr.Category)
 	assert.Contains(t, err.Error(), "--raw-output requires --query")
 }
 

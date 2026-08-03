@@ -402,10 +402,10 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		dataFormat = dataFormatJSON
 	}
 	if dataFormat != dataFormatJSON && dataFormat != dataFormatYAML {
-		return opts, nil, &dataFormatError{fmt.Errorf("--data-format must be %q or %q, got %q", dataFormatJSON, dataFormatYAML, dataFormat)}
+		return opts, nil, newDataFormatError(fmt.Errorf("--data-format must be %q or %q, got %q", dataFormatJSON, dataFormatYAML, dataFormat))
 	}
 	if dataFormat == dataFormatYAML && (len(cfg.JSONFields) > 0 || len(cfg.JSONFieldsRaw) > 0 || len(cfg.FormFields) > 0) {
-		return opts, nil, &dataFormatError{fmt.Errorf("--data-format yaml cannot be combined with --form-field, --json-field, or --json-field-raw")}
+		return opts, nil, newDataFormatError(fmt.Errorf("--data-format yaml cannot be combined with --form-field, --json-field, or --json-field-raw"))
 	}
 
 	// JSON body fields (#215): assemble a JSON body from repeatable --json-field
@@ -460,7 +460,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		if len(raw) > 0 {
 			jsonBody, convErr := yamlToJSON(raw)
 			if convErr != nil {
-				return opts, nil, &dataFormatError{fmt.Errorf("failed to parse the request body as YAML: %w", convErr)}
+				return opts, nil, newDataFormatError(fmt.Errorf("failed to parse the request body as YAML: %w", convErr))
 			}
 			opts.Body = bytes.NewReader(jsonBody)
 			if !hasHeader(opts.Headers, contentTypeHeader) {
@@ -567,7 +567,7 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// --raw-output (#234) only makes sense with --query. Reject the combination
 	// up front (exit 2, no network call) so the flag never silently does nothing.
 	if cfg.RawOutput && cfg.Query == "" {
-		return &rawOutputUsageError{msg: "--raw-output requires --query"}
+		return newRawOutputUsageError("--raw-output requires --query")
 	}
 
 	// --max-latency (#280): parse the budget up front so an invalid value exits
@@ -661,15 +661,16 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// --fail (#233): after the body and metadata have been written, return a
 	// non-zero exit for an error status so scripts and CI can detect failures.
 	if cfg.Fail && resp.StatusCode >= 400 {
-		return &httpFailError{status: resp.StatusCode}
+		return newHTTPFailError(resp.StatusCode, hostFromURL(opts.URL))
 	}
 
-	// --max-latency (#280): the response has been written, so only the exit code
-	// changes. A request slower than the budget exits 28, letting CI gate on
-	// performance without aborting the request mid-flight.
+	// --max-latency (#280): the response has already been written, so this only
+	// changes the outcome, not the output. A request slower than the budget is
+	// reported as a failure, letting CI gate on performance without aborting the
+	// request mid-flight.
 	if maxLatencyBudget > 0 && resp.Duration > maxLatencyBudget {
 		writeDiagnostic(os.Stderr, cfg.Silent, "> response took %s, over the --max-latency budget of %s\n", resp.Duration, maxLatencyBudget)
-		return &maxLatencyExceededError{budget: maxLatencyBudget, actual: resp.Duration}
+		return newMaxLatencyExceededError(maxLatencyBudget, resp.Duration, resp.StatusCode, hostFromURL(opts.URL))
 	}
 
 	return nil

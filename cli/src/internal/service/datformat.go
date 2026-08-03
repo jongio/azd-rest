@@ -20,21 +20,6 @@ const (
 	dataFormatYAML = "yaml"
 )
 
-// dataFormatError signals invalid --data-format usage: an unknown format value,
-// a conflict with the field-body flags, or a request body that will not parse as
-// YAML. It reports exit code 2 through the ExitCoder contract so main can map it
-// to a usage failure.
-type dataFormatError struct{ err error }
-
-// Error returns the underlying message.
-func (e *dataFormatError) Error() string { return e.err.Error() }
-
-// Unwrap exposes the wrapped error for errors.Is/As.
-func (e *dataFormatError) Unwrap() error { return e.err }
-
-// ExitCode returns 2 to match the CLI's convention for invalid usage.
-func (e *dataFormatError) ExitCode() int { return 2 }
-
 // yamlToJSON converts a YAML document to its equivalent JSON encoding. YAML is a
 // superset of JSON, so a body that is already JSON round-trips unchanged.
 func yamlToJSON(raw []byte) ([]byte, error) {

@@ -10,23 +10,12 @@ import (
 	"github.com/jongio/azd-rest/src/internal/client"
 )
 
-// expectUsageError signals invalid --expect usage: a non-JSON response, an
-// invalid JMESPath expression, or a malformed --expect argument. It reports
-// exit code 2 (the invalid-configuration code) through the ExitCoder contract
-// so main can tell it apart from an assertion that simply did not hold (exit 1).
-type expectUsageError struct{ msg string }
-
-func (e *expectUsageError) Error() string { return e.msg }
-
-// ExitCode returns 2 for invalid --expect usage.
-func (e *expectUsageError) ExitCode() int { return 2 }
-
 // evaluateExpectations checks every --expect assertion against the JSON body.
 // Each assertion is a JMESPath expression, optionally followed by "=value" to
 // require a specific result. A bare expression passes when its result is truthy
 // under JMESPath rules. An assertion that does not hold returns a plain error
 // (exit 1). A non-JSON body, an empty or invalid expression, or a malformed
-// argument returns an expectUsageError (exit 2).
+// argument returns a structured usage error.
 //
 // body must be the original response JSON captured before --query rewrites it,
 // so --expect asserts on the full response regardless of what --query prints.
@@ -35,14 +24,14 @@ func evaluateExpectations(body []byte, contentType string, expects []string) err
 		return nil
 	}
 	if !strings.Contains(strings.ToLower(contentType), "json") && !client.IsJSON(body) {
-		return &expectUsageError{msg: "--expect requires a JSON response"}
+		return newExpectUsageError("--expect requires a JSON response")
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
 	var data any
 	if err := dec.Decode(&data); err != nil {
-		return &expectUsageError{msg: fmt.Sprintf("failed to parse JSON response for --expect: %v", err)}
+		return newExpectUsageError(fmt.Sprintf("failed to parse JSON response for --expect: %v", err))
 	}
 
 	for _, raw := range expects {
@@ -57,12 +46,12 @@ func evaluateExpectations(body []byte, contentType string, expects []string) err
 func evaluateExpectation(data any, raw string) error {
 	expr, expected, hasEquality := splitExpectArg(raw)
 	if expr == "" {
-		return &expectUsageError{msg: fmt.Sprintf("invalid --expect %q: expression is empty", raw)}
+		return newExpectUsageError(fmt.Sprintf("invalid --expect %q: expression is empty", raw))
 	}
 
 	result, err := jmespath.Search(expr, data)
 	if err != nil {
-		return &expectUsageError{msg: fmt.Sprintf("invalid --expect expression %q: %v", expr, err)}
+		return newExpectUsageError(fmt.Sprintf("invalid --expect expression %q: %v", expr, err))
 	}
 
 	if hasEquality {
