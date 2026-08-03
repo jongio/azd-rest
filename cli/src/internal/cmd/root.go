@@ -10,6 +10,7 @@ import (
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/google/uuid"
+	coreversion "github.com/jongio/azd-core/version"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/jongio/azd-rest/src/internal/skills"
@@ -338,7 +339,17 @@ Examples:
 		NewRequestCommand(),
 		NewScopeCommand(),
 		NewScopesCommand(),
-		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
+		// -q is already bound to --query on the root, so the version command
+		// must not claim it. cobra panics on a shorthand collision at parse
+		// time, which would crash every azd rest invocation.
+		//
+		// WithOutputFlag("") because this extension drives output from its own
+		// --format flag, which is what outputFormat is bound to, and --format
+		// carries a wider vocabulary (auto, raw, table, jsonl, yaml, csv, xml)
+		// than the version command understands. Declaring allowed values on
+		// --output would constrain a flag the command never reads.
+		coreversion.NewCommand(version.Info, &outputFormat,
+			coreversion.WithQuietShorthand(""), coreversion.WithOutputFlag("")),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
