@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/jongio/azd-core/auth"
 	"github.com/jongio/azd-rest/src/internal/client"
@@ -23,13 +24,51 @@ type scopeResult struct {
 	Note     string `json:"note,omitempty"`
 }
 
+type scopeMapping struct {
+	Service string   `json:"service"`
+	Scope   string   `json:"scope"`
+	Hosts   []string `json:"hosts"`
+	Note    string   `json:"note,omitempty"`
+}
+
 const (
 	authModeBearer = "bearer"
 	authModeNone   = "none"
 
 	serviceResourceManager = "Azure Resource Manager"
-	scopeResourceManager   = "https://management.azure.com/.default"
+	serviceMicrosoftGraph  = "Microsoft Graph"
+	serviceKeyVault        = "Azure Key Vault"
+	serviceStorage         = "Azure Storage"
+	serviceCosmosDB        = "Azure Cosmos DB"
+	serviceDataExplorer    = "Azure Data Explorer"
+
+	scopeResourceManager = "https://management.azure.com/.default"
+
+	hostResourceManager = "management.azure.com"
+	hostGraph           = "graph.microsoft.com"
+	hostKeyVault        = "*.vault.azure.net"
 )
+
+var knownScopeMappings = []scopeMapping{
+	{Service: serviceResourceManager, Scope: scopeResourceManager, Hosts: []string{hostResourceManager}},
+	{Service: serviceMicrosoftGraph, Scope: "https://graph.microsoft.com/.default", Hosts: []string{hostGraph}},
+	{Service: "Azure Monitor Logs", Scope: "https://api.loganalytics.io/.default", Hosts: []string{"api.loganalytics.io"}},
+	{Service: "Azure DevOps", Scope: "499b84ac-1321-427f-aa17-267ca6975798/.default", Hosts: []string{"dev.azure.com", "*.visualstudio.com"}},
+	{Service: serviceKeyVault, Scope: "https://vault.azure.net/.default", Hosts: []string{hostKeyVault}},
+	{Service: serviceStorage, Scope: "https://storage.azure.com/.default", Hosts: []string{"*.blob.core.windows.net", "*.dfs.core.windows.net", "*.queue.core.windows.net", "*.table.core.windows.net"}},
+	{Service: "Azure Container Registry", Scope: "https://containerregistry.azure.net/.default", Hosts: []string{"*.azurecr.io"}},
+	{Service: serviceCosmosDB, Scope: "https://cosmos.azure.com/.default", Hosts: []string{"*.documents.azure.com"}},
+	{Service: "Azure App Configuration", Scope: "https://azconfig.io/.default", Hosts: []string{"*.azconfig.io"}},
+	{Service: "Azure Batch", Scope: "https://batch.core.windows.net/.default", Hosts: []string{"*.batch.azure.com", "*.batch.core.windows.net"}},
+	{Service: "Azure Database for MySQL/PostgreSQL/MariaDB", Scope: "https://ossrdbms-aad.database.windows.net/.default", Hosts: []string{"*.mysql.database.azure.com", "*.postgres.database.azure.com", "*.mariadb.database.azure.com"}},
+	{Service: "Azure SQL Database", Scope: "https://database.windows.net/.default", Hosts: []string{"*.database.windows.net"}},
+	{Service: "Azure Synapse Analytics", Scope: "https://dev.azuresynapse.net/.default", Hosts: []string{"*.dev.azuresynapse.net"}},
+	{Service: "Azure Data Lake Store", Scope: "https://datalake.azure.net/.default", Hosts: []string{"*.azuredatalakestore.net"}},
+	{Service: "Azure Media Services", Scope: "https://rest.media.azure.net/.default", Hosts: []string{"rest.media.azure.net"}},
+	{Service: "Azure Service Bus", Scope: "https://servicebus.azure.net/.default", Hosts: []string{"*.servicebus.windows.net"}},
+	{Service: "Azure Event Hubs", Scope: "https://eventhubs.azure.net/.default", Hosts: []string{"*.servicebus.windows.net"}},
+	{Service: serviceDataExplorer, Scope: "https://<cluster>.kusto.windows.net/.default", Hosts: []string{"*.kusto.windows.net"}, Note: "Scope is based on the cluster host."},
+}
 
 // NewScopeCommand returns the scope subcommand, which previews the OAuth scope
 // and authentication mode azd rest would use for a URL without sending a request.
@@ -146,30 +185,13 @@ func skipReason(rawURL string, headers map[string]string, noAuth bool) string {
 // friendlyService maps a detected OAuth scope to a human-readable Azure service
 // name. It returns an empty string when the scope does not match a known service.
 func friendlyService(scope string) string {
-	names := map[string]string{
-		scopeResourceManager:                                 serviceResourceManager,
-		"https://graph.microsoft.com/.default":               "Microsoft Graph",
-		"https://api.loganalytics.io/.default":               "Azure Monitor Logs",
-		"499b84ac-1321-427f-aa17-267ca6975798/.default":      "Azure DevOps",
-		"https://vault.azure.net/.default":                   "Azure Key Vault",
-		"https://storage.azure.com/.default":                 "Azure Storage",
-		"https://containerregistry.azure.net/.default":       "Azure Container Registry",
-		"https://cosmos.azure.com/.default":                  "Azure Cosmos DB",
-		"https://azconfig.io/.default":                       "Azure App Configuration",
-		"https://batch.core.windows.net/.default":            "Azure Batch",
-		"https://ossrdbms-aad.database.windows.net/.default": "Azure Database for MySQL/PostgreSQL/MariaDB",
-		"https://database.windows.net/.default":              "Azure SQL Database",
-		"https://dev.azuresynapse.net/.default":              "Azure Synapse Analytics",
-		"https://datalake.azure.net/.default":                "Azure Data Lake Store",
-		"https://rest.media.azure.net/.default":              "Azure Media Services",
-		"https://servicebus.azure.net/.default":              "Azure Service Bus",
-		"https://eventhubs.azure.net/.default":               "Azure Event Hubs",
-	}
-	if name, ok := names[scope]; ok {
-		return name
+	for _, mapping := range knownScopeMappings {
+		if mapping.Scope == scope {
+			return mapping.Service
+		}
 	}
 	if strings.HasSuffix(scope, ".kusto.windows.net/.default") {
-		return "Azure Data Explorer"
+		return serviceDataExplorer
 	}
 	return ""
 }
@@ -198,4 +220,43 @@ func writeScopeResult(w io.Writer, res scopeResult, format string) error {
 		fmt.Fprintf(w, "Note:     %s\n", res.Note)
 	}
 	return nil
+}
+
+// NewScopesCommand returns the scopes subcommand, which lists built-in scope mappings.
+func NewScopesCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "scopes",
+		Short: "List built-in Azure OAuth scope mappings",
+		Long: `List the built-in Azure OAuth scope mappings used by azd rest.
+
+The command prints service names, example hosts, and OAuth scopes. It does not
+make network calls. Use the scope command with a URL to preview one request.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return writeScopeMappings(cmd.OutOrStdout(), outputFormat)
+		},
+	}
+}
+
+func writeScopeMappings(w io.Writer, format string) error {
+	if strings.EqualFold(format, "json") {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(knownScopeMappings)
+	}
+
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "SERVICE	SCOPE	HOSTS"); err != nil {
+		return err
+	}
+	for _, mapping := range knownScopeMappings {
+		hosts := strings.Join(mapping.Hosts, ", ")
+		if mapping.Note != "" {
+			hosts += " (" + mapping.Note + ")"
+		}
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\n", mapping.Service, mapping.Scope, hosts); err != nil {
+			return err
+		}
+	}
+	return tw.Flush()
 }
