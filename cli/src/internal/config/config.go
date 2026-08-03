@@ -57,6 +57,7 @@ type Config struct {
 	Expect          []string
 	RawOutput       bool
 	Compact         bool
+	ShowRequestIDs  bool
 	NoBody          bool
 }
 
