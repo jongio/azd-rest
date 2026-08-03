@@ -4,3 +4,8 @@ packages:
 overrides:
   esbuild@>=0.27.3 <0.28.1: '>=0.28.1'
   yaml@>=2.0.0 <2.8.3: '>=2.8.3'
+  # @napi-rs/wasm-runtime widened its peer range to '^1.7.1 || ^2.0.0-alpha.3',
+  # so pnpm auto-installs the 2.0.0 alpha. Hold the stable 1.x line.
+  # Revisit and drop these once @emnapi ships a stable 2.0.0.
+  '@emnapi/core': ^1.11.3
+  '@emnapi/runtime': ^1.11.3
