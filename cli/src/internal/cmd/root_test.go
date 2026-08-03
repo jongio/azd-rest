@@ -57,6 +57,7 @@ func resetGlobalFlags() {
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
+	readOnlyMode = false
 	showThrottle = false
 	showRequestIDs = false
 	repeat = defaults.Repeat
@@ -104,6 +105,16 @@ func TestNewRootCmd_SilentFlag(t *testing.T) {
 	assert.Empty(t, flag.Shorthand, "--silent should have no short alias")
 }
 
+func TestNewRootCmd_ReadOnlyFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("read-only")
+	require.NotNil(t, flag, "--read-only persistent flag should be registered")
+	assert.Equal(t, "false", flag.DefValue, "--read-only should default to false")
+	assert.Empty(t, flag.Shorthand, "--read-only should have no short alias")
+}
+
 func TestNewRootCmd_RepeatDelayFlag(t *testing.T) {
 	resetGlobalFlags()
 	cmd := NewRootCmd()
@@ -125,6 +136,13 @@ func TestSnapshotConfig_Silent(t *testing.T) {
 	silent = true
 	cfg := snapshotConfig()
 	assert.True(t, cfg.Silent, "snapshotConfig should carry the silent flag")
+}
+
+func TestSnapshotConfig_ReadOnly(t *testing.T) {
+	resetGlobalFlags()
+	readOnlyMode = true
+	cfg := snapshotConfig()
+	assert.True(t, cfg.ReadOnly, "snapshotConfig should carry the read-only flag")
 }
 
 func TestSnapshotConfig_BaseURL(t *testing.T) {
