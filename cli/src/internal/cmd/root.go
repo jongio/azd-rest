@@ -65,6 +65,7 @@ var (
 	allowHosts      []string
 	redactPaths     []string
 	redactSecrets   bool
+	redactFile      string
 	fields          []string
 	tableColumns    []string
 	dumpHeaders     string
@@ -241,6 +242,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().BoolVar(&redactSecrets, "redact-secrets", false, "Mask JSON response fields whose name looks sensitive (password, secret, connectionString, accountKey, and similar) at any depth")
+	rootCmd.PersistentFlags().StringVar(&redactFile, "redact-file", "", "Read JSON response redaction paths from a file (one dotted path per line; blank lines and # comments ignored)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
@@ -334,6 +336,7 @@ func snapshotConfig() config.Config {
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
 		RedactSecrets:   redactSecrets,
+		RedactFile:      redactFile,
 		Fields:          fields,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
