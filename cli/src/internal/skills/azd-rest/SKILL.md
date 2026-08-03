@@ -47,7 +47,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
 | `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv, xml |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -125,10 +125,14 @@ query runs against every subscription you can access unless you narrow it with
 
 ```bash
 azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
 ```
 
 | Flag | Description |
 |------|-------------|
+| `--query-file` | Read the KQL query from a file |
 | `--subscription` | Subscription ID to scope the query (repeatable) |
 | `--management-group` | Management group ID to scope the query (repeatable) |
 | `--top` | Maximum number of rows to return |
