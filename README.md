@@ -139,6 +139,10 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --data-file group.yaml --data-format yaml
 
+# Pipe a generated JSON body from stdin
+cat group.json | azd rest put https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --data-file -
+
 # Flatten a response to dotted paths, then grep for one field
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
