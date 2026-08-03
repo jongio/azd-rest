@@ -86,7 +86,8 @@
     "dvcm",
     "USERPROFILE",
     "godoc",
-    "sigstore"
+    "sigstore",
+    "tabwriter"
   ],
   "ignorePaths": [
     "node_modules",
