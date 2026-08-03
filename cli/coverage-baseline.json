@@ -9,5 +9,6 @@
     "github.com/jongio/azd-rest/src/internal/skills": 100,
     "github.com/jongio/azd-rest/src/internal/version": 100
   },
+  "mode": "atomic",
   "note": "recorded by mage coverageRecord"
 }
