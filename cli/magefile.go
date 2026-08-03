@@ -188,7 +188,7 @@ func TestCoverage() error {
 	coverageOut := filepath.Join(absCoverageDir, "coverage.out")
 	coverageHTML := filepath.Join(absCoverageDir, "coverage.html")
 
-	args := []string{"test", "-short", "-coverprofile=" + coverageOut, "./src/..."}
+	args := []string{"test", "-short", "-covermode=atomic", "-coverprofile=" + coverageOut, "./src/..."}
 	if err := sh.RunV("go", args...); err != nil {
 		return fmt.Errorf("tests failed: %w", err)
 	}
