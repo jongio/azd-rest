@@ -38,6 +38,7 @@ azd rest version
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
 | `scope` | Preview the detected OAuth scope and auth mode for a URL |
+| `graph` | Run an Azure Resource Graph query |
 | `version` | Display the extension version |
 
 ---
@@ -187,8 +188,8 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
-| `--data` | `-d` | string | "" | Request body (JSON string). |
-| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
+| `--data` | `-d` | string | "" | Request body (JSON string). Use `@-` to read the body from stdin. |
+| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. Use `-` to read from stdin. |
 | `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
 | `--json-field-raw` | | string[] | [] | Add a raw JSON field to a JSON request body (repeatable, format: `key:=json`). Dotted keys nest. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
@@ -200,11 +201,12 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
+| `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 | `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
@@ -215,6 +217,7 @@ These flags are available for all HTTP method commands:
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
 | `--dry-run` | bool | false | Print sanitized request details as JSON and exit without sending the HTTP request. |
+| `--show-request-ids` | bool | false | Print common Azure request correlation response headers to stderr. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 | `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |
@@ -357,6 +360,42 @@ Service:  Azure Resource Manager
   "service": "Microsoft Graph"
 }
 ```
+
+---
+
+## `azd rest graph [kql-query]`
+
+Run an Azure Resource Graph query using Kusto Query Language. Authentication, the endpoint, and the default API version are handled for you.
+
+**Usage:**
+```bash
+azd rest graph [kql-query] [flags]
+```
+
+**Examples:**
+```bash
+# Inline query
+azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
+
+# Scope to one subscription
+azd rest graph "Resources | project name, type" --subscription <sub-id> --top 5
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--query-file` | string | "" | Read the KQL query from a file instead of a positional argument |
+| `--subscription` | string[] | [] | Subscription ID to scope the query (repeatable) |
+| `--management-group` | string[] | [] | Management group ID to scope the query (repeatable) |
+| `--top` | int | 0 | Maximum number of rows to return |
+| `--skip` | int | 0 | Number of rows to skip |
+| `--skip-token` | string | "" | Continuation token from a previous response |
+
+Pass either a positional query or `--query-file`, not both. The file is read as plain text and sent as the Resource Graph `query` field.
 
 ---
 
@@ -568,6 +607,12 @@ Use `--format csv` to export arrays and ARM `value[]` responses as RFC 4180 CSV 
 
 ```bash
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format csv
+```
+
+Use `--format xml` to pretty print XML responses, such as Azure Storage data-plane responses:
+
+```bash
+azd rest get https://account.blob.core.windows.net/?comp=list --format xml
 ```
 
 ### Query JSON Responses
