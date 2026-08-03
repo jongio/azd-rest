@@ -52,6 +52,7 @@ type Config struct {
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	Omit            []string
 	RedactFile      string
 	Fields          []string
 	TableColumns    []string

@@ -66,6 +66,7 @@ var (
 	include         bool
 	allowHosts      []string
 	redactPaths     []string
+	omitPaths       []string
 	redactFile      string
 	fields          []string
 	tableColumns    []string
@@ -244,6 +245,7 @@ Examples:
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().StringArrayVar(&omitPaths, "omit", []string{}, "Remove a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringVar(&redactFile, "redact-file", "", "Read JSON response redaction paths from a file (one dotted path per line; blank lines and # comments ignored)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
@@ -339,6 +341,7 @@ func snapshotConfig() config.Config {
 		Include:         include,
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
+		Omit:            omitPaths,
 		RedactFile:      redactFile,
 		Fields:          fields,
 		TableColumns:    tableColumns,
