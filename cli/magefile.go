@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jongio/azd-core/covergate"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"gopkg.in/yaml.v3"
@@ -217,6 +218,83 @@ func TestCoverage() error {
 	return nil
 }
 
+// coverageConfig is the repository's coverage ratchet. Coverage may rise
+// freely but may not fall below the recorded baseline. The profile is the one
+// TestCoverage writes, so the gate never re-runs the suite.
+//
+// COVERAGE_PROFILE overrides the profile path so CI can gate the profile it
+// already produced instead of running the suite a second time.
+func coverageConfig() covergate.Config {
+	profile := os.Getenv("COVERAGE_PROFILE")
+	if profile == "" {
+		profile = filepath.Join(coverageDir, "coverage.out")
+	}
+	return covergate.Config{
+		Profile:      profile,
+		BaselineFile: "coverage-baseline.json",
+		Check:        covergate.CheckOptions{Tolerance: 0.5},
+	}
+}
+
+// CoverageGate checks an existing coverage profile against the baseline without
+// running the tests. CI uses this after its own test step.
+func CoverageGate() error {
+	return covergate.Gate(coverageConfig())
+}
+
+// Coverage runs the tests and fails if coverage dropped below the baseline.
+func Coverage() error {
+	if err := TestCoverage(); err != nil {
+		return err
+	}
+	fmt.Println("==> Checking coverage against the baseline...")
+	return covergate.Gate(coverageConfig())
+}
+
+// CoverageRecord re-records the coverage baseline from the current profile.
+// Run this only when a coverage change is deliberate, and say why in the
+// commit message.
+func CoverageRecord() error {
+	if err := TestCoverage(); err != nil {
+		return err
+	}
+	fmt.Println("==> Recording a new coverage baseline...")
+	return covergate.Record(coverageConfig(), "recorded by mage coverageRecord")
+}
+
+// coveragePreflight gates coverage during preflight. TestCoverage has already
+// written the profile by this point, so it does not re-run the tests.
+func coveragePreflight() error {
+	return covergate.Gate(coverageConfig())
+}
+
+// VerifyNoLocalReplace fails if go.mod still points azd-core at a local path.
+// A local replace is fine during coordinated development, but shipping one
+// produces a module nobody else can build, so the release path must reject it.
+func VerifyNoLocalReplace() error {
+	return verifyNoLocalReplace()
+}
+
+func verifyNoLocalReplace() error {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return fmt.Errorf("failed to read go.mod: %w", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "//") || !strings.Contains(line, "jongio/azd-core") {
+			continue
+		}
+		if !strings.HasPrefix(line, "replace ") && !strings.HasPrefix(line, "github.com/jongio/azd-core =>") {
+			continue
+		}
+		return fmt.Errorf(
+			"go.mod still replaces azd-core with a local path:\n  %s\n"+
+				"Remove the replace and pin a released azd-core version before shipping", line)
+	}
+	return nil
+}
+
 // Fmt formats all Go code.
 func Fmt() error {
 	fmt.Println("Formatting code...")
@@ -269,6 +347,7 @@ func Preflight() error {
 		{"Running security scan", preflightGosec},
 		{"Checking for known vulnerabilities", preflightVulncheck},
 		{"Running tests with coverage", TestCoverage},
+		{"Checking coverage against the baseline", coveragePreflight},
 
 		// Spell check
 		{"Running spell check", preflightSpellCheck},
