@@ -161,6 +161,54 @@ func TestExecute_NoInclude_BodyOnly(t *testing.T) {
 	assert.Contains(t, body, `"result": "ok"`)
 }
 
+func TestExecute_NoBodySuppressesBodyOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer srv.Close()
+
+	tmp := filepath.Join(t.TempDir(), "out.txt")
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.NoBody = true
+	cfg.OutputFile = tmp
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/api")
+	require.NoError(t, err)
+
+	_, err = os.Stat(tmp)
+	assert.True(t, os.IsNotExist(err), "no body output should be written")
+}
+
+func TestExecute_NoBodyWithIncludeWritesHeadersOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Request-Id", "req-42")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer srv.Close()
+
+	tmp := filepath.Join(t.TempDir(), "out.txt")
+	cfg := config.Defaults()
+	cfg.NoAuth = true
+	cfg.NoBody = true
+	cfg.Include = true
+	cfg.OutputFile = tmp
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/api")
+	require.NoError(t, err)
+
+	out, err := os.ReadFile(tmp)
+	require.NoError(t, err)
+	body := string(out)
+	assert.Contains(t, body, "200 OK")
+	assert.Contains(t, body, "X-Request-Id: req-42")
+	assert.NotContains(t, body, `"result":"ok"`)
+}
+
 func TestExecute_Include_BinaryPrependsHeaders(t *testing.T) {
 	payload := []byte{0x00, 0x01, 0x02, 0x03, 0xff}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -337,4 +385,41 @@ func TestBuildRequestOptions_AllowHostUnsetAllowsAny(t *testing.T) {
 		cleanup()
 	}
 	require.NoError(t, err)
+}
+
+func TestResolveRequestURL_BaseURLWithLeadingSlash(t *testing.T) {
+	got, err := resolveRequestURL("/subscriptions", "https://management.azure.com")
+	require.NoError(t, err)
+	assert.Equal(t, "https://management.azure.com/subscriptions", got)
+}
+
+func TestResolveRequestURL_BaseURLWithRelativePath(t *testing.T) {
+	got, err := resolveRequestURL("users?api-version=1", "https://example.com/api")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/api/users?api-version=1", got)
+}
+
+func TestResolveRequestURL_AbsoluteURLIgnoresBaseURL(t *testing.T) {
+	got, err := resolveRequestURL("https://graph.microsoft.com/v1.0/me", "not a base URL")
+	require.NoError(t, err)
+	assert.Equal(t, "https://graph.microsoft.com/v1.0/me", got)
+}
+
+func TestResolveRequestURL_BaseURLRequiresSchemeAndHost(t *testing.T) {
+	_, err := resolveRequestURL("/subscriptions", "management.azure.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--base-url must include scheme and host")
+}
+
+func TestBuildRequestOptions_BaseURLBeforeQueryFlags(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.BaseURL = "https://management.azure.com"
+	cfg.APIVersion = "2024-01-01"
+	cfg.URLParams = []string{"filter=active"}
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "/subscriptions")
+	require.NoError(t, err)
+	defer cleanup()
+	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01&filter=active", opts.URL)
 }
