@@ -12,6 +12,7 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	BaseURL         string
 	ClientRequestID string
 	URLParams       []string
 	Headers         []string
