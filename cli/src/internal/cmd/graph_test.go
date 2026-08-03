@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -123,5 +126,65 @@ func TestBuildGraphRequestBodyUsesDollarPrefixedOptionKeys(t *testing.T) {
 		if _, ok := optMap[key]; !ok {
 			t.Errorf("expected option key %q in %s", key, string(opts))
 		}
+	}
+}
+
+func TestResolveGraphQueryFromArgument(t *testing.T) {
+	got, err := resolveGraphQuery([]string{"Resources | count"}, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "Resources | count" {
+		t.Fatalf("query = %q", got)
+	}
+}
+
+func TestResolveGraphQueryFromFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "query.kql")
+	want := "Resources\n| project name, type\n"
+	if err := os.WriteFile(path, []byte(want), 0o600); err != nil {
+		t.Fatalf("write query file: %v", err)
+	}
+
+	got, err := resolveGraphQuery(nil, path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != want {
+		t.Fatalf("query = %q, want %q", got, want)
+	}
+}
+
+func TestResolveGraphQueryRejectsArgumentAndFile(t *testing.T) {
+	_, err := resolveGraphQuery([]string{"Resources | count"}, "query.kql")
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("expected combined input error, got %v", err)
+	}
+}
+
+func TestResolveGraphQueryRejectsMissingQuery(t *testing.T) {
+	_, err := resolveGraphQuery(nil, "")
+	if err == nil || !strings.Contains(err.Error(), "query is required") {
+		t.Fatalf("expected missing query error, got %v", err)
+	}
+}
+
+func TestResolveGraphQueryRejectsEmptyFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "empty.kql")
+	if err := os.WriteFile(path, []byte(" \n\t"), 0o600); err != nil {
+		t.Fatalf("write query file: %v", err)
+	}
+
+	_, err := resolveGraphQuery(nil, path)
+	if err == nil || !strings.Contains(err.Error(), "is empty") {
+		t.Fatalf("expected empty file error, got %v", err)
+	}
+}
+
+func TestResolveGraphQueryReportsMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.kql")
+	_, err := resolveGraphQuery(nil, path)
+	if err == nil || !strings.Contains(err.Error(), "failed to read --query-file") {
+		t.Fatalf("expected missing file error, got %v", err)
 	}
 }

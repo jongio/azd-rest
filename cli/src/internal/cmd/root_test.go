@@ -30,9 +30,13 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	baseURL = ""
 	clientRequestID = ""
 	urlParams = []string{}
+	urlParamFile = ""
 	headers = []string{}
+	accept = ""
+	contentType = ""
 	headerFile = ""
 	data = ""
 	dataFile = ""
@@ -58,6 +62,7 @@ func resetGlobalFlags() {
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	noBody = false
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -79,7 +84,7 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "scopes", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
@@ -100,6 +105,13 @@ func TestSnapshotConfig_Silent(t *testing.T) {
 	silent = true
 	cfg := snapshotConfig()
 	assert.True(t, cfg.Silent, "snapshotConfig should carry the silent flag")
+}
+
+func TestSnapshotConfig_BaseURL(t *testing.T) {
+	resetGlobalFlags()
+	baseURL = "https://management.azure.com"
+	cfg := snapshotConfig()
+	assert.Equal(t, "https://management.azure.com", cfg.BaseURL)
 }
 
 func TestBuildRequestOptions_Headers(t *testing.T) {

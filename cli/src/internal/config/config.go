@@ -12,9 +12,13 @@ type Config struct {
 	Scope           string
 	NoAuth          bool
 	APIVersion      string
+	BaseURL         string
 	ClientRequestID string
 	URLParams       []string
+	URLParamFile    string
 	Headers         []string
+	Accept          string
+	ContentType     string
 	HeaderFile      string
 	Data            string
 	DataFile        string
@@ -34,6 +38,7 @@ type Config struct {
 	Silent          bool
 	Timeout         time.Duration
 	MaxTime         time.Duration
+	MaxLatency      string
 	FollowRedirects bool
 	MaxRedirects    int
 	MaxPages        int
@@ -45,12 +50,15 @@ type Config struct {
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	Fields          []string
 	TableColumns    []string
 	DumpHeaders     string
 	Fail            bool
+	Expect          []string
 	RawOutput       bool
 	Compact         bool
 	ShowRequestIDs  bool
+	NoBody          bool
 }
 
 // Defaults returns a Config populated with the default flag values.

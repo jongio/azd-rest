@@ -179,7 +179,7 @@ func TestCoverage() error {
 	absCoverageDir := filepath.Join(cwd, coverageDir)
 	_ = os.RemoveAll(absCoverageDir)
 
-	if err := os.MkdirAll(absCoverageDir, 0755); err != nil {
+	if err := os.MkdirAll(absCoverageDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create coverage directory: %w", err)
 	}
 
