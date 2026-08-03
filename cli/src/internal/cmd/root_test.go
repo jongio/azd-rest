@@ -65,6 +65,7 @@ func resetGlobalFlags() {
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	dryRun = false
 	redactPaths = []string{}
 	redactFile = ""
 	noBody = false

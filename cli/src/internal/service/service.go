@@ -23,6 +23,8 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
+var stdoutWriter io.Writer = os.Stdout
+
 // clientRequestIDHeader is the Azure correlation header set by --client-request-id.
 const clientRequestIDHeader = "x-ms-client-request-id"
 
@@ -526,7 +528,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	opts.SkipAuth = client.ShouldSkipAuth(requestURL, opts.Headers, cfg.NoAuth)
 
 	// Create token provider only when authentication is needed
-	if !opts.SkipAuth {
+	if !opts.SkipAuth && !cfg.DryRun {
 		tokenProvider, err := s.tokenProviderFactory()
 		if err != nil {
 			cleanup()
@@ -593,6 +595,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 	defer cleanup()
+
+	if cfg.DryRun {
+		return writeDryRun(stdoutWriter, cfg, opts)
+	}
 
 	// --max-time bounds the whole operation (retries and pagination included).
 	// A value of zero leaves the context untouched, preserving prior behavior.

@@ -73,6 +73,7 @@ var (
 	tableColumns    []string
 	dumpHeaders     string
 	fail            bool
+	dryRun          bool
 	expect          []string
 	rawOutput       bool
 	compact         bool
@@ -253,6 +254,7 @@ Examples:
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
 	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
@@ -350,6 +352,7 @@ func snapshotConfig() config.Config {
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
 		Fail:            fail,
+		DryRun:          dryRun,
 		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
