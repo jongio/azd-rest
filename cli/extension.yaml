@@ -10,7 +10,11 @@ language: go
 author: jongio
 homepage: https://github.com/jongio/azd-rest
 license: MIT
-minAzdVersion: 1.10.0
+
+# The azd host version this extension requires. Every gRPC service and azdext
+# API it uses ships with that release, so this must track the azure-dev module
+# version in go.mod. TestRequiredAzdVersionTracksTheSdk enforces that.
+requiredAzdVersion: ">= 1.29.0"
 
 capabilities:
   - custom-commands
