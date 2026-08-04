@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -260,4 +261,23 @@ func TestExtensionIDMatchesManifest(t *testing.T) {
 
 	assert.Contains(t, string(content), metadataExtensionID,
 		"extension.yaml does not contain the id used by the metadata command")
+}
+
+// failingWriter always fails, so the metadata command's write error branch gets
+// exercised. Left uncovered it is unreachable in tests, which is how an
+// unchecked write survived there in the first place.
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
+}
+
+func TestMetadataCommandReportsWriteFailure(t *testing.T) {
+	command := NewMetadataCommand(NewRootCmd, nil)
+	command.SetOut(failingWriter{})
+	command.SetErr(failingWriter{})
+
+	err := command.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to write metadata")
 }
