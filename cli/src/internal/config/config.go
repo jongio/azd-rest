@@ -14,6 +14,7 @@ type Config struct {
 	APIVersion      string
 	BaseURL         string
 	ClientRequestID string
+	Traceparent     string
 	URLParams       []string
 	URLParamFile    string
 	Headers         []string
@@ -44,6 +45,7 @@ type Config struct {
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	ReadOnly        bool
 	ShowThrottle    bool
 	Repeat          int
 	RepeatDelay     time.Duration
@@ -57,7 +59,9 @@ type Config struct {
 	Fields          []string
 	TableColumns    []string
 	DumpHeaders     string
+	MetadataFile    string
 	Fail            bool
+	DryRun          bool
 	Expect          []string
 	RawOutput       bool
 	Compact         bool
