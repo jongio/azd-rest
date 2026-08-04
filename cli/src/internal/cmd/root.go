@@ -28,6 +28,7 @@ var (
 	apiVersion      string
 	baseURL         string
 	clientRequestID string
+	traceparent     string
 	urlParams       []string
 	urlParamFile    string
 	headers         []string
@@ -209,6 +210,8 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&clientRequestID, "client-request-id", "", "Set the x-ms-client-request-id header for Azure request correlation. Pass the flag without a value to generate a random ID.")
 	// Passing --client-request-id without a value generates a fresh ID for this invocation.
 	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
+	rootCmd.PersistentFlags().StringVar(&traceparent, "traceparent", "", "Set the W3C traceparent header. Pass the flag without a value to generate one.")
+	rootCmd.PersistentFlags().Lookup("traceparent").NoOptDefVal = service.TraceparentAutoValue
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
 	rootCmd.PersistentFlags().StringVar(&urlParamFile, "url-param-file", "", "Read URL query parameters from a file (one key=value per line; blank lines and # comments ignored). --url-param overrides on conflict.")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
@@ -309,6 +312,7 @@ func snapshotConfig() config.Config {
 		APIVersion:      apiVersion,
 		BaseURL:         baseURL,
 		ClientRequestID: clientRequestID,
+		Traceparent:     traceparent,
 		URLParams:       urlParams,
 		URLParamFile:    urlParamFile,
 		Headers:         headers,

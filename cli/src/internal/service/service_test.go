@@ -68,6 +68,58 @@ func baseTestConfig(t *testing.T) config.Config {
 	return cfg
 }
 
+func TestBuildRequestOptions_TraceparentSetsHeader(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.Headers = []string{"traceparent: 00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00"}
+	cfg.Traceparent = "00-4BF92F3577B34DA6A3CE929D0E0E4736-00F067AA0BA902B7-01"
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://example.com")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+	assert.Equal(t, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", opts.Headers[traceparentHeader])
+}
+
+func TestBuildRequestOptions_TraceparentGeneratesHeader(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.Traceparent = TraceparentAutoValue
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://example.com")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+
+	got := opts.Headers[traceparentHeader]
+	require.NotEmpty(t, got)
+	require.NoError(t, validateTraceparent(got))
+}
+
+func TestBuildRequestOptions_TraceparentRejectsInvalidBeforeTokenProvider(t *testing.T) {
+	tokenProviderCalls := 0
+	svc := NewRequestService(
+		func() (client.TokenProvider, error) {
+			tokenProviderCalls++
+			return nil, nil
+		},
+		DefaultHTTPClientFactory,
+	)
+
+	cfg := config.Defaults()
+	cfg.Traceparent = "not-a-traceparent"
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://management.azure.com/subscriptions?api-version=2021-04-01")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid traceparent")
+	assert.Zero(t, tokenProviderCalls, "traceparent validation should run before token creation")
+}
+
 func TestBuildResponseHeaderBlock_StatusAndSortedHeaders(t *testing.T) {
 	resp := &client.Response{
 		Status: "200 OK",
