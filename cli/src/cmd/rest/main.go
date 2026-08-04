@@ -12,7 +12,7 @@ import (
 // setup, context creation, gRPC access-token injection, reserved-flag
 // validation, structured error reporting back to the azd host, and the exit
 // code. Anything this function does beyond building the root command would be
-// duplication of framework behaviour that upstream keeps evolving.
+// duplication of framework behavior that upstream keeps evolving.
 func main() {
 	azdext.Run(cmd.NewRootCmd())
 }
