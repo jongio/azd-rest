@@ -25,6 +25,8 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
+var stdoutWriter io.Writer = os.Stdout
+
 const (
 	// TraceparentAutoValue tells BuildRequestOptions to generate a fresh W3C traceparent header.
 	TraceparentAutoValue = "generate"
@@ -543,7 +545,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	opts.SkipAuth = client.ShouldSkipAuth(requestURL, opts.Headers, cfg.NoAuth)
 
 	// Create token provider only when authentication is needed
-	if !opts.SkipAuth {
+	if !opts.SkipAuth && !cfg.DryRun {
 		tokenProvider, err := s.tokenProviderFactory()
 		if err != nil {
 			cleanup()
@@ -568,6 +570,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// Warn prominently when TLS verification is disabled.
 	if cfg.Insecure {
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
+	}
+
+	if cfg.ReadOnly {
+		if err := validateReadOnlyMethod(method); err != nil {
+			return err
+		}
 	}
 
 	if cfg.Repeat < 1 {
@@ -604,6 +612,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 	defer cleanup()
+
+	if cfg.DryRun {
+		return writeDryRun(stdoutWriter, cfg, opts)
+	}
 
 	// --max-time bounds the whole operation (retries and pagination included).
 	// A value of zero leaves the context untouched, preserving prior behavior.
@@ -645,6 +657,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if cfg.ShowThrottle {
 		writeThrottleInfo(os.Stderr, resp.Headers)
+	}
+
+	if err := writeResponseMetadata(cfg.MetadataFile, opts.Method, opts.URL, resp); err != nil {
+		return err
 	}
 
 	if cfg.ShowRequestIDs {
@@ -776,6 +792,15 @@ func allZeroBytes(value []byte) bool {
 		}
 	}
 	return true
+}
+
+// validateReadOnlyMethod rejects mutating request methods when read-only mode is enabled.
+func validateReadOnlyMethod(method string) error {
+	normalized := strings.ToUpper(method)
+	if safeMethods[normalized] {
+		return nil
+	}
+	return fmt.Errorf("--read-only blocks %s requests; allowed methods are %s", normalized, safeMethodList)
 }
 
 // writeResponseOutput renders the response body to stdout or --output-file,

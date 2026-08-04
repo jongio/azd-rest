@@ -43,11 +43,15 @@ func resetGlobalFlags() {
 	headerEnv = []string{}
 	data = ""
 	dataFile = ""
+	dataFormat = "json"
 	query = ""
 	formFields = []string{}
+	jsonFields = []string{}
+	jsonFieldsRaw = []string{}
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false
+	flatten = false
 	paginate = false
 	retry = defaults.Retry
 	binary = false
@@ -59,14 +63,23 @@ func resetGlobalFlags() {
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
+	readOnlyMode = false
 	showThrottle = false
 	showRequestIDs = false
 	repeat = defaults.Repeat
+	colorMode = defaults.Color
 	repeatDelay = defaults.RepeatDelay
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	dryRun = false
 	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	metadataFile = ""
+	fail = false
+	rawOutput = false
+	compact = false
 	redactFile = ""
 	noBody = false
 }
@@ -117,6 +130,16 @@ func TestNewRootCmd_TraceparentFlag(t *testing.T) {
 	assert.Empty(t, flag.Shorthand, "--traceparent should have no short alias")
 }
 
+func TestNewRootCmd_ReadOnlyFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("read-only")
+	require.NotNil(t, flag, "--read-only persistent flag should be registered")
+	assert.Equal(t, "false", flag.DefValue, "--read-only should default to false")
+	assert.Empty(t, flag.Shorthand, "--read-only should have no short alias")
+}
+
 func TestNewRootCmd_RepeatDelayFlag(t *testing.T) {
 	resetGlobalFlags()
 	cmd := NewRootCmd()
@@ -145,6 +168,13 @@ func TestSnapshotConfig_Traceparent(t *testing.T) {
 	traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 	cfg := snapshotConfig()
 	assert.Equal(t, traceparent, cfg.Traceparent, "snapshotConfig should carry the traceparent flag")
+}
+
+func TestSnapshotConfig_ReadOnly(t *testing.T) {
+	resetGlobalFlags()
+	readOnlyMode = true
+	cfg := snapshotConfig()
+	assert.True(t, cfg.ReadOnly, "snapshotConfig should carry the read-only flag")
 }
 
 func TestSnapshotConfig_BaseURL(t *testing.T) {
