@@ -58,6 +58,7 @@ type Config struct {
 	Fields          []string
 	TableColumns    []string
 	DumpHeaders     string
+	MetadataFile    string
 	Fail            bool
 	DryRun          bool
 	Expect          []string

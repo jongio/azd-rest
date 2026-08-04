@@ -41,11 +41,15 @@ func resetGlobalFlags() {
 	headerEnv = []string{}
 	data = ""
 	dataFile = ""
+	dataFormat = "json"
 	query = ""
 	formFields = []string{}
+	jsonFields = []string{}
+	jsonFieldsRaw = []string{}
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false
+	flatten = false
 	paginate = false
 	retry = defaults.Retry
 	binary = false
@@ -61,12 +65,19 @@ func resetGlobalFlags() {
 	showThrottle = false
 	showRequestIDs = false
 	repeat = defaults.Repeat
+	colorMode = defaults.Color
 	repeatDelay = defaults.RepeatDelay
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
 	dryRun = false
 	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	metadataFile = ""
+	fail = false
+	rawOutput = false
+	compact = false
 	redactFile = ""
 	noBody = false
 }

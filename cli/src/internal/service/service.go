@@ -642,6 +642,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeThrottleInfo(os.Stderr, resp.Headers)
 	}
 
+	if err := writeResponseMetadata(cfg.MetadataFile, opts.Method, opts.URL, resp); err != nil {
+		return err
+	}
+
 	if cfg.ShowRequestIDs {
 		writeRequestIDs(os.Stderr, resp.Headers)
 	}
