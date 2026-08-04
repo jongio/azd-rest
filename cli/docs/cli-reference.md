@@ -221,6 +221,7 @@ These flags are available for all HTTP method commands:
 |------|------|---------|-------------|
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
+| `--dry-run` | bool | false | Print sanitized request details as JSON and exit without sending the HTTP request. |
 | `--repeat` | int | 1 | Send the request N times and report latency statistics. |
 | `--show-request-ids` | bool | false | Print common Azure request correlation response headers to stderr. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |

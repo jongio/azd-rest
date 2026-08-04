@@ -15,10 +15,17 @@ import (
 
 // safeMethods are HTTP methods that are not expected to change server state.
 // Repeating any other method may cause side effects, so we warn about it.
+const (
+	methodGET      = "GET"
+	methodHEAD     = "HEAD"
+	methodOPTIONS  = "OPTIONS"
+	safeMethodList = methodGET + ", " + methodHEAD + ", and " + methodOPTIONS
+)
+
 var safeMethods = map[string]bool{
-	"GET":     true,
-	"HEAD":    true,
-	"OPTIONS": true,
+	methodGET:     true,
+	methodHEAD:    true,
+	methodOPTIONS: true,
 }
 
 // repeatStats holds the outcome of a --repeat run.

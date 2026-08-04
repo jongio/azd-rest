@@ -58,6 +58,7 @@ var (
 	maxRedirects    int
 	maxPages        int
 	maxResponseSize int64
+	readOnlyMode    bool
 	showThrottle    bool
 	repeat          int
 	repeatDelay     time.Duration
@@ -73,6 +74,7 @@ var (
 	dumpHeaders     string
 	metadataFile    string
 	fail            bool
+	dryRun          bool
 	expect          []string
 	rawOutput       bool
 	compact         bool
@@ -237,6 +239,7 @@ Examples:
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+	rootCmd.PersistentFlags().BoolVar(&readOnlyMode, "read-only", false, "Allow only read-only HTTP methods: GET, HEAD, and OPTIONS")
 	rootCmd.PersistentFlags().BoolVar(&showThrottle, "show-throttle", false, "Print Azure rate-limit and quota headers to stderr, with a low-quota warning")
 	rootCmd.PersistentFlags().BoolVar(&showRequestIDs, "show-request-ids", false, "Print common Azure request correlation response headers to stderr")
 	rootCmd.PersistentFlags().IntVar(&repeat, "repeat", defaults.Repeat, "Send the request N times and report latency statistics")
@@ -253,6 +256,7 @@ Examples:
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().StringVar(&metadataFile, "metadata-file", "", "Write structured response metadata as JSON to a file")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
 	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
@@ -335,6 +339,7 @@ func snapshotConfig() config.Config {
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
+		ReadOnly:        readOnlyMode,
 		ShowThrottle:    showThrottle,
 		Repeat:          repeat,
 		RepeatDelay:     repeatDelay,
@@ -350,6 +355,7 @@ func snapshotConfig() config.Config {
 		DumpHeaders:     dumpHeaders,
 		MetadataFile:    metadataFile,
 		Fail:            fail,
+		DryRun:          dryRun,
 		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
