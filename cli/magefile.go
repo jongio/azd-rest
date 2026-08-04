@@ -125,7 +125,9 @@ func Publish() error {
 // Setup runs Build + Pack + Publish + Install in sequence.
 func Setup() error {
 	fmt.Println("Setting up extension for local development...")
-	mg.Deps(Build, Pack, Publish)
+	// Serial, not mg.Deps: mg.Deps runs its arguments in parallel, so packing
+	// could start before the build finished.
+	mg.SerialDeps(Build, Pack, Publish)
 
 	fmt.Println("\n✅ Setup complete! Extension is ready for local testing.")
 	fmt.Println("   Install with: azd extension install jongio.azd.rest --source local")
