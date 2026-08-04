@@ -930,6 +930,14 @@ azd rest get https://example.com --follow-redirects=false
 azd rest get https://example.com --max-redirects=5
 ```
 
+**Redirect targets are checked.** A redirect is chosen by the server, not by
+you, so the target is refused when it downgrades HTTPS to HTTP, points at a
+cloud metadata endpoint such as `169.254.169.254`, points at the local machine,
+or names a host that does not resolve.
+
+The one exception is a request you aimed at localhost yourself. Running against
+a local API server is a normal workflow, so localhost keeps redirecting freely.
+
 ---
 
 ## Timeouts
@@ -953,7 +961,18 @@ azd rest get https://api.example.com/resource --timeout 1h
 
 ## Retries
 
-`azd rest` automatically retries failed requests with exponential backoff for transient errors (5xx, network errors).
+`azd rest` automatically retries transient failures with exponential backoff.
+
+Retried: network errors, `408 Request Timeout`, `429 Too Many Requests`,
+`500`, `502`, `503`, and `504`. Not retried: `501 Not Implemented` and
+`505 HTTP Version Not Supported`, since both describe a permanent property of
+the server.
+
+When a response carries `Retry-After`, `retry-after-ms`, or
+`x-ms-retry-after-ms`, that delay is used instead of the computed backoff, up
+to a two minute ceiling. Otherwise the delay doubles from one second, stops
+growing at thirty seconds, and is jittered so that many clients throttled by
+the same service do not all retry at the same instant.
 
 **Configure retries:**
 
