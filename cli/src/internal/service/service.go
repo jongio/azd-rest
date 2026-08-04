@@ -908,7 +908,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table", "jsonl", "yaml", "csv", "tsv", and "xml"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", "yaml", "csv", "tsv", "dotenv", and "xml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTableWithColumns(resp.Body, cfg.TableColumns)
 		if err != nil {
@@ -935,6 +935,14 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 
 	if cfg.OutputFormat == "csv" {
 		out, err := renderCSV(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "dotenv" {
+		out, err := renderDotenv(resp.Body)
 		if err != nil {
 			return err
 		}
