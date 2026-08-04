@@ -291,7 +291,12 @@ Examples:
 		// --output would constrain a flag the command never reads.
 		coreversion.NewCommand(version.Info, &outputFormat,
 			coreversion.WithQuietShorthand(""), coreversion.WithOutputFlag("")),
-		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
+		// Rebuilt around GenerateExtensionMetadata rather than
+		// azdext.NewMetadataCommand so the Configuration field survives; the
+		// SDK helper marshals immediately and offers no hook for it.
+		// configFlagNames is shared with the config command so the published
+		// environment variables and the reported ones cannot disagree.
+		NewMetadataCommand(NewRootCmd, configFlagNames),
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
 		NewDoctorCommand(),
