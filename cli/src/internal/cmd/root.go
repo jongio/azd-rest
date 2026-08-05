@@ -78,6 +78,7 @@ var (
 	expectedHeaders []string
 	metadataFile    string
 	fail            bool
+	diffBaseline    string
 	allowStatus     string
 	validateSchema  string
 	dryRun          bool
@@ -296,6 +297,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&expectedHeaders, "expect-header", []string{}, "Require a response header, optionally with an exact value (repeatable; formats: Name, Name=value, or Name: value)")
 	rootCmd.PersistentFlags().StringVar(&metadataFile, "metadata-file", "", "Write structured response metadata as JSON to a file")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().StringVar(&diffBaseline, "diff", "", "Compare the JSON response against a baseline file and print a unified diff, exiting non-zero when they differ. Keys are compared regardless of order")
 	rootCmd.PersistentFlags().StringVar(&allowStatus, "allow-status", "", "Treat matching HTTP status codes as success when --fail is set (comma-separated codes and ranges, e.g. 200-204,404)")
 	rootCmd.PersistentFlags().StringVar(&validateSchema, "validate-schema", "", "Validate the JSON response against a JSON Schema file and exit non-zero when it does not conform, printing each validation error to stderr")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
@@ -401,6 +403,7 @@ func snapshotConfig() config.Config {
 		ExpectedHeaders: expectedHeaders,
 		MetadataFile:    metadataFile,
 		Fail:            fail,
+		Diff:            diffBaseline,
 		AllowStatus:     allowStatus,
 		ValidateSchema:  validateSchema,
 		DryRun:          dryRun,

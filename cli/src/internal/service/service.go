@@ -654,6 +654,13 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// --diff (#266): compare the JSON response against a baseline file and print
+	// a unified diff. This is terminal: it replaces normal body output and exits
+	// non-zero on drift so snapshot checks in CI can detect changes.
+	if cfg.Diff != "" {
+		return diffAgainstBaseline(os.Stdout, resp.Body, cfg.Diff)
+	}
+
 	// Capture the original response body before --query rewrites it so --expect
 	// asserts on the full response regardless of what --query prints (#269).
 	originalBody := resp.Body

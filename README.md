@@ -178,6 +178,8 @@ azd rest config
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 
+# Snapshot check: compare the response to a saved baseline and exit non-zero on drift
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --diff baseline.json
 # Treat an expected 404 as success while still failing other HTTP errors
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --fail --allow-status 404
