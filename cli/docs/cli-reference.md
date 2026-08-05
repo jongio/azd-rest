@@ -227,12 +227,13 @@ These flags are available for all HTTP method commands:
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--limit` | | int | 0 | Limit top-level JSON arrays or ARM `value` arrays to the first N items before formatting. |
+| `--count` | | bool | false | Print the number of records in a JSON response and nothing else. Runs after `--query`; cannot be combined with `--no-body`. |
 | `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
 | `--expect-header` | | string[] | [] | Require a response header, optionally with an exact value. Repeatable. Formats: `Name`, `Name=value`, or `Name: value`. |
 | `--metadata-file` | | string | "" | Write structured response metadata as JSON to a file. Sensitive header values are redacted. |
-| `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. |
+| `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. Cannot be combined with `--count`. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 | `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 

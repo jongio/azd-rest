@@ -597,6 +597,9 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	if cfg.RawOutput && cfg.Query == "" {
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
+	if cfg.Count && cfg.NoBody {
+		return &countUsageError{msg: "--count and --no-body cannot be used together"}
+	}
 
 	allowedStatuses, err := parseAllowedStatuses(cfg.AllowStatus)
 	if err != nil {
@@ -839,6 +842,18 @@ func validateReadOnlyMethod(method string) error {
 // choosing the raw path for binary content and the formatter path otherwise.
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
+
+	// --count (#282): print the number of records and nothing else. It runs
+	// after --query (applied in Execute) and takes precedence over the body
+	// output, so it returns before any format dispatch. A non-JSON body is
+	// reported as a clear error.
+	if cfg.Count {
+		n, err := countRecords(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(fmt.Sprintf("%d\n", n), cfg.OutputFile)
+	}
 
 	if cfg.NoBody {
 		if cfg.Include {
