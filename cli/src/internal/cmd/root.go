@@ -73,6 +73,7 @@ var (
 	fields          []string
 	tableColumns    []string
 	dumpHeaders     string
+	expectedHeaders []string
 	metadataFile    string
 	fail            bool
 	dryRun          bool
@@ -257,6 +258,7 @@ Examples:
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
+	rootCmd.PersistentFlags().StringArrayVar(&expectedHeaders, "expect-header", []string{}, "Require a response header, optionally with an exact value (repeatable; formats: Name, Name=value, or Name: value)")
 	rootCmd.PersistentFlags().StringVar(&metadataFile, "metadata-file", "", "Write structured response metadata as JSON to a file")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
@@ -357,6 +359,7 @@ func snapshotConfig() config.Config {
 		Fields:          fields,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
+		ExpectedHeaders: expectedHeaders,
 		MetadataFile:    metadataFile,
 		Fail:            fail,
 		DryRun:          dryRun,

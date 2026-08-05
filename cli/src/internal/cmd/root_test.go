@@ -68,6 +68,16 @@ func resetGlobalFlags() {
 	showRequestIDs = false
 	repeat = defaults.Repeat
 	colorMode = defaults.Color
+	writeOut = ""
+	include = false
+	allowHosts = []string{}
+	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	expectedHeaders = []string{}
+	fail = false
+	rawOutput = false
+	compact = false
 	repeatDelay = defaults.RepeatDelay
 	writeOut = ""
 	include = false

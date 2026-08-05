@@ -595,6 +595,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
 	// --max-latency (#280): parse the budget up front so an invalid value exits
 	// with code 2 before any network call is made. A zero budget disables it.
 	maxLatencyBudget, err := parseMaxLatency(cfg.MaxLatency)
@@ -679,6 +683,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	if cfg.WriteOut != "" {
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
+	}
+
+	if err := checkExpectedHeaders(resp, cfg.ExpectedHeaders); err != nil {
+		return err
 	}
 
 	// --expect (#269): after the body has been written, assert JMESPath
