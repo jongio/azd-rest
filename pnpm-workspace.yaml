@@ -1,6 +1,9 @@
 packages:
   - web
 
+allowBuilds:
+  esbuild: true
+
 overrides:
   esbuild@>=0.27.3 <0.28.1: '>=0.28.1'
   yaml@>=2.0.0 <2.8.3: '>=2.8.3'
