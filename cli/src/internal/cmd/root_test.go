@@ -71,6 +71,7 @@ func resetGlobalFlags() {
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	allowStatus = ""
 	redactPaths = []string{}
 	tableColumns = nil
 	dumpHeaders = ""

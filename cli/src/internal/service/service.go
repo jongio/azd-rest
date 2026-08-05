@@ -595,6 +595,11 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	allowedStatuses, err := parseAllowedStatuses(cfg.AllowStatus)
+	if err != nil {
+		return err
+	}
+
 	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
 		return err
 	}
@@ -710,7 +715,7 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 
 	// --fail (#233): after the body and metadata have been written, return a
 	// non-zero exit for an error status so scripts and CI can detect failures.
-	if cfg.Fail && resp.StatusCode >= 400 {
+	if cfg.Fail && resp.StatusCode >= 400 && !allowedStatuses.allows(resp.StatusCode) {
 		return &httpFailError{status: resp.StatusCode}
 	}
 
