@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
@@ -68,13 +69,18 @@ var (
 	include         bool
 	allowHosts      []string
 	redactPaths     []string
+	redactSecrets   bool
 	omitPaths       []string
 	redactFile      string
 	fields          []string
 	tableColumns    []string
 	dumpHeaders     string
+	expectedHeaders []string
 	metadataFile    string
 	fail            bool
+	diffBaseline    string
+	allowStatus     string
+	validateSchema  string
 	dryRun          bool
 	expect          []string
 	rawOutput       bool
@@ -139,6 +145,36 @@ func NewHeadCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[5
 
 // NewOptionsCommand returns the OPTIONS subcommand.
 func NewOptionsCommand() *cobra.Command { return newHTTPMethodCommand(httpMethods[6]) }
+
+// NewRequestCommand returns the generic request subcommand for uncommon HTTP methods.
+func NewRequestCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "request <method> <url>",
+		Short: "Execute a request with a custom HTTP method",
+		Long: `Execute a request with any HTTP method while reusing the same authentication,
+retry, formatting, and safety behavior as the named method commands.
+
+Examples:
+  azd rest request PURGE https://management.azure.com/... --api-version 2024-01-01
+  azd rest request merge https://api.example.com/resource --no-auth`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			method, err := normalizeRequestMethod(args[0])
+			if err != nil {
+				return err
+			}
+			return executeRequest(cmd, method, args[1])
+		},
+	}
+}
+
+func normalizeRequestMethod(method string) (string, error) {
+	normalized := strings.ToUpper(strings.TrimSpace(method))
+	if normalized == "" {
+		return "", fmt.Errorf("method is required")
+	}
+	return normalized, nil
+}
 
 // NewRootCmd creates the root command for azd rest
 func NewRootCmd() *cobra.Command {
@@ -227,7 +263,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFieldsRaw, "json-field-raw", []string{}, "Add a raw JSON field to a JSON request body (repeatable, format: key:=json; dotted keys nest)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml, csv, xml")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml, csv, tsv, dotenv, xml")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
 	rootCmd.PersistentFlags().BoolVar(&flatten, "flatten", false, "Flatten a JSON response into a single-level object keyed by dotted paths (e.g. properties.state, value[0].name)")
@@ -252,13 +288,18 @@ Examples:
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().BoolVar(&redactSecrets, "redact-secrets", false, "Mask JSON response fields whose name looks sensitive (password, secret, connectionString, accountKey, and similar) at any depth")
 	rootCmd.PersistentFlags().StringArrayVar(&omitPaths, "omit", []string{}, "Remove a JSON response field before output (repeatable, dotted path, * matches array elements)")
 	rootCmd.PersistentFlags().StringVar(&redactFile, "redact-file", "", "Read JSON response redaction paths from a file (one dotted path per line; blank lines and # comments ignored)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
 	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
+	rootCmd.PersistentFlags().StringArrayVar(&expectedHeaders, "expect-header", []string{}, "Require a response header, optionally with an exact value (repeatable; formats: Name, Name=value, or Name: value)")
 	rootCmd.PersistentFlags().StringVar(&metadataFile, "metadata-file", "", "Write structured response metadata as JSON to a file")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().StringVar(&diffBaseline, "diff", "", "Compare the JSON response against a baseline file and print a unified diff, exiting non-zero when they differ. Keys are compared regardless of order")
+	rootCmd.PersistentFlags().StringVar(&allowStatus, "allow-status", "", "Treat matching HTTP status codes as success when --fail is set (comma-separated codes and ranges, e.g. 200-204,404)")
+	rootCmd.PersistentFlags().StringVar(&validateSchema, "validate-schema", "", "Validate the JSON response against a JSON Schema file and exit non-zero when it does not conform, printing each validation error to stderr")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
 	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
@@ -286,6 +327,7 @@ Examples:
 
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
+		NewRequestCommand(),
 		NewScopeCommand(),
 		NewScopesCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
@@ -352,13 +394,18 @@ func snapshotConfig() config.Config {
 		Include:         include,
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
+		RedactSecrets:   redactSecrets,
 		Omit:            omitPaths,
 		RedactFile:      redactFile,
 		Fields:          fields,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
+		ExpectedHeaders: expectedHeaders,
 		MetadataFile:    metadataFile,
 		Fail:            fail,
+		Diff:            diffBaseline,
+		AllowStatus:     allowStatus,
+		ValidateSchema:  validateSchema,
 		DryRun:          dryRun,
 		Expect:          expect,
 		RawOutput:       rawOutput,

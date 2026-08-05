@@ -595,6 +595,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
 	}
 
+	allowedStatuses, err := parseAllowedStatuses(cfg.AllowStatus)
+	if err != nil {
+		return err
+	}
+
+	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
 	// --max-latency (#280): parse the budget up front so an invalid value exits
 	// with code 2 before any network call is made. A zero budget disables it.
 	maxLatencyBudget, err := parseMaxLatency(cfg.MaxLatency)
@@ -645,6 +654,13 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
+	// --diff (#266): compare the JSON response against a baseline file and print
+	// a unified diff. This is terminal: it replaces normal body output and exits
+	// non-zero on drift so snapshot checks in CI can detect changes.
+	if cfg.Diff != "" {
+		return diffAgainstBaseline(os.Stdout, resp.Body, cfg.Diff)
+	}
+
 	// Capture the original response body before --query rewrites it so --expect
 	// asserts on the full response regardless of what --query prints (#269).
 	originalBody := resp.Body
@@ -681,6 +697,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
 	}
 
+	if err := checkExpectedHeaders(resp, cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
 	// --expect (#269): after the body has been written, assert JMESPath
 	// expressions against the original response and return a non-zero exit when
 	// one does not hold. Evaluated before --fail so an explicit body assertion
@@ -691,9 +711,18 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		}
 	}
 
+	// --validate-schema (#267): after the body has been written, check the
+	// response against a JSON Schema and return non-zero when it does not
+	// conform so contract checks in CI can fail the build.
+	if cfg.ValidateSchema != "" {
+		if err := validateResponseSchema(os.Stderr, resp.Body, cfg.ValidateSchema); err != nil {
+			return err
+		}
+	}
+
 	// --fail (#233): after the body and metadata have been written, return a
 	// non-zero exit for an error status so scripts and CI can detect failures.
-	if cfg.Fail && resp.StatusCode >= 400 {
+	if cfg.Fail && resp.StatusCode >= 400 && !allowedStatuses.allows(resp.StatusCode) {
 		return &httpFailError{status: resp.StatusCode}
 	}
 
@@ -868,6 +897,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// Secret redaction (#265): mask the value of any key that looks sensitive
+	// anywhere in the response. Like --redact it needs parsed JSON, so raw and
+	// binary output are left unchanged with a note on stderr. It runs after
+	// --redact so both can apply in one invocation.
+	if cfg.RedactSecrets {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if redacted, err := redactSecretsJSONBody(resp.Body); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = redacted
+		}
+	}
+
 	// Flatten (#237): collapse a JSON response into a single-level object keyed
 	// by dotted paths. Like redaction it needs the JSON output path, so binary,
 	// raw, and the structured formats (table, jsonl, yaml, csv, xml) are left
@@ -908,7 +952,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table", "jsonl", "yaml", "csv", and "xml"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", "yaml", "csv", "tsv", "dotenv", and "xml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTableWithColumns(resp.Body, cfg.TableColumns)
 		if err != nil {
@@ -935,6 +979,22 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 
 	if cfg.OutputFormat == "csv" {
 		out, err := renderCSV(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "dotenv" {
+		out, err := renderDotenv(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "tsv" {
+		out, err := renderTSV(resp.Body)
 		if err != nil {
 			return err
 		}

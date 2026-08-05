@@ -70,7 +70,7 @@ Built-in Model Context Protocol server for AI agent integration. Copilot and oth
 <td width="50%">
 
 ### 🔄 All HTTP Methods
-GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS with JSON body support from inline data or files.
+GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, and custom methods through `request <method> <url>` with JSON body support from inline data or files.
 
 ### 📊 Verbose Diagnostics
 Request/response details, traceparent injection for distributed tracing, and redacted sensitive headers in logs.
@@ -136,6 +136,9 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 -
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
 
+# dotenv KEY=value lines to eval into your shell or feed a CI job / docker --env-file
+azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --format dotenv
+
 # Read a single field into a shell variable without piping through jq -r
 name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --query displayName -r)
 
@@ -154,6 +157,11 @@ cat group.json | azd rest put https://management.azure.com/subscriptions/{sub}/r
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
 
+# Mask any sensitive-looking field (passwords, keys, tokens) before sharing a response
+azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4 --redact-secrets
+# Fail if a required response header is missing or has a different value
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header "Content-Type=application/json"
 # Remove noisy fields from the response (structural complement to --redact)
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01 \
   --omit value.*.properties.provisioningState
@@ -170,6 +178,13 @@ azd rest config
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 
+# Snapshot check: compare the response to a saved baseline and exit non-zero on drift
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --diff baseline.json
+# Treat an expected 404 as success while still failing other HTTP errors
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --fail --allow-status 404
+# Validate the response against a JSON Schema and exit non-zero when it does not conform
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --validate-schema schema.json
 # Assert on the response body in CI: fail the step unless the resource is provisioned
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --expect "properties.provisioningState=Succeeded"

@@ -54,13 +54,18 @@ type Config struct {
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	RedactSecrets   bool
 	Omit            []string
 	RedactFile      string
 	Fields          []string
 	TableColumns    []string
 	DumpHeaders     string
+	ExpectedHeaders []string
 	MetadataFile    string
 	Fail            bool
+	Diff            string
+	AllowStatus     string
+	ValidateSchema  string
 	DryRun          bool
 	Expect          []string
 	RawOutput       bool

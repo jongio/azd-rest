@@ -37,6 +37,7 @@ azd rest version
 | `delete` | Execute a DELETE request |
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
+| `request` | Execute a request with a custom HTTP method |
 | `scope` | Preview the detected OAuth scope and auth mode for a URL |
 | `graph` | Run an Azure Resource Graph query |
 | `version` | Display the extension version |
@@ -166,6 +167,24 @@ azd rest options <url> [flags]
 azd rest options https://api.example.com/resource
 ```
 
+### `azd rest request <method> <url>`
+
+Execute a request with a custom HTTP method while keeping the same auth, retry, formatting, and safety behavior as the named method commands.
+
+**Usage:**
+```bash
+azd rest request <method> <url> [flags]
+```
+
+**Examples:**
+```bash
+# Send an uncommon method name
+azd rest request PURGE https://management.azure.com/... --api-version 2024-01-01
+
+# Lowercase input is normalized before the request is sent
+azd rest request merge https://api.example.com/resource --no-auth
+```
+
 ---
 
 ## Global Flags
@@ -204,12 +223,13 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `xml`. |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `tsv`, `dotenv` (KEY=value env lines), `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
+| `--expect-header` | | string[] | [] | Require a response header, optionally with an exact value. Repeatable. Formats: `Name`, `Name=value`, or `Name: value`. |
 | `--metadata-file` | | string | "" | Write structured response metadata as JSON to a file. Sensitive header values are redacted. |
 | `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
@@ -221,6 +241,7 @@ These flags are available for all HTTP method commands:
 |------|------|---------|-------------|
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
+| `--allow-status` | string | "" | Treat matching HTTP status codes as success when `--fail` is set. Accepts comma-separated codes and ranges, such as `200-204,404`. |
 | `--dry-run` | bool | false | Print sanitized request details as JSON and exit without sending the HTTP request. |
 | `--repeat` | int | 1 | Send the request N times and report latency statistics. |
 | `--show-request-ids` | bool | false | Print common Azure request correlation response headers to stderr. |
@@ -748,6 +769,18 @@ x-ms-request-id: 6f1c...
 
 Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
 
+## Expect Response Headers
+
+Use `--expect-header` to fail the command when a response does not include a required header or exact header value. Header names are matched case-insensitively, and sensitive header values are redacted in error messages.
+
+```bash
+# Require a response header
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header Content-Type
+
+# Require an exact response header value
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header "Content-Type=application/json"
 ## Structured Response Metadata
 
 Use `--metadata-file` to write a JSON sidecar file with response metadata while keeping the response body on stdout or in `--output-file`. The file includes method, final URL, status, status code, duration in milliseconds, downloaded body size, content type, and redacted response headers.

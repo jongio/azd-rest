@@ -29,6 +29,8 @@ azd rest <method> <url> [flags]
 
 Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`
 
+Use `azd rest request <method> <url>` for uncommon method names such as `PURGE`, `MERGE`, or `LINK`.
+
 Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for a URL without sending a request.
 
 ## Flags
@@ -49,8 +51,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--output-file` | | "" | Write response to file |
 | `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
 | `--omit` | | [] | Remove a JSON response field before output (repeatable, dotted path, * matches array elements) |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv, xml |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv, tsv, dotenv, xml |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
