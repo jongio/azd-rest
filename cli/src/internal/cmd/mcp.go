@@ -316,22 +316,26 @@ func mcpRequestControlToolOptions() []mcp.ToolOption {
 }
 
 func mcpNoBodyToolOptions() []mcp.ToolOption {
-	opts := []mcp.ToolOption{
+	control := mcpRequestControlToolOptions()
+	opts := make([]mcp.ToolOption, 0, 3+len(control))
+	opts = append(opts,
 		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
 		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
 		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	}
-	return append(opts, mcpRequestControlToolOptions()...)
+	)
+	return append(opts, control...)
 }
 
 func mcpBodyToolOptions() []mcp.ToolOption {
-	opts := []mcp.ToolOption{
+	control := mcpRequestControlToolOptions()
+	opts := make([]mcp.ToolOption, 0, 4+len(control))
+	opts = append(opts,
 		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
 		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
 		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
 		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
-	}
-	return append(opts, mcpRequestControlToolOptions()...)
+	)
+	return append(opts, control...)
 }
 
 // parseHeaders extracts custom headers from MCP tool arguments.

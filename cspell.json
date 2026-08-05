@@ -42,6 +42,8 @@
     "jmespath",
     "jongio",
     "jsonl",
+    "jsonschema",
+    "dotenv",
     "keyvault",
     "kusto",
     "ldflags",
@@ -53,6 +55,7 @@
     "pmezard",
     "pwsh",
     "rest",
+    "santhosh",
     "scloud",
     "securego",
     "servicebus",
@@ -62,6 +65,7 @@
     "synapse",
     "tcpdump",
     "telemetry",
+    "tekuri",
     "traceparent",
     "tracestate",
     "usgovcloudapi",
@@ -88,7 +92,8 @@
     "dvcm",
     "USERPROFILE",
     "godoc",
-    "sigstore"
+    "sigstore",
+    "tabwriter"
   ],
   "ignorePaths": [
     "node_modules",

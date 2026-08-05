@@ -29,6 +29,8 @@ azd rest <method> <url> [flags]
 
 Supported HTTP methods: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`
 
+Use `azd rest request <method> <url>` for uncommon method names such as `PURGE`, `MERGE`, or `LINK`.
+
 Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for a URL without sending a request.
 
 ## Flags
@@ -40,6 +42,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--client-request-id` | | "" | Set the x-ms-client-request-id header for Azure request correlation (pass without a value to generate a random ID) |
 | `--header` | `-H` | [] | Custom headers (repeatable, format: Key:Value) |
 | `--header-file` | | "" | Read headers from a file (one Key: Value per line; blank lines and # comments ignored; -H overrides) |
+| `--header-env` | | [] | Read a header value from an environment variable (repeatable, format: Key=ENV_VAR; -H overrides) |
 | `--url-param` | | [] | Set or append a URL query parameter (repeatable, format: key=value) |
 | `--data` | `-d` | "" | Request body (JSON string) |
 | `--data-file` | | "" | Read request body from file (supports @file shorthand) |
@@ -47,7 +50,8 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--json-field-raw` | | [] | Add a raw JSON field to a JSON body (repeatable, key:=json; dotted keys nest) |
 | `--output-file` | | "" | Write response to file |
 | `--redact` | | [] | Mask a JSON response field before output (repeatable, dotted path, * matches array elements) |
-| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv |
+| `--omit` | | [] | Remove a JSON response field before output (repeatable, dotted path, * matches array elements) |
+| `--format` | `-f` | auto | Output format: auto, json, raw, table, jsonl, yaml, csv, tsv, dotenv, xml |
 | `--verbose` | `-v` | false | Show request/response details |
 | `--paginate` | | false | Follow continuation tokens/next links |
 | `--retry` | | 3 | Retry attempts with exponential backoff |
@@ -55,6 +59,8 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 | `--insecure` | `-k` | false | Skip TLS certificate verification |
 | `--timeout` | `-t` | 30s | Request timeout for a single attempt (e.g., 30s, 5m, 1h) |
 | `--max-time` | | 0 | Overall time budget across retries and pagination (0 disables the limit) |
+| `--repeat` | | 1 | Send the request N times and report latency statistics |
+| `--repeat-delay` | | 0s | Wait between repeated requests when `--repeat` is greater than 1 |
 | `--follow-redirects` | | true | Follow HTTP redirects |
 | `--max-redirects` | | 10 | Maximum redirect hops |
 | `--allow-host` | | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). Env: `AZD_REST_ALLOWED_HOSTS` (comma separated) |
@@ -123,10 +129,14 @@ query runs against every subscription you can access unless you narrow it with
 
 ```bash
 azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
 ```
 
 | Flag | Description |
 |------|-------------|
+| `--query-file` | Read the KQL query from a file |
 | `--subscription` | Subscription ID to scope the query (repeatable) |
 | `--management-group` | Management group ID to scope the query (repeatable) |
 | `--top` | Maximum number of rows to return |

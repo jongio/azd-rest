@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jongio/azd-rest/src/internal/config"
+	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,17 +31,27 @@ func resetGlobalFlags() {
 	scope = ""
 	noAuth = false
 	apiVersion = ""
+	baseURL = ""
 	clientRequestID = ""
+	traceparent = ""
 	urlParams = []string{}
+	urlParamFile = ""
 	headers = []string{}
+	accept = ""
+	contentType = ""
 	headerFile = ""
+	headerEnv = []string{}
 	data = ""
 	dataFile = ""
+	dataFormat = "json"
 	query = ""
 	formFields = []string{}
+	jsonFields = []string{}
+	jsonFieldsRaw = []string{}
 	outputFile = ""
 	outputFormat = defaults.OutputFormat
 	verbose = false
+	flatten = false
 	paginate = false
 	retry = defaults.Retry
 	binary = false
@@ -52,11 +63,36 @@ func resetGlobalFlags() {
 	maxRedirects = defaults.MaxRedirects
 	maxPages = defaults.MaxPages
 	maxResponseSize = defaults.MaxResponseSize
+	readOnlyMode = false
 	showThrottle = false
+	showRequestIDs = false
 	repeat = defaults.Repeat
+	colorMode = defaults.Color
 	writeOut = ""
 	include = false
 	allowHosts = []string{}
+	allowStatus = ""
+	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	expectedHeaders = []string{}
+	fail = false
+	rawOutput = false
+	compact = false
+	repeatDelay = defaults.RepeatDelay
+	writeOut = ""
+	include = false
+	allowHosts = []string{}
+	dryRun = false
+	redactPaths = []string{}
+	tableColumns = nil
+	dumpHeaders = ""
+	metadataFile = ""
+	fail = false
+	rawOutput = false
+	compact = false
+	redactFile = ""
+	noBody = false
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -78,10 +114,57 @@ func TestNewRootCmd(t *testing.T) {
 		}
 	}
 
-	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "scope", "version"}
+	expectedCommands := []string{"get", "post", "put", "patch", "delete", "head", "options", "request", "scope", "scopes", "version"}
 	for _, expected := range expectedCommands {
 		assert.True(t, subcommandNames[expected], "Subcommand %s should be present", expected)
 	}
+}
+
+func TestNormalizeRequestMethod(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "uppercase is unchanged", input: "PURGE", want: "PURGE"},
+		{name: "lowercase becomes uppercase", input: "merge", want: "MERGE"},
+		{name: "spaces are trimmed", input: "  link  ", want: "LINK"},
+		{name: "empty is rejected", input: "  ", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeRequestMethod(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRequestCommandExecutesCustomMethod(t *testing.T) {
+	resetGlobalFlags()
+	var gotMethod string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	noAuth = true
+	outputFile = filepath.Join(t.TempDir(), "response.json")
+
+	cmd := NewRequestCommand()
+	cmd.SetArgs([]string{"purge", server.URL + "/cache"})
+
+	require.NoError(t, cmd.Execute())
+	assert.Equal(t, "PURGE", gotMethod)
 }
 
 func TestNewRootCmd_SilentFlag(t *testing.T) {
@@ -94,11 +177,69 @@ func TestNewRootCmd_SilentFlag(t *testing.T) {
 	assert.Empty(t, flag.Shorthand, "--silent should have no short alias")
 }
 
+func TestNewRootCmd_TraceparentFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("traceparent")
+	require.NotNil(t, flag, "--traceparent persistent flag should be registered")
+	assert.Empty(t, flag.DefValue, "--traceparent should default to empty")
+	assert.Equal(t, service.TraceparentAutoValue, flag.NoOptDefVal)
+	assert.Empty(t, flag.Shorthand, "--traceparent should have no short alias")
+}
+
+func TestNewRootCmd_ReadOnlyFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("read-only")
+	require.NotNil(t, flag, "--read-only persistent flag should be registered")
+	assert.Equal(t, "false", flag.DefValue, "--read-only should default to false")
+	assert.Empty(t, flag.Shorthand, "--read-only should have no short alias")
+}
+
+func TestNewRootCmd_RepeatDelayFlag(t *testing.T) {
+	resetGlobalFlags()
+	cmd := NewRootCmd()
+
+	flag := cmd.PersistentFlags().Lookup("repeat-delay")
+	require.NotNil(t, flag, "--repeat-delay persistent flag should be registered")
+	assert.Equal(t, "0s", flag.DefValue, "--repeat-delay should default to zero")
+}
+
+func TestSnapshotConfig_RepeatDelay(t *testing.T) {
+	resetGlobalFlags()
+	repeatDelay = 2 * time.Second
+	cfg := snapshotConfig()
+	assert.Equal(t, 2*time.Second, cfg.RepeatDelay)
+}
+
 func TestSnapshotConfig_Silent(t *testing.T) {
 	resetGlobalFlags()
 	silent = true
 	cfg := snapshotConfig()
 	assert.True(t, cfg.Silent, "snapshotConfig should carry the silent flag")
+}
+
+func TestSnapshotConfig_Traceparent(t *testing.T) {
+	resetGlobalFlags()
+	traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+	cfg := snapshotConfig()
+	assert.Equal(t, traceparent, cfg.Traceparent, "snapshotConfig should carry the traceparent flag")
+}
+
+func TestSnapshotConfig_ReadOnly(t *testing.T) {
+	resetGlobalFlags()
+	readOnlyMode = true
+	cfg := snapshotConfig()
+	assert.True(t, cfg.ReadOnly, "snapshotConfig should carry the read-only flag")
+}
+
+func TestSnapshotConfig_BaseURL(t *testing.T) {
+	resetGlobalFlags()
+	baseURL = "https://management.azure.com"
+	cfg := snapshotConfig()
+	assert.Equal(t, "https://management.azure.com", cfg.BaseURL)
 }
 
 func TestBuildRequestOptions_Headers(t *testing.T) {
