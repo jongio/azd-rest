@@ -157,6 +157,8 @@ cat group.json | azd rest put https://management.azure.com/subscriptions/{sub}/r
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --flatten
 
+# Mask any sensitive-looking field (passwords, keys, tokens) before sharing a response
+azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4 --redact-secrets
 # Fail if a required response header is missing or has a different value
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --expect-header "Content-Type=application/json"

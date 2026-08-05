@@ -54,6 +54,7 @@ type Config struct {
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
+	RedactSecrets   bool
 	Omit            []string
 	RedactFile      string
 	Fields          []string
