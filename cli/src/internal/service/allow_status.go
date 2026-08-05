@@ -22,8 +22,9 @@ func parseAllowedStatuses(spec string) (allowedStatusRanges, error) {
 		return nil, nil
 	}
 
-	var ranges allowedStatusRanges
-	for _, part := range strings.Split(spec, ",") {
+	parts := strings.Split(spec, ",")
+	ranges := make(allowedStatusRanges, 0, len(parts))
+	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			return nil, &allowStatusError{err: fmt.Errorf("--allow-status contains an empty item")}
