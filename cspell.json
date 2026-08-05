@@ -65,6 +65,7 @@
     "synapse",
     "tcpdump",
     "telemetry",
+    "tmpl",
     "tekuri",
     "traceparent",
     "tracestate",

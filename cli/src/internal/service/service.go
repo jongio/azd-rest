@@ -600,6 +600,12 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	if cfg.Count && cfg.NoBody {
 		return &countUsageError{msg: "--count and --no-body cannot be used together"}
 	}
+	if cfg.Template != "" && cfg.Count {
+		return &templateConfigError{msg: "--template and --count cannot be used together"}
+	}
+	if cfg.Template != "" && cfg.NoBody {
+		return &templateConfigError{msg: "--template and --no-body cannot be used together"}
+	}
 
 	allowedStatuses, err := parseAllowedStatuses(cfg.AllowStatus)
 	if err != nil {
@@ -615,6 +621,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	maxLatencyBudget, err := parseMaxLatency(cfg.MaxLatency)
 	if err != nil {
 		return err
+	}
+
+	// --template (#279): compile the template up front so invalid syntax or a
+	// missing @file exits with code 2 before any network call is made. The
+	// compiled result is discarded here and rebuilt when the body is rendered.
+	if cfg.Template != "" {
+		if _, err := parseTemplate(cfg.Template); err != nil {
+			return err
+		}
 	}
 
 	// Echo the correlation ID so it can be quoted in an Azure support request.
@@ -842,6 +857,17 @@ func validateReadOnlyMethod(method string) error {
 // choosing the raw path for binary content and the formatter path otherwise.
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
+
+	// --template (#279): render the response through a Go text/template. It runs
+	// after --query (applied in Execute) and takes precedence over --format and
+	// the other output modes, so it returns before any of them run.
+	if cfg.Template != "" {
+		rendered, err := renderTemplate(cfg.Template, resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(rendered, cfg.OutputFile)
+	}
 
 	// --count (#282): print the number of records and nothing else. It runs
 	// after --query (applied in Execute) and takes precedence over the body

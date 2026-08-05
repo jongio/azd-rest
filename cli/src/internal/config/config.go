@@ -26,6 +26,7 @@ type Config struct {
 	DataFile        string
 	DataFormat      string
 	Query           string
+	Template        string
 	Count           bool
 	FormFields      []string
 	JSONFields      []string
