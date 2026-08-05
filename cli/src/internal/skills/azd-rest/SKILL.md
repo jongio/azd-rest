@@ -4,8 +4,8 @@ description: |
   Execute REST API calls with automatic Azure authentication and scope detection.
   USE FOR: Azure REST API calls, HTTP requests with Azure auth, management API queries,
   Key Vault access, Microsoft Graph calls, authenticated REST requests, Azure service APIs.
-  DO NOT USE FOR: script execution (use azd-exec), service orchestration (use azd-app),
-  AI-powered development (use azd-copilot), Azure deployments (use azd deploy).
+  DO NOT USE FOR: script execution (use the built-in `azd exec`), service orchestration
+  (use azd-app), Azure deployments (use azd deploy).
 ---
 
 # azd-rest Extension
