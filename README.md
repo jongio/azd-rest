@@ -176,6 +176,8 @@ azd rest config
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 
+# Validate the response against a JSON Schema and exit non-zero when it does not conform
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --validate-schema schema.json
 # Assert on the response body in CI: fail the step unless the resource is provisioned
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --expect "properties.provisioningState=Succeeded"

@@ -62,6 +62,7 @@ type Config struct {
 	ExpectedHeaders []string
 	MetadataFile    string
 	Fail            bool
+	ValidateSchema  string
 	DryRun          bool
 	Expect          []string
 	RawOutput       bool
