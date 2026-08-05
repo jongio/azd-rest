@@ -26,10 +26,16 @@ var (
 	scope           string
 	noAuth          bool
 	apiVersion      string
+	baseURL         string
 	clientRequestID string
+	traceparent     string
 	urlParams       []string
+	urlParamFile    string
 	headers         []string
+	accept          string
+	contentType     string
 	headerFile      string
+	headerEnv       []string
 	data            string
 	dataFile        string
 	dataFormat      string
@@ -48,23 +54,34 @@ var (
 	silent          bool
 	timeout         time.Duration
 	maxTime         time.Duration
+	maxLatency      string
 	followRedirects bool
 	maxRedirects    int
 	maxPages        int
 	maxResponseSize int64
+	readOnlyMode    bool
 	showThrottle    bool
 	repeat          int
+	repeatDelay     time.Duration
 	colorMode       string
 	writeOut        string
 	include         bool
 	allowHosts      []string
 	redactPaths     []string
+	omitPaths       []string
+	redactFile      string
+	fields          []string
 	tableColumns    []string
 	dumpHeaders     string
 	expectedHeaders []string
+	metadataFile    string
 	fail            bool
+	dryRun          bool
+	expect          []string
 	rawOutput       bool
 	compact         bool
+	showRequestIDs  bool
+	noBody          bool
 )
 
 // httpMethodDef defines one HTTP method subcommand for the table-driven factory (#68).
@@ -190,12 +207,19 @@ Examples:
 	rootCmd.PersistentFlags().StringVarP(&scope, "scope", "s", "", "OAuth scope for authentication (auto-detected if not provided)")
 	rootCmd.PersistentFlags().BoolVar(&noAuth, "no-auth", false, "Skip authentication (no bearer token)")
 	rootCmd.PersistentFlags().StringVar(&apiVersion, "api-version", "", "Set or replace the api-version query parameter")
+	rootCmd.PersistentFlags().StringVar(&baseURL, "base-url", "", "Resolve relative request paths against this base URL")
 	rootCmd.PersistentFlags().StringVar(&clientRequestID, "client-request-id", "", "Set the x-ms-client-request-id header for Azure request correlation. Pass the flag without a value to generate a random ID.")
 	// Passing --client-request-id without a value generates a fresh ID for this invocation.
 	rootCmd.PersistentFlags().Lookup("client-request-id").NoOptDefVal = uuid.NewString()
+	rootCmd.PersistentFlags().StringVar(&traceparent, "traceparent", "", "Set the W3C traceparent header. Pass the flag without a value to generate one.")
+	rootCmd.PersistentFlags().Lookup("traceparent").NoOptDefVal = service.TraceparentAutoValue
 	rootCmd.PersistentFlags().StringArrayVar(&urlParams, "url-param", []string{}, "Set or append a URL query parameter (repeatable, format: key=value)")
+	rootCmd.PersistentFlags().StringVar(&urlParamFile, "url-param-file", "", "Read URL query parameters from a file (one key=value per line; blank lines and # comments ignored). --url-param overrides on conflict.")
 	rootCmd.PersistentFlags().StringArrayVarP(&headers, "header", "H", []string{}, "Custom headers (repeatable, format: Key:Value)")
+	rootCmd.PersistentFlags().StringVar(&accept, "accept", "", "Set the Accept request header")
+	rootCmd.PersistentFlags().StringVar(&contentType, "content-type", "", "Set the Content-Type request header")
 	rootCmd.PersistentFlags().StringVar(&headerFile, "header-file", "", "Read headers from a file (one Key: Value per line; blank lines and # comments ignored). -H overrides on conflict.")
+	rootCmd.PersistentFlags().StringArrayVar(&headerEnv, "header-env", []string{}, "Read a header value from an environment variable (repeatable, format: Key=ENV_VAR). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
 	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
@@ -204,7 +228,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFields, "json-field", []string{}, "Add a string field to a JSON request body (repeatable, format: key=value; dotted keys nest)")
 	rootCmd.PersistentFlags().StringArrayVar(&jsonFieldsRaw, "json-field-raw", []string{}, "Add a raw JSON field to a JSON request body (repeatable, format: key:=json; dotted keys nest)")
 	rootCmd.PersistentFlags().StringVar(&outputFile, "output-file", "", "Write response to file (raw for binary content)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml, csv")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", defaults.OutputFormat, "Output format: auto, json, raw, table, jsonl, yaml, csv, tsv, dotenv, xml")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output (show headers, timing)")
 	rootCmd.PersistentFlags().BoolVar(&paginate, "paginate", false, "Follow continuation tokens/next links when supported")
 	rootCmd.PersistentFlags().BoolVar(&flatten, "flatten", false, "Flatten a JSON response into a single-level object keyed by dotted paths (e.g. properties.state, value[0].name)")
@@ -214,28 +238,39 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Suppress non-error diagnostic messages on stderr (warnings and notices)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
 	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
+	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail with exit code 28 when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
 	rootCmd.PersistentFlags().Int64Var(&maxResponseSize, "max-response-size", defaults.MaxResponseSize, "Maximum response size in bytes")
+	rootCmd.PersistentFlags().BoolVar(&readOnlyMode, "read-only", false, "Allow only read-only HTTP methods: GET, HEAD, and OPTIONS")
 	rootCmd.PersistentFlags().BoolVar(&showThrottle, "show-throttle", false, "Print Azure rate-limit and quota headers to stderr, with a low-quota warning")
+	rootCmd.PersistentFlags().BoolVar(&showRequestIDs, "show-request-ids", false, "Print common Azure request correlation response headers to stderr")
 	rootCmd.PersistentFlags().IntVar(&repeat, "repeat", defaults.Repeat, "Send the request N times and report latency statistics")
+	rootCmd.PersistentFlags().DurationVar(&repeatDelay, "repeat-delay", defaults.RepeatDelay, "Wait between repeated requests (for example: 200ms, 2s)")
 	rootCmd.PersistentFlags().StringVar(&colorMode, "color", defaults.Color, "Colorize JSON output: auto, always, never")
 	rootCmd.PersistentFlags().StringVarP(&writeOut, "write-out", "w", "", "Print curl-style response metadata to stderr after the request (e.g. \"%{http_code} %{time_total}\")")
 	rootCmd.PersistentFlags().BoolVarP(&include, "include", "i", false, "Include the HTTP status line and response headers in the output")
 	rootCmd.PersistentFlags().StringArrayVar(&allowHosts, "allow-host", []string{}, "Restrict requests to hosts matching a pattern (repeatable; leading *. matches subdomains). Env: AZD_REST_ALLOWED_HOSTS (comma separated)")
 	rootCmd.PersistentFlags().StringArrayVar(&redactPaths, "redact", []string{}, "Mask a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().StringArrayVar(&omitPaths, "omit", []string{}, "Remove a JSON response field before output (repeatable, dotted path, * matches array elements)")
+	rootCmd.PersistentFlags().StringVar(&redactFile, "redact-file", "", "Read JSON response redaction paths from a file (one dotted path per line; blank lines and # comments ignored)")
 	rootCmd.PersistentFlags().StringSliceVar(&tableColumns, "table-columns", nil, "Comma-separated columns to show, in order, for --format table (ignored for other formats)")
+	rootCmd.PersistentFlags().StringSliceVar(&fields, "fields", nil, "Comma-separated top-level fields to keep in a JSON response. Applies to an object, an array of objects, and an ARM value[] wrapper (keeping paging links). Runs after --query and before formatting, so every output format sees the trimmed data.")
 	rootCmd.PersistentFlags().StringVar(&dumpHeaders, "dump-headers", "", "Write response status line and headers to a file (use - for stderr)")
 	rootCmd.PersistentFlags().StringArrayVar(&expectedHeaders, "expect-header", []string{}, "Require a response header, optionally with an exact value (repeatable; formats: Name, Name=value, or Name: value)")
+	rootCmd.PersistentFlags().StringVar(&metadataFile, "metadata-file", "", "Write structured response metadata as JSON to a file")
 	rootCmd.PersistentFlags().BoolVar(&fail, "fail", false, "Exit with code 22 when the response status is 400 or higher (the response body is still printed)")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print sanitized request details without sending the HTTP request")
+	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
+	rootCmd.PersistentFlags().BoolVar(&noBody, "no-body", false, "Discard the response body after the request while keeping status, header, and write-out metadata")
 
 	// Record the extension's own persistent flag names (those not added by the
 	// SDK) so environment-variable defaults apply only to them (#172).
 	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if !sdkFlagNames[f.Name] && f.Name != "allow-host" {
+		if !sdkFlagNames[f.Name] && f.Name != allowHostFlag {
 			extensionFlagNames = append(extensionFlagNames, f.Name)
 		}
 	})
@@ -245,9 +280,16 @@ Examples:
 		rootCmd.AddCommand(newHTTPMethodCommand(def))
 	}
 
+	// The config command reports the extension's own persistent flags plus
+	// --allow-host, which carries its own AZD_REST_ALLOWED_HOSTS default. Build a
+	// fresh slice so the config command never aliases extensionFlagNames, which
+	// the PersistentPreRunE closure reads to apply environment defaults (#172).
+	configFlagNames := append(append([]string{}, extensionFlagNames...), allowHostFlag)
+
 	// Add non-HTTP-method subcommands
 	rootCmd.AddCommand(
 		NewScopeCommand(),
+		NewScopesCommand(),
 		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
 		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
 		azdext.NewListenCommand(nil),
@@ -255,6 +297,8 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewJWTCommand(),
+		NewConfigCommand(configFlagNames),
 	)
 
 	return rootCmd
@@ -268,10 +312,16 @@ func snapshotConfig() config.Config {
 		Scope:           scope,
 		NoAuth:          noAuth,
 		APIVersion:      apiVersion,
+		BaseURL:         baseURL,
 		ClientRequestID: clientRequestID,
+		Traceparent:     traceparent,
 		URLParams:       urlParams,
+		URLParamFile:    urlParamFile,
 		Headers:         headers,
+		Accept:          accept,
+		ContentType:     contentType,
 		HeaderFile:      headerFile,
+		HeaderEnv:       headerEnv,
 		Data:            data,
 		DataFile:        dataFile,
 		DataFormat:      dataFormat,
@@ -290,23 +340,34 @@ func snapshotConfig() config.Config {
 		Silent:          silent,
 		Timeout:         timeout,
 		MaxTime:         maxTime,
+		MaxLatency:      maxLatency,
 		FollowRedirects: followRedirects,
 		MaxRedirects:    maxRedirects,
 		MaxPages:        maxPages,
 		MaxResponseSize: maxResponseSize,
+		ReadOnly:        readOnlyMode,
 		ShowThrottle:    showThrottle,
 		Repeat:          repeat,
+		RepeatDelay:     repeatDelay,
 		Color:           colorMode,
 		WriteOut:        writeOut,
 		Include:         include,
 		AllowedHosts:    allowHosts,
 		Redact:          redactPaths,
+		Omit:            omitPaths,
+		RedactFile:      redactFile,
+		Fields:          fields,
 		TableColumns:    tableColumns,
 		DumpHeaders:     dumpHeaders,
 		ExpectedHeaders: expectedHeaders,
+		MetadataFile:    metadataFile,
 		Fail:            fail,
+		DryRun:          dryRun,
+		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
+		ShowRequestIDs:  showRequestIDs,
+		NoBody:          noBody,
 	}
 }
 

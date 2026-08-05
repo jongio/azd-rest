@@ -41,6 +41,7 @@
     "jmespath",
     "jongio",
     "jsonl",
+    "dotenv",
     "keyvault",
     "kusto",
     "ldflags",
@@ -86,7 +87,8 @@
     "dvcm",
     "USERPROFILE",
     "godoc",
-    "sigstore"
+    "sigstore",
+    "tabwriter"
   ],
   "ignorePaths": [
     "node_modules",
