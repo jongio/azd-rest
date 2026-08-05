@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -107,4 +108,17 @@ func TestExecute_Count_NonJSONReportsError(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/plain")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "JSON")
+}
+
+func TestExecute_CountAndNoBodyAreMutuallyExclusive(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Count = true
+	cfg.NoBody = true
+
+	err := newTestService().Execute(context.Background(), cfg, "GET", "https://example.com")
+	require.EqualError(t, err, "--count and --no-body cannot be used together")
+
+	var coder interface{ ExitCode() int }
+	require.True(t, errors.As(err, &coder))
+	assert.Equal(t, 2, coder.ExitCode())
 }
