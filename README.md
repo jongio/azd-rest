@@ -70,7 +70,7 @@ Built-in Model Context Protocol server for AI agent integration. Copilot and oth
 <td width="50%">
 
 ### 🔄 All HTTP Methods
-GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS with JSON body support from inline data or files.
+GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, and custom methods through `request <method> <url>` with JSON body support from inline data or files.
 
 ### 📊 Verbose Diagnostics
 Request/response details, traceparent injection for distributed tracing, and redacted sensitive headers in logs.
