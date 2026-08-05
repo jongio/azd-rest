@@ -80,19 +80,11 @@ func resetGlobalFlags() {
 	rawOutput = false
 	compact = false
 	repeatDelay = defaults.RepeatDelay
-	writeOut = ""
-	include = false
-	allowHosts = []string{}
 	dryRun = false
-	redactPaths = []string{}
-	tableColumns = nil
-	dumpHeaders = ""
 	metadataFile = ""
-	fail = false
-	rawOutput = false
-	compact = false
 	redactFile = ""
 	noBody = false
+	limit = 0
 }
 
 func TestNewRootCmd(t *testing.T) {

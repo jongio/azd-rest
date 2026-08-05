@@ -226,6 +226,7 @@ These flags are available for all HTTP method commands:
 | `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `tsv`, `dotenv` (KEY=value env lines), `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
+| `--limit` | | int | 0 | Limit top-level JSON arrays or ARM `value` arrays to the first N items before formatting. |
 | `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |

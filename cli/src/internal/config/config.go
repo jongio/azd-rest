@@ -70,6 +70,7 @@ type Config struct {
 	Expect          []string
 	RawOutput       bool
 	Compact         bool
+	Limit           int
 	ShowRequestIDs  bool
 	NoBody          bool
 }

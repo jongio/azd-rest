@@ -85,6 +85,7 @@ var (
 	expect          []string
 	rawOutput       bool
 	compact         bool
+	limit           int
 	showRequestIDs  bool
 	noBody          bool
 )
@@ -304,6 +305,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
+	rootCmd.PersistentFlags().IntVar(&limit, "limit", 0, "Limit top-level JSON arrays or ARM value arrays to the first N items before formatting")
 	rootCmd.PersistentFlags().BoolVar(&noBody, "no-body", false, "Discard the response body after the request while keeping status, header, and write-out metadata")
 
 	// Record the extension's own persistent flag names (those not added by the
@@ -410,6 +412,7 @@ func snapshotConfig() config.Config {
 		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
+		Limit:           limit,
 		ShowRequestIDs:  showRequestIDs,
 		NoBody:          noBody,
 	}

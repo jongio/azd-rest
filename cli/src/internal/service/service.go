@@ -581,6 +581,9 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
 	}
+	if cfg.Limit < 0 {
+		return fmt.Errorf("--limit must be at least 1 when set, got %d", cfg.Limit)
+	}
 	if cfg.RepeatDelay < 0 {
 		return fmt.Errorf("--repeat-delay cannot be negative, got %s", cfg.RepeatDelay)
 	}
@@ -850,6 +853,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	if cfg.RawOutput {
 		if text, ok := rawOutputText(resp.Body); ok {
 			return formatter.WriteRawOutput([]byte(text), cfg.OutputFile)
+		}
+	}
+
+	// --limit (#329): cap a JSON collection to the first N records before any
+	// other transform or format dispatch runs, so every downstream flag sees the
+	// capped set. A non-JSON or non-collection body is left unchanged with a note.
+	if cfg.Limit > 0 {
+		limited, changed, err := limitJSONBody(resp.Body, cfg.Limit)
+		switch {
+		case err != nil:
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --limit needs a JSON response; leaving output unchanged\\n")
+		case changed:
+			resp.Body = limited
+		default:
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --limit found no top-level JSON array or value[] array; leaving output unchanged\\n")
 		}
 	}
 
