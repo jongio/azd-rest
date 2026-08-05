@@ -6,15 +6,15 @@ Common error scenarios and solutions for `azd rest`.
 
 ### "no credential available" or "authentication failed"
 
-**Cause**: No Azure CLI login session or expired token.
+**Cause**: No azd login session or expired token.
 
 **Solution**:
 ```bash
-# Log in to Azure CLI
-az login
+# Sign in to azd
+azd auth login
 
 # Verify your session
-az account show
+azd rest whoami
 ```
 
 ### "token acquisition failed for scope ..."
@@ -23,11 +23,11 @@ az account show
 
 **Solution**:
 ```bash
-# Check which account is active
-az account show
+# Check which identity is active
+azd rest whoami
 
-# Switch subscription if needed
-az account set --subscription <subscription-id>
+# Run the full diagnostic
+azd rest doctor
 
 # Force a specific scope
 azd rest get <url> --scope https://management.azure.com/.default
@@ -61,10 +61,10 @@ azd rest get <url> --scope https://management.azure.com/.default
 **Solution**:
 ```bash
 # Verify your identity
-az account show
+azd rest whoami
 
 # Check role assignments on the resource
-az role assignment list --scope <resource-id>
+azd rest get "https://management.azure.com<resource-id>/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01"
 
 # Try with explicit scope
 azd rest get <url> --scope <scope-url>

@@ -61,7 +61,7 @@ func TestRunDoctorAuthFailureReturnsError(t *testing.T) {
 	if !strings.Contains(out, "[fail]") {
 		t.Errorf("expected a failed check in output:\n%s", out)
 	}
-	if !strings.Contains(out, "az login") {
+	if !strings.Contains(out, "azd auth login") {
 		t.Errorf("expected remediation guidance:\n%s", out)
 	}
 	// A failed token acquisition should not produce a token-claims check.

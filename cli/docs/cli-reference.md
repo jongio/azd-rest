@@ -1078,8 +1078,8 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
 
 **Solution:**
 ```bash
-# Ensure you're logged in to Azure
-az login
+# Ensure you're signed in to azd
+azd auth login
 
 # Or use service principal
 export AZURE_CLIENT_ID="..."

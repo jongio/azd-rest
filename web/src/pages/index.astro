@@ -12,8 +12,8 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
 <Layout title="Home" description={description}>
   <!-- Hero Section -->
   <HeroBanner
-    title='Authenticated Azure REST API <span class="gradient-text">calls</span>'
-    subtitle="Automatic OAuth scope detection for 20+ Azure services. No manual token management — just run and go."
+    titleHtml='Call any Azure API, <span class="gradient-text">already authenticated</span>'
+    subtitle="Point azd rest at a URL. It figures out the right scope, gets a token, and handles retries and paging for you."
     primaryCta={{ label: "Get Started", href: `${base}getting-started` }}
     secondaryCta={{ label: "View on GitHub", href: "https://github.com/jongio/azd-rest" }}
   />
@@ -31,41 +31,41 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
   <!-- Features Section -->
   <section class="px-[var(--space-6)] py-[var(--space-16)]">
     <div class="mx-auto max-w-[1280px]">
-      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--text-2xl);">Features</h2>
+      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--azd-text-2xl);">Features</h2>
 
       <div class="grid gap-[var(--space-6)] sm:grid-cols-2 lg:grid-cols-3">
         <FeatureCard
-          icon="🔄"
+          icon="refresh-cw"
           title="All HTTP Methods"
           description="GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS with JSON body support from inline data or files."
         />
         <FeatureCard
-          icon="🔐"
+          icon="lock-keyhole"
           title="Smart Azure Auth"
-          description="Automatic OAuth scope detection for 20+ Azure services — Management API, Graph, Key Vault, Storage, Cosmos DB, and more."
+          description="Reads the hostname and picks the right OAuth scope: Management API, Graph, Key Vault, Storage, Cosmos DB, and more."
         />
         <FeatureCard
-          icon="📄"
+          icon="file-text"
           title="Auto Pagination"
           description="Follows nextLink, @odata.nextLink, and Link headers automatically with --paginate."
         />
         <FeatureCard
-          icon="🔁"
+          icon="repeat"
           title="Retry Logic"
           description="Exponential backoff with configurable retries for transient errors (5xx, network failures). Default 3 retries."
         />
         <FeatureCard
-          icon="✨"
+          icon="sparkles"
           title="Response Formatting"
           description="Pretty-printed JSON by default. Raw, compact JSON, or binary output modes. Save responses to file."
         />
         <FeatureCard
-          icon="🧰"
+          icon="blocks"
           title="Command Builder"
           description="Use the docs builder to combine method, URL, auth, body, output, and diagnostic flags before copying a command."
         />
         <FeatureCard
-          icon="🛡️"
+          icon="shield"
           title="Token Security"
           description="Automatic token redaction in verbose output. SSRF protection, header sanitization, and response size limits built in."
         />
@@ -76,39 +76,39 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
   <!-- Smart Auth Spotlight -->
   <section class="px-[var(--space-6)] py-[var(--space-16)]" style="background-color: var(--color-surface);">
     <div class="mx-auto max-w-[900px]">
-      <h2 class="mb-[var(--space-4)] text-center" style="font-size: var(--text-2xl);">Smart Scope Detection</h2>
-      <p class="mx-auto mb-[var(--space-10)] max-w-[600px] text-center" style="font-size: var(--text-sm); color: var(--color-text-muted);">
+      <h2 class="mb-[var(--space-4)] text-center" style="font-size: var(--azd-text-2xl);">Smart Scope Detection</h2>
+      <p class="mx-auto mb-[var(--space-10)] max-w-[600px] text-center" style="font-size: var(--azd-text-sm); color: var(--color-text-muted);">
         Just provide a URL. <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">azd rest</code> detects the correct OAuth scope automatically.
       </p>
 
       <div class="flex flex-col gap-[var(--space-6)]">
         <div>
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Azure Management</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Azure Management</h3>
           <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
-          <p style="margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://management.azure.com/.default</code></p>
+          <p style="margin: var(--space-2) 0 0; font-size: var(--azd-text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://management.azure.com/.default</code></p>
         </div>
 
         <div>
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Key Vault</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Key Vault</h3>
           <CodeBlock code={`azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4`} language="bash" />
-          <p style="margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://vault.azure.net/.default</code></p>
+          <p style="margin: var(--space-2) 0 0; font-size: var(--azd-text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://vault.azure.net/.default</code></p>
         </div>
 
         <div>
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Microsoft Graph</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Microsoft Graph</h3>
           <CodeBlock code={`azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
-          <p style="margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://graph.microsoft.com/.default</code></p>
+          <p style="margin: var(--space-2) 0 0; font-size: var(--azd-text-xs); color: var(--color-text-muted);">→ Scope: <code style="background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); font-size: 0.875em;">https://graph.microsoft.com/.default</code></p>
         </div>
 
         <div>
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Public API (No Auth)</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Public API (No Auth)</h3>
           <CodeBlock code={`azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth`} language="bash" />
-          <p style="margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);">→ No authentication needed</p>
+          <p style="margin: var(--space-2) 0 0; font-size: var(--azd-text-xs); color: var(--color-text-muted);">→ No authentication needed</p>
         </div>
       </div>
 
       <p class="mt-[var(--space-8)] text-center">
-        <a href={`${base}reference#scope-detection`} style="color: var(--color-primary); font-weight: 600; font-size: var(--text-sm);">See all 20+ supported services →</a>
+        <a href={`${base}reference#scope-detection`} style="color: var(--color-primary); font-weight: 600; font-size: var(--azd-text-sm);">See every supported service →</a>
       </p>
     </div>
   </section>
@@ -116,13 +116,13 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
   <!-- Quick Start Section -->
   <section class="px-[var(--space-6)] py-[var(--space-16)]">
     <div class="mx-auto max-w-[900px]">
-      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--text-2xl);">Quick Start</h2>
+      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--azd-text-2xl);">Quick Start</h2>
 
       <div class="flex flex-col gap-[var(--space-12)]">
         <div class="flex gap-[var(--space-8)]">
           <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">1</div>
           <div class="min-w-0 flex-1">
-            <h3 class="mb-[var(--space-4)]" style="font-size: var(--text-lg);">Install Extension</h3>
+            <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Install Extension</h3>
             <InstallTabs />
           </div>
         </div>
@@ -130,7 +130,7 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
         <div class="flex gap-[var(--space-8)]">
           <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">2</div>
           <div class="min-w-0 flex-1">
-            <h3 class="mb-[var(--space-4)]" style="font-size: var(--text-lg);">Verify Installation</h3>
+            <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Verify Installation</h3>
             <CodeBlock code={`azd rest version`} language="bash" />
           </div>
         </div>
@@ -138,7 +138,7 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
         <div class="flex gap-[var(--space-8)]">
           <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">3</div>
           <div class="min-w-0 flex-1">
-            <h3 class="mb-[var(--space-4)]" style="font-size: var(--text-lg);">Make Your First Request</h3>
+            <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Make Your First Request</h3>
             <CodeBlock code={`# List your Azure subscriptions
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
           </div>
@@ -150,17 +150,17 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
   <!-- Example Scripts Section -->
   <section class="px-[var(--space-6)] py-[var(--space-16)]" style="background-color: var(--color-surface);">
     <div class="mx-auto max-w-[900px]">
-      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--text-2xl);">Usage Examples</h2>
+      <h2 class="mb-[var(--space-12)] text-center" style="font-size: var(--azd-text-2xl);">Usage Examples</h2>
 
       <div>
         <div class="mb-[var(--space-8)]">
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">POST with JSON Body</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">POST with JSON Body</h3>
           <CodeBlock code={`azd rest post https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}?api-version=2021-04-01 \\
   --data '{"location":"eastus","kind":"StorageV2","sku":{"name":"Standard_LRS"}}'`} language="bash" />
         </div>
 
         <div class="mb-[var(--space-8)]">
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Verbose Output with Headers</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Verbose Output with Headers</h3>
           <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --verbose
 
 # > GET https://management.azure.com/subscriptions?api-version=2020-01-01
@@ -170,16 +170,16 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
         </div>
 
         <div class="mb-[var(--space-8)]">
-          <h3 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Save Response to File</h3>
+          <h3 style="font-size: var(--azd-text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--color-text);">Save Response to File</h3>
           <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \\
   --output-file subscriptions.json`} language="bash" />
         </div>
       </div>
 
       <p class="mt-[var(--space-8)] text-center">
-        <a href={`${base}examples`} style="color: var(--color-primary); font-weight: 600; font-size: var(--text-sm);">See more examples →</a>
+        <a href={`${base}examples`} style="color: var(--color-primary); font-weight: 600; font-size: var(--azd-text-sm);">See more examples →</a>
         <span aria-hidden="true" style="color: var(--color-text-muted); margin: 0 var(--space-2);">·</span>
-        <a href={`${base}builder`} style="color: var(--color-primary); font-weight: 600; font-size: var(--text-sm);">Build a command →</a>
+        <a href={`${base}builder`} style="color: var(--color-primary); font-weight: 600; font-size: var(--azd-text-sm);">Build a command →</a>
       </p>
     </div>
   </section>
@@ -187,8 +187,8 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
   <!-- Final CTA -->
   <section class="px-[var(--space-6)] py-[var(--space-16)] text-center" style="background-color: var(--color-surface);">
     <div class="mx-auto max-w-[900px]">
-      <h2 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Ready to get started?</h2>
-      <p class="mb-[var(--space-8)]" style="font-size: var(--text-sm); color: var(--color-text-muted);">Install azd rest and start making authenticated Azure REST API calls in seconds.</p>
+      <h2 style="font-size: var(--azd-text-2xl); margin-bottom: var(--space-4);">Ready to get started?</h2>
+      <p class="mb-[var(--space-8)]" style="font-size: var(--azd-text-sm); color: var(--color-text-muted);">Install azd rest and start making authenticated Azure REST API calls in seconds.</p>
       <a
         href={`${base}getting-started`}
         class="inline-flex items-center rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold transition-all duration-200 hover:no-underline"
@@ -220,13 +220,13 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
     box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 15%, transparent), 0 0 80px color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
   .hero-cmd-prompt {
-    font-family: var(--font-mono);
+    font-family: var(--azd-font-mono);
     font-size: 2rem;
     color: var(--color-primary);
     line-height: 1;
   }
   .hero-cmd-text {
-    font-family: var(--font-mono);
+    font-family: var(--azd-font-mono);
     font-size: 2.5rem;
     font-weight: 700;
     letter-spacing: -0.02em;

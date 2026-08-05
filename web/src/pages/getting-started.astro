@@ -1,5 +1,6 @@
 ---
 import Layout from '../components/Layout.astro';
+import Icon from '@jongio/azd-web-core/components/Icon.astro';
 import CodeBlock from '../components/CodeBlock.astro';
 import InstallTabs from '../components/InstallTabs.astro';
 
@@ -22,7 +23,7 @@ const base = import.meta.env.BASE_URL;
         <ul>
           <li><strong>Azure Developer CLI (azd)</strong> installed on your system</li>
           <li><strong>Azure subscription</strong> and appropriate permissions</li>
-          <li><strong>Azure CLI login</strong> — run <code>az login</code> to authenticate</li>
+          <li><strong>Signed in to azd</strong>: run <code>azd auth login</code> to authenticate</li>
         </ul>
         <p>If you don't have azd installed, visit the <a href="https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd" target="_blank" rel="noopener noreferrer">official installation guide</a>.</p>
       </section>
@@ -46,7 +47,7 @@ Git Commit: abc123def`} language="text" showCopy={false} />
 
       <section class="section">
         <h2>Make Your First Request</h2>
-        <p>List your Azure subscriptions — authentication is handled automatically:</p>
+        <p>List your Azure subscriptions, with authentication handled automatically:</p>
 
         <CodeBlock code={`azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`} language="bash" />
 
@@ -67,18 +68,19 @@ Git Commit: abc123def`} language="text" showCopy={false} />
         <h2>How Authentication Works</h2>
         <p>
           <code>azd rest</code> automatically detects the Azure service you're calling and applies the correct OAuth scope.
-          It uses your Azure CLI credentials (via <code>az login</code>) to acquire tokens.
+          It uses your azd credentials (via <code>azd auth login</code>) to acquire tokens, and falls back to the Azure CLI,
+          service principal environment variables, workload identity, and managed identity.
         </p>
 
         <h3>Automatic Scope Detection</h3>
         <p>No need to specify scopes for common Azure services:</p>
-        <CodeBlock code={`# Management API — auto-detected
+        <CodeBlock code={`# Management API (auto-detected)
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
 
-# Key Vault — auto-detected
+# Key Vault (auto-detected)
 azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4
 
-# Microsoft Graph — auto-detected
+# Microsoft Graph (auto-detected)
 azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
 
         <h3>Custom Scopes</h3>
@@ -120,13 +122,13 @@ azd rest get https://graph.microsoft.com/v1.0/me`} language="bash" />
         <h2>Next Steps</h2>
         <div class="next-steps">
           <div class="next-step-card">
-            <h3>📚 Explore Examples</h3>
+            <h3><Icon name="book-open" /> Explore Examples</h3>
             <p>See real-world usage examples for different Azure services.</p>
             <a href={`${base}examples`} class="card-link">View Examples →</a>
           </div>
 
           <div class="next-step-card">
-            <h3>📖 CLI Reference</h3>
+            <h3><Icon name="book" /> CLI Reference</h3>
             <p>Learn about all commands, flags, and supported services.</p>
             <a href={`${base}reference`} class="card-link">Read Reference →</a>
           </div>
