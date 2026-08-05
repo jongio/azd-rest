@@ -152,3 +152,37 @@ func TestExecute_Template_InvalidExitsBeforeRequest(t *testing.T) {
 	assert.Equal(t, 2, coder.ExitCode())
 	assert.False(t, called, "no request should be made when the template is invalid")
 }
+
+func TestExecute_TemplateRejectsOtherTerminalOutputModes(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  func(*config.Config)
+		wantErr string
+	}{
+		{
+			name:    "count",
+			config:  func(cfg *config.Config) { cfg.Count = true },
+			wantErr: "--template and --count cannot be used together",
+		},
+		{
+			name:    "no body",
+			config:  func(cfg *config.Config) { cfg.NoBody = true },
+			wantErr: "--template and --no-body cannot be used together",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.Defaults()
+			cfg.Template = "{{.name}}"
+			tt.config(&cfg)
+
+			err := newTestService().Execute(context.Background(), cfg, "GET", "https://example.com")
+			require.EqualError(t, err, tt.wantErr)
+
+			var coder templateCoder
+			require.True(t, errors.As(err, &coder))
+			assert.Equal(t, 2, coder.ExitCode())
+		})
+	}
+}

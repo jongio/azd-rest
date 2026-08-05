@@ -17,12 +17,16 @@ import (
 // Nested objects and arrays are written as compact JSON inside the cell. An
 // empty result set produces no output.
 func renderCSV(body []byte) (string, error) {
+	return renderDelimited(body, "csv", ',')
+}
+
+func renderDelimited(body []byte, formatName string, comma rune) (string, error) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
 
 	var parsed any
 	if err := dec.Decode(&parsed); err != nil {
-		return "", fmt.Errorf("csv format requires a JSON response: %w", err)
+		return "", fmt.Errorf("%s format requires a JSON response: %w", formatName, err)
 	}
 
 	rows := extractTableRows(parsed)
@@ -32,10 +36,11 @@ func renderCSV(body []byte) (string, error) {
 
 	var b strings.Builder
 	w := csv.NewWriter(&b)
+	w.Comma = comma
 
 	columns, allObjects := tableColumns(rows)
 	if allObjects {
-		if err := writeCSVRecord(w, columns); err != nil {
+		if err := writeDelimitedRecord(w, formatName, columns); err != nil {
 			return "", err
 		}
 		for _, row := range rows {
@@ -44,16 +49,16 @@ func renderCSV(body []byte) (string, error) {
 			for i, col := range columns {
 				cells[i] = tableCellString(obj[col])
 			}
-			if err := writeCSVRecord(w, cells); err != nil {
+			if err := writeDelimitedRecord(w, formatName, cells); err != nil {
 				return "", err
 			}
 		}
 	} else {
-		if err := writeCSVRecord(w, []string{valueKey}); err != nil {
+		if err := writeDelimitedRecord(w, formatName, []string{valueKey}); err != nil {
 			return "", err
 		}
 		for _, row := range rows {
-			if err := writeCSVRecord(w, []string{tableCellString(row)}); err != nil {
+			if err := writeDelimitedRecord(w, formatName, []string{tableCellString(row)}); err != nil {
 				return "", err
 			}
 		}
@@ -61,15 +66,15 @@ func renderCSV(body []byte) (string, error) {
 
 	w.Flush()
 	if err := w.Error(); err != nil {
-		return "", fmt.Errorf("failed to write csv: %w", err)
+		return "", fmt.Errorf("failed to write %s: %w", formatName, err)
 	}
 	return b.String(), nil
 }
 
-// writeCSVRecord writes a single CSV record and wraps any error with context.
-func writeCSVRecord(w *csv.Writer, record []string) error {
+// writeDelimitedRecord writes a single delimited record and wraps any error with context.
+func writeDelimitedRecord(w *csv.Writer, formatName string, record []string) error {
 	if err := w.Write(record); err != nil {
-		return fmt.Errorf("failed to write csv record: %w", err)
+		return fmt.Errorf("failed to write %s record: %w", formatName, err)
 	}
 	return nil
 }

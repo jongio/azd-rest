@@ -15,10 +15,17 @@ import (
 
 // safeMethods are HTTP methods that are not expected to change server state.
 // Repeating any other method may cause side effects, so we warn about it.
+const (
+	methodGET      = "GET"
+	methodHEAD     = "HEAD"
+	methodOPTIONS  = "OPTIONS"
+	safeMethodList = methodGET + ", " + methodHEAD + ", and " + methodOPTIONS
+)
+
 var safeMethods = map[string]bool{
-	"GET":     true,
-	"HEAD":    true,
-	"OPTIONS": true,
+	methodGET:     true,
+	methodHEAD:    true,
+	methodOPTIONS: true,
 }
 
 // repeatStats holds the outcome of a --repeat run.
@@ -58,6 +65,12 @@ func (s *RequestService) executeRepeat(ctx context.Context, cfg config.Config, h
 
 	var lastResp *client.Response
 	for i := 0; i < cfg.Repeat; i++ {
+		if i > 0 {
+			if err := waitRepeatDelay(ctx, cfg.RepeatDelay); err != nil {
+				return err
+			}
+		}
+
 		if bodyBytes != nil {
 			opts.Body = bytes.NewReader(bodyBytes)
 		}
@@ -85,7 +98,27 @@ func (s *RequestService) executeRepeat(ctx context.Context, cfg config.Config, h
 		return fmt.Errorf("all %d requests failed", cfg.Repeat)
 	}
 
+	if err := writeResponseMetadata(cfg.MetadataFile, opts.Method, opts.URL, lastResp); err != nil {
+		return err
+	}
+
 	return s.writeResponseOutput(cfg, lastResp)
+}
+
+func waitRepeatDelay(ctx context.Context, delay time.Duration) error {
+	if delay <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("repeat delay canceled: %w", ctx.Err())
+	case <-timer.C:
+		return nil
+	}
 }
 
 // writeRepeatSummary prints the repeat run statistics to w.
