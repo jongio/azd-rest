@@ -38,6 +38,7 @@ azd rest version
 | `head` | Execute a HEAD request |
 | `options` | Execute an OPTIONS request |
 | `scope` | Preview the detected OAuth scope and auth mode for a URL |
+| `graph` | Run an Azure Resource Graph query |
 | `version` | Display the extension version |
 
 ---
@@ -187,8 +188,11 @@ These flags are available for all HTTP method commands:
 |------|-------|------|---------|-------------|
 | `--header` | `-H` | string[] | [] | Custom headers (repeatable, format: `Key:Value`). Can be used multiple times. |
 | `--header-file` | | string | "" | Read headers from a file (one `Key: Value` per line; blank lines and `#` comments ignored). `-H` overrides on conflict. |
+| `--header-env` | | string[] | [] | Read a header value from an environment variable (repeatable, format: `Key=ENV_VAR`). `-H` overrides on conflict. |
 | `--data` | `-d` | string | "" | Request body (JSON string). |
 | `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. |
+| `--data` | `-d` | string | "" | Request body (JSON string). Use `@-` to read the body from stdin. |
+| `--data-file` | | string | "" | Read request body from file. Also accepts `@{file}` shorthand. Use `-` to read from stdin. |
 | `--json-field` | | string[] | [] | Add a string field to a JSON request body (repeatable, format: `key=value`). Dotted keys nest. |
 | `--json-field-raw` | | string[] | [] | Add a raw JSON field to a JSON request body (repeatable, format: `key:=json`). Dotted keys nest. |
 | `--timeout` | `-t` | duration | 30s | Request timeout for a single attempt. Examples: `30s`, `5m`, `1h`. |
@@ -200,11 +204,15 @@ These flags are available for all HTTP method commands:
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`. |
+| `--format` | `-f` | string | auto | Output format: `auto` (pretty JSON), `json` (compact JSON), `raw` (raw response), `table`, `jsonl` (one object per line), `yaml`, `csv`, `tsv`, `dotenv` (KEY=value env lines), `xml`. |
 | `--output-file` | | string | "" | Write response to file (raw for binary content). |
 | `--redact` | | string[] | [] | Mask a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
+| `--omit` | | string[] | [] | Remove a JSON response field before output (repeatable, dotted path, `*` matches array elements). |
 | `--binary` | | bool | false | Stream request/response as binary without transformation. |
 | `--include` | `-i` | bool | false | Include the HTTP status line and response headers in the output (curl `-i` style). Sensitive header values are redacted. |
+| `--expect-header` | | string[] | [] | Require a response header, optionally with an exact value. Repeatable. Formats: `Name`, `Name=value`, or `Name: value`. |
+| `--metadata-file` | | string | "" | Write structured response metadata as JSON to a file. Sensitive header values are redacted. |
+| `--no-body` | | bool | false | Discard the response body after the request while keeping status, header, and write-out metadata. |
 | `--verbose` | `-v` | bool | false | Verbose output (show headers, timing, request details). |
 | `--silent` | | bool | false | Suppress non-error diagnostic messages on stderr (warnings and notices). Errors and response output are unaffected. |
 
@@ -214,9 +222,13 @@ These flags are available for all HTTP method commands:
 |------|------|---------|-------------|
 | `--paginate` | bool | false | Follow continuation tokens/next links when supported. |
 | `--retry` | int | 3 | Retry attempts with exponential backoff for transient errors. |
+| `--dry-run` | bool | false | Print sanitized request details as JSON and exit without sending the HTTP request. |
+| `--repeat` | int | 1 | Send the request N times and report latency statistics. |
+| `--show-request-ids` | bool | false | Print common Azure request correlation response headers to stderr. |
 | `--follow-redirects` | bool | true | Follow HTTP redirects. |
 | `--max-redirects` | int | 10 | Maximum redirect hops. |
 | `--allow-host` | stringArray | [] | Restrict requests to hosts matching a pattern (repeatable; leading `*.` matches subdomains). See [Restricting Request Hosts](#restricting-request-hosts). |
+| `--repeat-delay` | duration | 0s | Wait between repeated requests when `--repeat` is greater than 1. |
 
 ### Environment Variable Defaults
 
@@ -230,6 +242,8 @@ The variable name is the flag name upper-cased, with dashes replaced by undersco
 | `--api-version` | `AZD_REST_API_VERSION` |
 | `--timeout` | `AZD_REST_TIMEOUT` |
 | `--retry` | `AZD_REST_RETRY` |
+| `--repeat` | `AZD_REST_REPEAT` |
+| `--repeat-delay` | `AZD_REST_REPEAT_DELAY` |
 | `--format` | `AZD_REST_FORMAT` |
 | `--max-response-size` | `AZD_REST_MAX_RESPONSE_SIZE` |
 
@@ -356,6 +370,42 @@ Service:  Azure Resource Manager
   "service": "Microsoft Graph"
 }
 ```
+
+---
+
+## `azd rest graph [kql-query]`
+
+Run an Azure Resource Graph query using Kusto Query Language. Authentication, the endpoint, and the default API version are handled for you.
+
+**Usage:**
+```bash
+azd rest graph [kql-query] [flags]
+```
+
+**Examples:**
+```bash
+# Inline query
+azd rest graph "Resources | summarize count() by type"
+
+# Query from a file
+azd rest graph --query-file resources.kql
+
+# Scope to one subscription
+azd rest graph "Resources | project name, type" --subscription <sub-id> --top 5
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--query-file` | string | "" | Read the KQL query from a file instead of a positional argument |
+| `--subscription` | string[] | [] | Subscription ID to scope the query (repeatable) |
+| `--management-group` | string[] | [] | Management group ID to scope the query (repeatable) |
+| `--top` | int | 0 | Maximum number of rows to return |
+| `--skip` | int | 0 | Number of rows to skip |
+| `--skip-token` | string | "" | Continuation token from a previous response |
+
+Pass either a positional query or `--query-file`, not both. The file is read as plain text and sent as the Resource Graph `query` field.
 
 ---
 
@@ -569,6 +619,12 @@ Use `--format csv` to export arrays and ARM `value[]` responses as RFC 4180 CSV 
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format csv
 ```
 
+Use `--format xml` to pretty print XML responses, such as Azure Storage data-plane responses:
+
+```bash
+azd rest get https://account.blob.core.windows.net/?comp=list --format xml
+```
+
 ### Query JSON Responses
 
 Use `--query` to select data from JSON responses with JMESPath:
@@ -605,6 +661,22 @@ azd rest get "https://management.azure.com/subscriptions/.../providers/...?api-v
 ```
 
 Redaction runs for the `json`, `auto`, `table`, and `jsonl` formats. Raw and binary output is left unchanged, with a note on stderr, because it cannot be parsed as JSON. A path that matches nothing is a safe no-op.
+
+### Omitting Response Fields
+
+Use `--omit` to remove JSON fields entirely before the response is printed or written to `--output-file`. It is the structural complement to `--redact`: redaction masks a value in place, omission drops the key so it no longer appears. The flag is repeatable and uses the same dotted paths, where `*` matches every element of an array:
+
+```bash
+# Drop a noisy field from the response
+azd rest get "https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01" \
+  --omit value.*.properties.provisioningState
+
+# Remove several fields at once
+azd rest get "https://management.azure.com/subscriptions/{sub}?api-version=2022-12-01" \
+  --omit tags --omit managedByTenants
+```
+
+Omission runs on the same JSON output paths as redaction. Raw and binary output is left unchanged, with a note on stderr. A path that matches nothing is a safe no-op.
 
 ### Save to File
 
@@ -676,6 +748,46 @@ x-ms-request-id: 6f1c...
 ```
 
 Sensitive header values (for example `Authorization` and cookies) are redacted. Unlike `--verbose`, which writes request diagnostics and timing to stderr, `--include` writes only the status line and response headers alongside the body on stdout, which is convenient for scripts that need a header such as `Location`, `ETag`, or `x-ms-request-id`. `--include` works with the `auto`, `json`, and `raw` formats and with binary responses.
+
+## Expect Response Headers
+
+Use `--expect-header` to fail the command when a response does not include a required header or exact header value. Header names are matched case-insensitively, and sensitive header values are redacted in error messages.
+
+```bash
+# Require a response header
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header Content-Type
+
+# Require an exact response header value
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header "Content-Type=application/json"
+## Structured Response Metadata
+
+Use `--metadata-file` to write a JSON sidecar file with response metadata while keeping the response body on stdout or in `--output-file`. The file includes method, final URL, status, status code, duration in milliseconds, downloaded body size, content type, and redacted response headers.
+
+```bash
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --output-file body.json \
+  --metadata-file metadata.json
+```
+
+Example metadata:
+
+```json
+{
+  "method": "GET",
+  "url": "https://management.azure.com/subscriptions?api-version=2020-01-01",
+  "status": "200 OK",
+  "statusCode": 200,
+  "durationMs": 234,
+  "sizeDownload": 1234,
+  "contentType": "application/json",
+  "headers": {
+    "Content-Type": ["application/json"],
+    "x-ms-request-id": ["6f1c..."]
+  }
+}
+```
 
 ## Silent Mode
 
@@ -757,6 +869,18 @@ azd rest get https://api.example.com/widgets \
 
 A missing file or a malformed line (one without a colon) returns a clear error and a non-zero exit code.
 
+### Headers from Environment Variables
+
+Use `--header-env` for sensitive values that should not appear in shell history or process arguments:
+
+```bash
+export WIDGETS_API_KEY="secret-value"
+azd rest get https://api.example.com/widgets \
+  --header-env "X-Api-Key=WIDGETS_API_KEY"
+```
+
+The flag is repeatable and uses `Key=ENV_VAR` syntax. Missing or empty environment variables return an error before authentication or the request. Inline `--header` values take precedence over values loaded from the environment.
+
 ### Content-Type
 
 When using `--data` or `--data-file`, `Content-Type: application/json` is automatically set. Override with `--header`:
@@ -816,6 +940,9 @@ azd rest get https://api.example.com/resource
 
 # Custom retry count
 azd rest get https://api.example.com/resource --retry 5
+
+# Pace repeated requests
+azd rest get https://api.example.com/resource --repeat 3 --repeat-delay 2s
 
 # Disable retries
 azd rest get https://api.example.com/resource --retry 0
