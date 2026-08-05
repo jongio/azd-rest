@@ -123,11 +123,21 @@ azd rest scope https://management.azure.com/subscriptions?api-version=2020-01-01
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
   --header "Accept: application/json" --output-file subscriptions.json
 
+# Save structured response metadata for scripts or audit logs
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --metadata-file metadata.json
+# Review the final request shape without sending it
+azd rest delete https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
+  --dry-run
+
 # Table output (works with arrays and ARM value[] responses)
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format table
 
 # Newline-delimited JSON (one object per line) for piping to jq -c
 azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 --format jsonl
+
+# dotenv KEY=value lines to eval into your shell or feed a CI job / docker --env-file
+azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --format dotenv
 
 # Read a single field into a shell variable without piping through jq -r
 name=$(azd rest get https://management.azure.com/subscriptions/$SUB?api-version=2022-12-01 --query displayName -r)
@@ -149,16 +159,27 @@ azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg
 
 # Mask any sensitive-looking field (passwords, keys, tokens) before sharing a response
 azd rest get https://myvault.vault.azure.net/secrets/mysecret?api-version=7.4 --redact-secrets
+# Fail if a required response header is missing or has a different value
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --expect-header "Content-Type=application/json"
+# Remove noisy fields from the response (structural complement to --redact)
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups?api-version=2021-04-01 \
+  --omit value.*.properties.provisioningState
 
 # Diagnose authentication issues
 azd rest doctor
 
+# Pace repeated requests during a quick latency check
+azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01 \
+  --repeat 3 --repeat-delay 2s
 # Show the effective configuration and AZD_REST_* env var mappings
 azd rest config
 
 # Exit non-zero (code 22) on an HTTP error so scripts and CI stop on failure
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --fail
 
+# Validate the response against a JSON Schema and exit non-zero when it does not conform
+azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 --validate-schema schema.json
 # Assert on the response body in CI: fail the step unless the resource is provisioned
 azd rest get https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}?api-version=2021-04-01 \
   --expect "properties.provisioningState=Succeeded"

@@ -68,6 +68,58 @@ func baseTestConfig(t *testing.T) config.Config {
 	return cfg
 }
 
+func TestBuildRequestOptions_TraceparentSetsHeader(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.Headers = []string{"traceparent: 00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00"}
+	cfg.Traceparent = "00-4BF92F3577B34DA6A3CE929D0E0E4736-00F067AA0BA902B7-01"
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://example.com")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+	assert.Equal(t, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", opts.Headers[traceparentHeader])
+}
+
+func TestBuildRequestOptions_TraceparentGeneratesHeader(t *testing.T) {
+	svc := newTestService()
+	cfg := baseTestConfig(t)
+	cfg.Traceparent = TraceparentAutoValue
+
+	opts, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://example.com")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.NoError(t, err)
+
+	got := opts.Headers[traceparentHeader]
+	require.NotEmpty(t, got)
+	require.NoError(t, validateTraceparent(got))
+}
+
+func TestBuildRequestOptions_TraceparentRejectsInvalidBeforeTokenProvider(t *testing.T) {
+	tokenProviderCalls := 0
+	svc := NewRequestService(
+		func() (client.TokenProvider, error) {
+			tokenProviderCalls++
+			return nil, nil
+		},
+		DefaultHTTPClientFactory,
+	)
+
+	cfg := config.Defaults()
+	cfg.Traceparent = "not-a-traceparent"
+
+	_, cleanup, err := svc.BuildRequestOptions(cfg, "GET", "https://management.azure.com/subscriptions?api-version=2021-04-01")
+	if cleanup != nil {
+		cleanup()
+	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid traceparent")
+	assert.Zero(t, tokenProviderCalls, "traceparent validation should run before token creation")
+}
+
 func TestBuildResponseHeaderBlock_StatusAndSortedHeaders(t *testing.T) {
 	resp := &client.Response{
 		Status: "200 OK",
@@ -281,6 +333,48 @@ func TestExecute_MaxTimeDisabledByDefault(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", server.URL)
 	require.NoError(t, err)
+}
+
+func TestExecute_ReadOnlyAllowsSafeMethods(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
+		t.Run(method, func(t *testing.T) {
+			cfg := baseTestConfig(t)
+			cfg.ReadOnly = true
+
+			err := newTestService().Execute(context.Background(), cfg, method, server.URL)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestExecute_ReadOnlyBlocksMutatingBeforeDependencies(t *testing.T) {
+	tokenProviderCalls := 0
+	httpClientCalls := 0
+	svc := NewRequestService(
+		func() (client.TokenProvider, error) {
+			tokenProviderCalls++
+			return nil, nil
+		},
+		func(tp client.TokenProvider, insecure bool, timeout time.Duration) *client.Client {
+			httpClientCalls++
+			return nil
+		},
+	)
+
+	cfg := config.Defaults()
+	cfg.ReadOnly = true
+
+	err := svc.Execute(context.Background(), cfg, "POST", "https://management.azure.com/subscriptions?api-version=2021-04-01")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--read-only blocks POST requests")
+	assert.Zero(t, tokenProviderCalls, "read-only validation should run before token creation")
+	assert.Zero(t, httpClientCalls, "read-only validation should run before client creation")
 }
 
 func TestBuildRequestOptions_AllowHostPermitsMatch(t *testing.T) {

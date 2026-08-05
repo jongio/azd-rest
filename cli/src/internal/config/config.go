@@ -14,12 +14,14 @@ type Config struct {
 	APIVersion      string
 	BaseURL         string
 	ClientRequestID string
+	Traceparent     string
 	URLParams       []string
 	URLParamFile    string
 	Headers         []string
 	Accept          string
 	ContentType     string
 	HeaderFile      string
+	HeaderEnv       []string
 	Data            string
 	DataFile        string
 	DataFormat      string
@@ -43,19 +45,26 @@ type Config struct {
 	MaxRedirects    int
 	MaxPages        int
 	MaxResponseSize int64
+	ReadOnly        bool
 	ShowThrottle    bool
 	Repeat          int
+	RepeatDelay     time.Duration
 	Color           string
 	WriteOut        string
 	Include         bool
 	AllowedHosts    []string
 	Redact          []string
 	RedactSecrets   bool
+	Omit            []string
 	RedactFile      string
 	Fields          []string
 	TableColumns    []string
 	DumpHeaders     string
+	ExpectedHeaders []string
+	MetadataFile    string
 	Fail            bool
+	ValidateSchema  string
+	DryRun          bool
 	Expect          []string
 	RawOutput       bool
 	Compact         bool

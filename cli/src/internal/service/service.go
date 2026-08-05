@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,8 +25,16 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
-// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
-const clientRequestIDHeader = "x-ms-client-request-id"
+var stdoutWriter io.Writer = os.Stdout
+
+const (
+	// TraceparentAutoValue tells BuildRequestOptions to generate a fresh W3C traceparent header.
+	TraceparentAutoValue = "generate"
+
+	// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+	clientRequestIDHeader = "x-ms-client-request-id"
+	traceparentHeader     = "traceparent"
+)
 
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
@@ -91,6 +101,55 @@ func loadHeaderFile(path string) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to read header file: %w", err)
 	}
 	return result, nil
+}
+
+func loadHeaderEnv(entries []string, lookupEnv func(string) (string, bool)) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, entry := range entries {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid --header-env format: %s (expected Key=ENV_VAR)", entry)
+		}
+		key := strings.TrimSpace(parts[0])
+		envName := strings.TrimSpace(parts[1])
+		if !validHeaderName(key) {
+			return nil, fmt.Errorf("invalid --header-env header name: %q", key)
+		}
+		if !validEnvName(envName) {
+			return nil, fmt.Errorf("invalid --header-env environment variable name: %q", envName)
+		}
+		value, ok := lookupEnv(envName)
+		if !ok || value == "" {
+			return nil, fmt.Errorf("environment variable %s for --header-env %s is not set or empty", envName, key)
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r <= 32 || r >= 127 || strings.ContainsRune("()<>@,;:\\\"/[]?={}", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func applyQueryToResponse(resp *client.Response, expression string) error {
@@ -317,6 +376,16 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		}
 	}
 
+	if len(cfg.HeaderEnv) > 0 {
+		envHeaders, err := loadHeaderEnv(cfg.HeaderEnv, os.LookupEnv)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range envHeaders {
+			opts.Headers[key] = value
+		}
+	}
+
 	// Parse headers
 	for _, header := range cfg.Headers {
 		parts := strings.SplitN(header, ":", 2)
@@ -368,6 +437,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	// The --client-request-id flag is authoritative and overrides a matching -H header.
 	if cfg.ClientRequestID != "" {
 		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
+	}
+
+	// The --traceparent flag is authoritative and overrides a matching -H header.
+	if cfg.Traceparent != "" {
+		value, traceErr := prepareTraceparentHeader(cfg.Traceparent)
+		if traceErr != nil {
+			return opts, nil, traceErr
+		}
+		opts.Headers[traceparentHeader] = value
 	}
 
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
@@ -467,7 +545,7 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	opts.SkipAuth = client.ShouldSkipAuth(requestURL, opts.Headers, cfg.NoAuth)
 
 	// Create token provider only when authentication is needed
-	if !opts.SkipAuth {
+	if !opts.SkipAuth && !cfg.DryRun {
 		tokenProvider, err := s.tokenProviderFactory()
 		if err != nil {
 			cleanup()
@@ -494,8 +572,17 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if cfg.ReadOnly {
+		if err := validateReadOnlyMethod(method); err != nil {
+			return err
+		}
+	}
+
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
+	}
+	if cfg.RepeatDelay < 0 {
+		return fmt.Errorf("--repeat-delay cannot be negative, got %s", cfg.RepeatDelay)
 	}
 
 	if err := validateColorMode(cfg.Color); err != nil {
@@ -506,6 +593,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// up front (exit 2, no network call) so the flag never silently does nothing.
 	if cfg.RawOutput && cfg.Query == "" {
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
+	}
+
+	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
+		return err
 	}
 
 	// --max-latency (#280): parse the budget up front so an invalid value exits
@@ -525,6 +616,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 	defer cleanup()
+
+	if cfg.DryRun {
+		return writeDryRun(stdoutWriter, cfg, opts)
+	}
 
 	// --max-time bounds the whole operation (retries and pagination included).
 	// A value of zero leaves the context untouched, preserving prior behavior.
@@ -568,6 +663,10 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		writeThrottleInfo(os.Stderr, resp.Headers)
 	}
 
+	if err := writeResponseMetadata(cfg.MetadataFile, opts.Method, opts.URL, resp); err != nil {
+		return err
+	}
+
 	if cfg.ShowRequestIDs {
 		writeRequestIDs(os.Stderr, resp.Headers)
 	}
@@ -586,12 +685,25 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, opts.Method, opts.URL, resp))
 	}
 
+	if err := checkExpectedHeaders(resp, cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
 	// --expect (#269): after the body has been written, assert JMESPath
 	// expressions against the original response and return a non-zero exit when
 	// one does not hold. Evaluated before --fail so an explicit body assertion
 	// is reported ahead of the coarser status-code gate.
 	if len(cfg.Expect) > 0 {
 		if err := evaluateExpectations(originalBody, resp.Headers.Get("Content-Type"), cfg.Expect); err != nil {
+			return err
+		}
+	}
+
+	// --validate-schema (#267): after the body has been written, check the
+	// response against a JSON Schema and return non-zero when it does not
+	// conform so contract checks in CI can fail the build.
+	if cfg.ValidateSchema != "" {
+		if err := validateResponseSchema(os.Stderr, resp.Body, cfg.ValidateSchema); err != nil {
 			return err
 		}
 	}
@@ -611,6 +723,101 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	}
 
 	return nil
+}
+
+func prepareTraceparentHeader(value string) (string, error) {
+	if value == TraceparentAutoValue {
+		return generateTraceparent()
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if err := validateTraceparent(normalized); err != nil {
+		return "", err
+	}
+	return normalized, nil
+}
+
+func generateTraceparent() (string, error) {
+	traceID, err := randomNonZeroHex(16)
+	if err != nil {
+		return "", err
+	}
+	parentID, err := randomNonZeroHex(8)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("00-%s-%s-01", traceID, parentID), nil
+}
+
+func randomNonZeroHex(length int) (string, error) {
+	buf := make([]byte, length)
+	for {
+		if _, err := rand.Read(buf); err != nil {
+			return "", fmt.Errorf("failed to generate traceparent: %w", err)
+		}
+		if !allZeroBytes(buf) {
+			return hex.EncodeToString(buf), nil
+		}
+	}
+}
+
+func validateTraceparent(value string) error {
+	parts := strings.Split(value, "-")
+	if len(parts) != 4 {
+		return fmt.Errorf("invalid traceparent %q: expected version, trace ID, parent ID, and flags", value)
+	}
+	if parts[0] != "00" {
+		return fmt.Errorf("invalid traceparent %q: only version 00 is supported", value)
+	}
+	if !isLowerHex(parts[1], 32) || allZeroHex(parts[1]) {
+		return fmt.Errorf("invalid traceparent %q: trace ID must be 32 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[2], 16) || allZeroHex(parts[2]) {
+		return fmt.Errorf("invalid traceparent %q: parent ID must be 16 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[3], 2) {
+		return fmt.Errorf("invalid traceparent %q: trace flags must be 2 lowercase hex characters", value)
+	}
+	return nil
+}
+
+func isLowerHex(value string, length int) bool {
+	if len(value) != length {
+		return false
+	}
+	for _, ch := range value {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroHex(value string) bool {
+	for _, ch := range value {
+		if ch != '0' {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroBytes(value []byte) bool {
+	for _, b := range value {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// validateReadOnlyMethod rejects mutating request methods when read-only mode is enabled.
+func validateReadOnlyMethod(method string) error {
+	normalized := strings.ToUpper(method)
+	if safeMethods[normalized] {
+		return nil
+	}
+	return fmt.Errorf("--read-only blocks %s requests; allowed methods are %s", normalized, safeMethodList)
 }
 
 // writeResponseOutput renders the response body to stdout or --output-file,
@@ -660,6 +867,21 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact could not parse the response as JSON; leaving it unchanged\n")
 		} else {
 			resp.Body = redacted
+		}
+	}
+
+	// Omission: remove matched JSON response fields entirely before formatting.
+	// This is the structural complement to --redact: redaction masks the value in
+	// place, omission drops the key (or array elements). Raw and binary output
+	// cannot be parsed as JSON, so it is left unchanged with a note on stderr.
+	if len(cfg.Omit) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if omitted, err := omitJSONBody(resp.Body, cfg.Omit); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = omitted
 		}
 	}
 
@@ -718,7 +940,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table", "jsonl", "yaml", "csv", and "xml"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", "yaml", "csv", "tsv", "dotenv", and "xml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTableWithColumns(resp.Body, cfg.TableColumns)
 		if err != nil {
@@ -745,6 +967,22 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 
 	if cfg.OutputFormat == "csv" {
 		out, err := renderCSV(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "dotenv" {
+		out, err := renderDotenv(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "tsv" {
+		out, err := renderTSV(resp.Body)
 		if err != nil {
 			return err
 		}
