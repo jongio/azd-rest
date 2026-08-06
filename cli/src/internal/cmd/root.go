@@ -87,6 +87,8 @@ var (
 	expect          []string
 	rawOutput       bool
 	compact         bool
+	cacheTTL        string
+	noCache         bool
 	limit           int
 	showRequestIDs  bool
 	noBody          bool
@@ -309,6 +311,8 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&expect, "expect", []string{}, "Assert a JMESPath expression against the JSON response (repeatable). Bare expression must be truthy; expr=value requires equality. Exits non-zero when an assertion fails")
 	rootCmd.PersistentFlags().BoolVarP(&rawOutput, "raw-output", "r", false, "With --query, print a string result unquoted and an array of strings one per line (like jq -r)")
 	rootCmd.PersistentFlags().BoolVarP(&compact, "compact", "c", false, "Minify JSON output to a single line (applies to auto and json formats and --query results)")
+	rootCmd.PersistentFlags().StringVar(&cacheTTL, "cache-ttl", "", "Cache successful GET responses on disk and serve repeats within this window (Go duration, e.g. 30s, 5m, 1h; 0 or empty disables caching)")
+	rootCmd.PersistentFlags().BoolVar(&noCache, "no-cache", false, "Bypass the cached response and refresh the entry with a fresh request (only meaningful with --cache-ttl)")
 	rootCmd.PersistentFlags().IntVar(&limit, "limit", 0, "Limit top-level JSON arrays or ARM value arrays to the first N items before formatting")
 	rootCmd.PersistentFlags().BoolVar(&noBody, "no-body", false, "Discard the response body after the request while keeping status, header, and write-out metadata. Cannot be combined with --template or --count")
 
@@ -343,6 +347,7 @@ Examples:
 		NewDoctorCommand(),
 		NewGraphCommand(),
 		NewWhoamiCommand(),
+		NewCacheCommand(),
 		NewJWTCommand(),
 		NewConfigCommand(configFlagNames),
 	)
@@ -418,6 +423,8 @@ func snapshotConfig() config.Config {
 		Expect:          expect,
 		RawOutput:       rawOutput,
 		Compact:         compact,
+		CacheTTL:        cacheTTL,
+		NoCache:         noCache,
 		Limit:           limit,
 		ShowRequestIDs:  showRequestIDs,
 		NoBody:          noBody,

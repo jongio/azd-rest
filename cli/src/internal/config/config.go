@@ -72,6 +72,8 @@ type Config struct {
 	Expect          []string
 	RawOutput       bool
 	Compact         bool
+	CacheTTL        string
+	NoCache         bool
 	Limit           int
 	ShowRequestIDs  bool
 	NoBody          bool

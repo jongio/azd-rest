@@ -79,6 +79,8 @@ func resetGlobalFlags() {
 	fail = false
 	rawOutput = false
 	compact = false
+	cacheTTL = ""
+	noCache = false
 	repeatDelay = defaults.RepeatDelay
 	dryRun = false
 	metadataFile = ""
