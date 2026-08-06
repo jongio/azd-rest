@@ -51,10 +51,12 @@ var (
 	tokenProviderMu     sync.Mutex
 )
 
-// cachedHTTPClient is reused across MCP requests for connection reuse.
+// Default-timeout HTTP clients are cached separately by authentication state
+// so anonymous requests can never poison later authenticated requests.
 var (
-	cachedHTTPClient *client.Client
-	httpClientMu     sync.Mutex
+	cachedAuthenticatedHTTPClient *client.Client
+	cachedAnonymousHTTPClient     *client.Client
+	httpClientMu                  sync.Mutex
 )
 
 // getOrCreateTokenProvider returns the cached token provider, retrying on failure.
@@ -72,7 +74,7 @@ func getOrCreateTokenProvider() (auth.TokenProvider, error) {
 	return tp, nil
 }
 
-// getOrCreateHTTPClient returns the cached HTTP client, creating one if needed.
+// getOrCreateHTTPClient returns a cached client with the requested auth state.
 func getOrCreateHTTPClient(tp auth.TokenProvider, timeout time.Duration) *client.Client {
 	if timeout != mcpDefaultTimeout {
 		return client.NewClient(tp, false, timeout)
@@ -80,12 +82,16 @@ func getOrCreateHTTPClient(tp auth.TokenProvider, timeout time.Duration) *client
 
 	httpClientMu.Lock()
 	defer httpClientMu.Unlock()
-	if cachedHTTPClient != nil {
-		return cachedHTTPClient
+
+	cachedClient := &cachedAnonymousHTTPClient
+	if tp != nil {
+		cachedClient = &cachedAuthenticatedHTTPClient
 	}
-	c := client.NewClient(tp, false, mcpDefaultTimeout)
-	cachedHTTPClient = c
-	return c
+	if *cachedClient != nil {
+		return *cachedClient
+	}
+	*cachedClient = client.NewClient(tp, false, mcpDefaultTimeout)
+	return *cachedClient
 }
 
 // validateScopeURLMatch ensures the scope domain matches the request URL domain.
