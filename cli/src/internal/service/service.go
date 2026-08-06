@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,8 +26,16 @@ import (
 	"github.com/jongio/azd-rest/src/internal/config"
 )
 
-// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
-const clientRequestIDHeader = "x-ms-client-request-id"
+var stdoutWriter io.Writer = os.Stdout
+
+const (
+	// TraceparentAutoValue tells BuildRequestOptions to generate a fresh W3C traceparent header.
+	TraceparentAutoValue = "generate"
+
+	// clientRequestIDHeader is the Azure correlation header set by --client-request-id.
+	clientRequestIDHeader = "x-ms-client-request-id"
+	traceparentHeader     = "traceparent"
+)
 
 // TokenProviderFactory creates a TokenProvider. Abstracting this allows tests
 // to inject mocks without touching real Azure credentials.
@@ -94,6 +104,55 @@ func loadHeaderFile(path string) (map[string]string, error) {
 	return result, nil
 }
 
+func loadHeaderEnv(entries []string, lookupEnv func(string) (string, bool)) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, entry := range entries {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid --header-env format: %s (expected Key=ENV_VAR)", entry)
+		}
+		key := strings.TrimSpace(parts[0])
+		envName := strings.TrimSpace(parts[1])
+		if !validHeaderName(key) {
+			return nil, fmt.Errorf("invalid --header-env header name: %q", key)
+		}
+		if !validEnvName(envName) {
+			return nil, fmt.Errorf("invalid --header-env environment variable name: %q", envName)
+		}
+		value, ok := lookupEnv(envName)
+		if !ok || value == "" {
+			return nil, fmt.Errorf("environment variable %s for --header-env %s is not set or empty", envName, key)
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r <= 32 || r >= 127 || strings.ContainsRune("()<>@,;:\\\"/[]?={}", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func applyQueryToResponse(resp *client.Response, expression string) error {
 	if expression == "" {
 		return nil
@@ -146,6 +205,33 @@ func applyAPIVersion(rawURL, apiVersion string) (string, error) {
 	return parsed.String(), nil
 }
 
+func resolveRequestURL(rawURL, baseURL string) (string, error) {
+	if baseURL == "" {
+		return rawURL, nil
+	}
+
+	request, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid request URL: %w", err)
+	}
+	if request.IsAbs() {
+		return rawURL, nil
+	}
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid --base-url: %w", err)
+	}
+	if base.Scheme == "" || base.Host == "" {
+		return "", fmt.Errorf("--base-url must include scheme and host")
+	}
+	if !strings.HasPrefix(rawURL, "/") && base.Path != "" && !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+
+	return base.ResolveReference(request).String(), nil
+}
+
 // applyURLParams sets or appends query parameters from repeatable key=value flags.
 // The first occurrence of a key replaces any existing value on the URL; further
 // occurrences of the same key append, so multi-valued parameters are possible.
@@ -176,6 +262,40 @@ func applyURLParams(rawURL string, params []string) (string, error) {
 	return parsed.String(), nil
 }
 
+// loadURLParamFile reads URL parameters from a file, one "key=value" per line.
+// Blank lines and lines beginning with "#" are ignored.
+func loadURLParamFile(path string) ([]string, error) {
+	file, err := os.Open(path) // #nosec G304 -- User-specified file path via --url-param-file flag is intentional.
+	if err != nil {
+		return nil, fmt.Errorf("failed to open URL parameter file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	var result []string
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid URL parameter on line %d of %s: %q (expected key=value)", lineNum, path, line)
+		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return nil, fmt.Errorf("invalid URL parameter on line %d of %s: %q (empty parameter name)", lineNum, path, line)
+		}
+		result = append(result, key+"="+strings.TrimSpace(parts[1]))
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read URL parameter file: %w", err)
+	}
+	return result, nil
+}
+
 // BuildRequestOptions constructs RequestOptions from a Config and method/URL.
 // The caller owns the returned Body (if it is an *os.File, it must be closed).
 //
@@ -184,9 +304,25 @@ func applyURLParams(rawURL string, params []string) (string, error) {
 // the file after the request completes. The returned cleanup function handles
 // this - call it on error paths. On success paths the caller should defer it.
 func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url string) (client.RequestOptions, func(), error) {
-	requestURL, err := applyAPIVersion(url, cfg.APIVersion)
+	requestURL, err := resolveRequestURL(url, cfg.BaseURL)
 	if err != nil {
 		return client.RequestOptions{}, nil, err
+	}
+
+	requestURL, err = applyAPIVersion(requestURL, cfg.APIVersion)
+	if err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+
+	if cfg.URLParamFile != "" {
+		fileParams, err := loadURLParamFile(cfg.URLParamFile)
+		if err != nil {
+			return client.RequestOptions{}, nil, err
+		}
+		requestURL, err = applyURLParams(requestURL, fileParams)
+		if err != nil {
+			return client.RequestOptions{}, nil, err
+		}
 	}
 
 	requestURL, err = applyURLParams(requestURL, cfg.URLParams)
@@ -241,6 +377,16 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		}
 	}
 
+	if len(cfg.HeaderEnv) > 0 {
+		envHeaders, err := loadHeaderEnv(cfg.HeaderEnv, os.LookupEnv)
+		if err != nil {
+			return opts, nil, err
+		}
+		for key, value := range envHeaders {
+			opts.Headers[key] = value
+		}
+	}
+
 	// Parse headers
 	for _, header := range cfg.Headers {
 		parts := strings.SplitN(header, ":", 2)
@@ -250,6 +396,13 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		opts.Headers[key] = value
+	}
+
+	if cfg.Accept != "" {
+		opts.Headers["Accept"] = cfg.Accept
+	}
+	if cfg.ContentType != "" {
+		opts.Headers[contentTypeHeader] = cfg.ContentType
 	}
 
 	// --data-format (#236) selects how --data / --data-file is interpreted before
@@ -285,6 +438,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	// The --client-request-id flag is authoritative and overrides a matching -H header.
 	if cfg.ClientRequestID != "" {
 		opts.Headers[clientRequestIDHeader] = cfg.ClientRequestID
+	}
+
+	// The --traceparent flag is authoritative and overrides a matching -H header.
+	if cfg.Traceparent != "" {
+		value, traceErr := prepareTraceparentHeader(cfg.Traceparent)
+		if traceErr != nil {
+			return opts, nil, traceErr
+		}
+		opts.Headers[traceparentHeader] = value
 	}
 
 	// Form fields (#202): build an application/x-www-form-urlencoded body from
@@ -326,6 +488,17 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 			}
 		}
 	case cfg.DataFile != "":
+		if readsFromStdin(cfg.DataFile) {
+			if cfg.Data != "" {
+				return opts, nil, fmt.Errorf("--data-file - cannot be combined with --data")
+			}
+			raw, readErr := readStdinBody()
+			if readErr != nil {
+				return opts, nil, readErr
+			}
+			opts.Body = bytes.NewReader(raw)
+			break
+		}
 		filePath := cfg.DataFile
 		if strings.HasPrefix(cfg.DataFile, "@") {
 			filePath = strings.TrimPrefix(cfg.DataFile, "@")
@@ -337,7 +510,15 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 		bodyFile = file
 		opts.Body = file
 	case cfg.Data != "":
-		opts.Body = strings.NewReader(cfg.Data)
+		if cfg.Data == "@-" {
+			raw, readErr := readStdinBody()
+			if readErr != nil {
+				return opts, nil, readErr
+			}
+			opts.Body = bytes.NewReader(raw)
+		} else {
+			opts.Body = strings.NewReader(cfg.Data)
+		}
 	}
 
 	// cleanup closes the file handle if one was opened. The caller owns this.
@@ -362,10 +543,10 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 	}
 
 	// Check if auth should be skipped
-	opts.SkipAuth = client.ShouldSkipAuth(url, opts.Headers, cfg.NoAuth)
+	opts.SkipAuth = client.ShouldSkipAuth(requestURL, opts.Headers, cfg.NoAuth)
 
 	// Create token provider only when authentication is needed
-	if !opts.SkipAuth {
+	if !opts.SkipAuth && !cfg.DryRun {
 		tokenProvider, err := s.tokenProviderFactory()
 		if err != nil {
 			cleanup()
@@ -379,13 +560,33 @@ func (s *RequestService) BuildRequestOptions(cfg config.Config, method, url stri
 
 // Execute performs the full request lifecycle: build options, execute, format output.
 func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method, url string) error {
+	if cfg.RedactFile != "" {
+		paths, err := loadRedactFile(cfg.RedactFile)
+		if err != nil {
+			return err
+		}
+		cfg.Redact = append(paths, cfg.Redact...)
+	}
+
 	// Warn prominently when TLS verification is disabled.
 	if cfg.Insecure {
 		writeDiagnostic(os.Stderr, cfg.Silent, "Warning: TLS certificate verification is disabled (--insecure). Do not use this flag in production.\n")
 	}
 
+	if cfg.ReadOnly {
+		if err := validateReadOnlyMethod(method); err != nil {
+			return err
+		}
+	}
+
 	if cfg.Repeat < 1 {
 		return fmt.Errorf("--repeat must be at least 1, got %d", cfg.Repeat)
+	}
+	if cfg.Limit < 0 {
+		return fmt.Errorf("--limit must be at least 1 when set, got %d", cfg.Limit)
+	}
+	if cfg.RepeatDelay < 0 {
+		return fmt.Errorf("--repeat-delay cannot be negative, got %s", cfg.RepeatDelay)
 	}
 
 	if err := validateColorMode(cfg.Color); err != nil {
@@ -396,6 +597,40 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 	// up front (exit 2, no network call) so the flag never silently does nothing.
 	if cfg.RawOutput && cfg.Query == "" {
 		return &rawOutputUsageError{msg: "--raw-output requires --query"}
+	}
+	if cfg.Count && cfg.NoBody {
+		return &countUsageError{msg: "--count and --no-body cannot be used together"}
+	}
+	if cfg.Template != "" && cfg.Count {
+		return &templateConfigError{msg: "--template and --count cannot be used together"}
+	}
+	if cfg.Template != "" && cfg.NoBody {
+		return &templateConfigError{msg: "--template and --no-body cannot be used together"}
+	}
+
+	allowedStatuses, err := parseAllowedStatuses(cfg.AllowStatus)
+	if err != nil {
+		return err
+	}
+
+	if err := validateHeaderExpectations(cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
+	// --max-latency (#280): parse the budget up front so an invalid value exits
+	// with code 2 before any network call is made. A zero budget disables it.
+	maxLatencyBudget, err := parseMaxLatency(cfg.MaxLatency)
+	if err != nil {
+		return err
+	}
+
+	// --template (#279): compile the template up front so invalid syntax or a
+	// missing @file exits with code 2 before any network call is made. The
+	// compiled result is discarded here and rebuilt when the body is rendered.
+	if cfg.Template != "" {
+		if _, err := parseTemplate(cfg.Template); err != nil {
+			return err
+		}
 	}
 
 	// Echo the correlation ID so it can be quoted in an Azure support request.
@@ -410,32 +645,15 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		return err
 	}
 
-	// Caching applies only to a single GET. Repeat runs measure latency and
-	// always hit the network. On a hit within the window the cached status,
-	// headers, and body are served with no network call or token acquisition.
-	cacheEnabled := cacheTTL > 0 && cfg.Repeat == 1 && strings.EqualFold(method, http.MethodGet)
-	var cacheCtx cacheContext
-	cacheReady := false
-	if cacheEnabled {
-		if derived, buildErr := newCacheContext(cfg, method, url); buildErr == nil {
-			cacheCtx = derived
-			cacheReady = true
-			if !cfg.NoCache {
-				if cached, hit := readCache(cacheCtx.dir, cacheCtx.key, cacheTTL); hit {
-					if cfg.Verbose {
-						writeDiagnostic(os.Stderr, cfg.Silent, "> served from cache (max age %s)\n", cacheTTL)
-					}
-					return s.handleResponse(cfg, method, cacheCtx.finalURL, cached)
-				}
-			}
-		}
-	}
-
 	opts, cleanup, err := s.BuildRequestOptions(cfg, method, url)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
+
+	if cfg.DryRun {
+		return writeDryRun(stdoutWriter, cfg, opts)
+	}
 
 	// --max-time bounds the whole operation (retries and pagination included).
 	// A value of zero leaves the context untouched, preserving prior behavior.
@@ -443,6 +661,40 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, cfg.MaxTime)
 		defer cancel()
+	}
+
+	// Caching applies only to a single GET without a body. Request construction and
+	// host-policy validation always run first. Authenticated lookups acquire the
+	// exact token used by the eventual request and include its fingerprint in
+	// the key so entries cannot cross credential boundaries.
+	cacheEnabled := cacheTTL > 0 &&
+		cfg.Repeat == 1 &&
+		strings.EqualFold(opts.Method, http.MethodGet) &&
+		opts.Body == nil
+	var cacheCtx cacheContext
+	cacheReady := false
+	if cacheEnabled {
+		cacheCtx, err = newCacheContext(ctx, &opts)
+		if err != nil {
+			return err
+		}
+		cacheReady = true
+		if cfg.NoCache {
+			if err := removeCache(cacheCtx.dir, cacheCtx.key); err != nil {
+				return err
+			}
+		} else {
+			cacheResponseLimit := cfg.MaxResponseSize
+			if cacheResponseLimit <= 0 {
+				cacheResponseLimit = config.Defaults().MaxResponseSize
+			}
+			if cached, hit := readCache(cacheCtx.dir, cacheCtx.key, cacheTTL, cacheResponseLimit); hit {
+				if cfg.Verbose {
+					writeDiagnostic(os.Stderr, cfg.Silent, "> served from cache (max age %s)\n", cacheTTL)
+				}
+				return s.handleResponse(cfg, opts.Method, opts.URL, cached, allowedStatuses, maxLatencyBudget)
+			}
+		}
 	}
 
 	httpClient := s.httpClientFactory(opts.TokenProvider, cfg.Insecure, cfg.Timeout)
@@ -473,14 +725,32 @@ func (s *RequestService) Execute(ctx context.Context, cfg config.Config, method,
 		}
 	}
 
-	return s.handleResponse(cfg, opts.Method, opts.URL, resp)
+	return s.handleResponse(cfg, opts.Method, opts.URL, resp, allowedStatuses, maxLatencyBudget)
 }
 
 // handleResponse runs the shared post-response pipeline for both live and
 // cached responses: apply --query, emit throttle and header diagnostics, write
 // the body, expand --write-out, and honor --fail. method and finalURL feed
 // --write-out so a cache hit reports the same request metadata as a live call.
-func (s *RequestService) handleResponse(cfg config.Config, method, finalURL string, resp *client.Response) error {
+func (s *RequestService) handleResponse(
+	cfg config.Config,
+	method string,
+	finalURL string,
+	resp *client.Response,
+	allowedStatuses allowedStatusRanges,
+	maxLatencyBudget time.Duration,
+) error {
+	// --diff (#266): compare the JSON response against a baseline file and print
+	// a unified diff. This is terminal: it replaces normal body output and exits
+	// non-zero on drift so snapshot checks in CI can detect changes.
+	if cfg.Diff != "" {
+		return diffAgainstBaseline(os.Stdout, resp.Body, cfg.Diff)
+	}
+
+	// Capture the original response body before --query rewrites it so --expect
+	// asserts on the full response regardless of what --query prints (#269).
+	originalBody := resp.Body
+
 	if cfg.Query != "" {
 		if err := applyQueryToResponse(resp, cfg.Query); err != nil {
 			return err
@@ -489,6 +759,14 @@ func (s *RequestService) handleResponse(cfg config.Config, method, finalURL stri
 
 	if cfg.ShowThrottle {
 		writeThrottleInfo(os.Stderr, resp.Headers)
+	}
+
+	if err := writeResponseMetadata(cfg.MetadataFile, method, finalURL, resp); err != nil {
+		return err
+	}
+
+	if cfg.ShowRequestIDs {
+		writeRequestIDs(os.Stderr, resp.Headers)
 	}
 
 	if cfg.DumpHeaders != "" {
@@ -505,19 +783,175 @@ func (s *RequestService) handleResponse(cfg config.Config, method, finalURL stri
 		fmt.Fprint(os.Stderr, ExpandWriteOut(cfg.WriteOut, method, finalURL, resp))
 	}
 
+	if err := checkExpectedHeaders(resp, cfg.ExpectedHeaders); err != nil {
+		return err
+	}
+
+	// --expect (#269): after the body has been written, assert JMESPath
+	// expressions against the original response and return a non-zero exit when
+	// one does not hold. Evaluated before --fail so an explicit body assertion
+	// is reported ahead of the coarser status-code gate.
+	if len(cfg.Expect) > 0 {
+		if err := evaluateExpectations(originalBody, resp.Headers.Get("Content-Type"), cfg.Expect); err != nil {
+			return err
+		}
+	}
+
+	// --validate-schema (#267): after the body has been written, check the
+	// response against a JSON Schema and return non-zero when it does not
+	// conform so contract checks in CI can fail the build.
+	if cfg.ValidateSchema != "" {
+		if err := validateResponseSchema(os.Stderr, resp.Body, cfg.ValidateSchema); err != nil {
+			return err
+		}
+	}
+
 	// --fail (#233): after the body and metadata have been written, return a
 	// non-zero exit for an error status so scripts and CI can detect failures.
-	if cfg.Fail && resp.StatusCode >= 400 {
+	if cfg.Fail && resp.StatusCode >= 400 && !allowedStatuses.allows(resp.StatusCode) {
 		return &httpFailError{status: resp.StatusCode}
 	}
 
+	// --max-latency (#280): the response has been written, so only the exit code
+	// changes. A request slower than the budget exits 28, letting CI gate on
+	// performance without aborting the request mid-flight.
+	if maxLatencyBudget > 0 && resp.Duration > maxLatencyBudget {
+		writeDiagnostic(os.Stderr, cfg.Silent, "> response took %s, over the --max-latency budget of %s\n", resp.Duration, maxLatencyBudget)
+		return &maxLatencyExceededError{budget: maxLatencyBudget, actual: resp.Duration}
+	}
+
 	return nil
+}
+
+func prepareTraceparentHeader(value string) (string, error) {
+	if value == TraceparentAutoValue {
+		return generateTraceparent()
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if err := validateTraceparent(normalized); err != nil {
+		return "", err
+	}
+	return normalized, nil
+}
+
+func generateTraceparent() (string, error) {
+	traceID, err := randomNonZeroHex(16)
+	if err != nil {
+		return "", err
+	}
+	parentID, err := randomNonZeroHex(8)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("00-%s-%s-01", traceID, parentID), nil
+}
+
+func randomNonZeroHex(length int) (string, error) {
+	buf := make([]byte, length)
+	for {
+		if _, err := rand.Read(buf); err != nil {
+			return "", fmt.Errorf("failed to generate traceparent: %w", err)
+		}
+		if !allZeroBytes(buf) {
+			return hex.EncodeToString(buf), nil
+		}
+	}
+}
+
+func validateTraceparent(value string) error {
+	parts := strings.Split(value, "-")
+	if len(parts) != 4 {
+		return fmt.Errorf("invalid traceparent %q: expected version, trace ID, parent ID, and flags", value)
+	}
+	if parts[0] != "00" {
+		return fmt.Errorf("invalid traceparent %q: only version 00 is supported", value)
+	}
+	if !isLowerHex(parts[1], 32) || allZeroHex(parts[1]) {
+		return fmt.Errorf("invalid traceparent %q: trace ID must be 32 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[2], 16) || allZeroHex(parts[2]) {
+		return fmt.Errorf("invalid traceparent %q: parent ID must be 16 non-zero lowercase hex characters", value)
+	}
+	if !isLowerHex(parts[3], 2) {
+		return fmt.Errorf("invalid traceparent %q: trace flags must be 2 lowercase hex characters", value)
+	}
+	return nil
+}
+
+func isLowerHex(value string, length int) bool {
+	if len(value) != length {
+		return false
+	}
+	for _, ch := range value {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroHex(value string) bool {
+	for _, ch := range value {
+		if ch != '0' {
+			return false
+		}
+	}
+	return true
+}
+
+func allZeroBytes(value []byte) bool {
+	for _, b := range value {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// validateReadOnlyMethod rejects mutating request methods when read-only mode is enabled.
+func validateReadOnlyMethod(method string) error {
+	normalized := strings.ToUpper(method)
+	if safeMethods[normalized] {
+		return nil
+	}
+	return fmt.Errorf("--read-only blocks %s requests; allowed methods are %s", normalized, safeMethodList)
 }
 
 // writeResponseOutput renders the response body to stdout or --output-file,
 // choosing the raw path for binary content and the formatter path otherwise.
 func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Response) error {
 	formatter := client.NewFormatter(cfg.Verbose, cfg.OutputFormat)
+
+	// --template (#279): render the response through a Go text/template. It runs
+	// after --query (applied in Execute) and takes precedence over --format and
+	// the other output modes, so it returns before any of them run.
+	if cfg.Template != "" {
+		rendered, err := renderTemplate(cfg.Template, resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(rendered, cfg.OutputFile)
+	}
+
+	// --count (#282): print the number of records and nothing else. It runs
+	// after --query (applied in Execute) and takes precedence over the body
+	// output, so it returns before any format dispatch. A non-JSON body is
+	// reported as a clear error.
+	if cfg.Count {
+		n, err := countRecords(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(fmt.Sprintf("%d\n", n), cfg.OutputFile)
+	}
+
+	if cfg.NoBody {
+		if cfg.Include {
+			return formatter.WriteOutput(buildResponseHeaderBlock(resp), cfg.OutputFile)
+		}
+		return nil
+	}
 
 	// --raw-output (#234): after --query, print a string result unquoted and an
 	// array of strings one per line. Other shapes fall through to JSON so
@@ -528,13 +962,43 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
-	// Redaction (#216): mask matched JSON response fields before formatting.
-	// Raw and binary output cannot be parsed as JSON, so it is left unchanged
-	// with a note on stderr.
-	if len(cfg.Redact) > 0 {
+	// --limit (#329): cap a JSON collection to the first N records before any
+	// other transform or format dispatch runs, so every downstream flag sees the
+	// capped set. A non-JSON or non-collection body is left unchanged with a note.
+	if cfg.Limit > 0 {
+		limited, changed, err := limitJSONBody(resp.Body, cfg.Limit)
+		switch {
+		case err != nil:
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --limit needs a JSON response; leaving output unchanged\\n")
+		case changed:
+			resp.Body = limited
+		default:
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --limit found no top-level JSON array or value[] array; leaving output unchanged\\n")
+		}
+	}
+
+	// --fields (#281): keep only the listed top-level fields. Unlike redaction
+	// and flatten, this applies across every output format (json, table, csv,
+	// yaml) and downstream pipes, so it runs before the format dispatch. Raw and
+	// binary output cannot be parsed as JSON and are left unchanged with a note.
+	if len(cfg.Fields) > 0 {
 		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
 		if isBinary || cfg.OutputFormat == formatRaw {
-			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact needs parsed JSON; leaving raw or binary output unchanged\n")
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --fields needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if projected, ok := projectFields(resp.Body, cfg.Fields); ok {
+			resp.Body = projected
+		} else {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --fields could not parse the response as JSON; leaving it unchanged\n")
+		}
+	}
+
+	// Redaction (#216): mask matched JSON response fields before formatting.
+	// Raw, XML, and binary output cannot be parsed as JSON, so it is left
+	// unchanged with a note on stderr.
+	if len(cfg.Redact) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw || cfg.OutputFormat == formatXML {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact needs parsed JSON; leaving raw, XML, or binary output unchanged\n")
 		} else if redacted, err := redactJSONBody(resp.Body, cfg.Redact); err != nil {
 			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact could not parse the response as JSON; leaving it unchanged\n")
 		} else {
@@ -542,9 +1006,39 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		}
 	}
 
+	// Omission: remove matched JSON response fields entirely before formatting.
+	// This is the structural complement to --redact: redaction masks the value in
+	// place, omission drops the key (or array elements). Raw and binary output
+	// cannot be parsed as JSON, so it is left unchanged with a note on stderr.
+	if len(cfg.Omit) > 0 {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if omitted, err := omitJSONBody(resp.Body, cfg.Omit); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --omit could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = omitted
+		}
+	}
+
+	// Secret redaction (#265): mask the value of any key that looks sensitive
+	// anywhere in the response. Like --redact it needs parsed JSON, so raw and
+	// binary output are left unchanged with a note on stderr. It runs after
+	// --redact so both can apply in one invocation.
+	if cfg.RedactSecrets {
+		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
+		if isBinary || cfg.OutputFormat == formatRaw {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets needs parsed JSON; leaving raw or binary output unchanged\n")
+		} else if redacted, err := redactSecretsJSONBody(resp.Body); err != nil {
+			writeDiagnostic(os.Stderr, cfg.Silent, "> --redact-secrets could not parse the response as JSON; leaving it unchanged\n")
+		} else {
+			resp.Body = redacted
+		}
+	}
+
 	// Flatten (#237): collapse a JSON response into a single-level object keyed
 	// by dotted paths. Like redaction it needs the JSON output path, so binary,
-	// raw, and the structured formats (table, jsonl, yaml, csv) are left
+	// raw, and the structured formats (table, jsonl, yaml, csv, xml) are left
 	// unchanged with a note on stderr.
 	if cfg.Flatten {
 		isBinary := cfg.Binary || client.DetectContentType(resp.Body, resp.Headers.Get("Content-Type"))
@@ -582,7 +1076,7 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 	}
 
 	// azd-rest renders formats that azd-core's formatter does not support
-	// (currently "table", "jsonl", "yaml", and "csv"), then delegates everything else to azd-core.
+	// (currently "table", "jsonl", "yaml", "csv", "tsv", "dotenv", and "xml"), then delegates everything else to azd-core.
 	if cfg.OutputFormat == "table" {
 		out, err := renderTableWithColumns(resp.Body, cfg.TableColumns)
 		if err != nil {
@@ -615,8 +1109,32 @@ func (s *RequestService) writeResponseOutput(cfg config.Config, resp *client.Res
 		return formatter.WriteOutput(out, cfg.OutputFile)
 	}
 
+	if cfg.OutputFormat == "dotenv" {
+		out, err := renderDotenv(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == "tsv" {
+		out, err := renderTSV(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
+	if cfg.OutputFormat == formatXML {
+		out, err := renderXML(resp.Body)
+		if err != nil {
+			return err
+		}
+		return formatter.WriteOutput(out, cfg.OutputFile)
+	}
+
 	// --compact (#235): minify JSON to a single line for the auto and json
-	// formats and --query output. Raw, binary, table, jsonl, yaml, and csv are
+	// formats and --query output. Raw, binary, table, jsonl, yaml, csv, and xml are
 	// left untouched. A non-JSON body is left unchanged with a note on stderr.
 	if cfg.Compact && cfg.OutputFormat != formatRaw {
 		if compacted, ok := compactJSONBody(resp.Body); ok {

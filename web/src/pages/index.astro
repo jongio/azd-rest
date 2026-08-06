@@ -60,6 +60,11 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
           description="Pretty-printed JSON by default. Raw, compact JSON, or binary output modes. Save responses to file."
         />
         <FeatureCard
+          icon="🧰"
+          title="Command Builder"
+          description="Use the docs builder to combine method, URL, auth, body, output, and diagnostic flags before copying a command."
+        />
+        <FeatureCard
           icon="🛡️"
           title="Token Security"
           description="Automatic token redaction in verbose output. SSRF protection, header sanitization, and response size limits built in."
@@ -173,6 +178,8 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
 
       <p class="mt-[var(--space-8)] text-center">
         <a href={`${base}examples`} style="color: var(--color-primary); font-weight: 600; font-size: var(--text-sm);">See more examples →</a>
+        <span aria-hidden="true" style="color: var(--color-text-muted); margin: 0 var(--space-2);">·</span>
+        <a href={`${base}builder`} style="color: var(--color-primary); font-weight: 600; font-size: var(--text-sm);">Build a command →</a>
       </p>
     </div>
   </section>

@@ -17,8 +17,8 @@ func NewCacheCommand() *cobra.Command {
 		Long: `Manage the on-disk cache used by --cache-ttl.
 
 Responses are cached only when you pass --cache-ttl on a GET request. Cached
-bodies can contain sensitive data, so entries are stored with owner-only
-permissions and caching stays off unless you opt in per call.`,
+bodies can contain sensitive data, so entries use the current user's cache
+directory and caching stays off unless you opt in per call.`,
 	}
 	cmd.AddCommand(newCacheClearCommand(), newCachePathCommand())
 	return cmd
