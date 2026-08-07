@@ -130,7 +130,7 @@ func checkScopeDetection() doctorCheck {
 // checkAuthentication verifies a token can be acquired. It returns the token so
 // the caller can inspect its claims.
 func checkAuthentication(ctx context.Context, tp client.TokenProvider, tpErr error) (doctorCheck, string) {
-	const remediation = "Run 'az login', or set AZURE_CLIENT_ID, AZURE_TENANT_ID, and AZURE_CLIENT_SECRET."
+	const remediation = "Run 'azd auth login', or set AZURE_CLIENT_ID, AZURE_TENANT_ID, and AZURE_CLIENT_SECRET."
 
 	if tpErr != nil || tp == nil {
 		detail := "could not create an Azure credential"
@@ -165,7 +165,7 @@ func checkTokenClaims(token string) doctorCheck {
 			Name:        checkNameClaims,
 			Status:      statusWarn,
 			Detail:      fmt.Sprintf("token expired at %s", claims.Expiry.UTC().Format(time.RFC3339)),
-			Remediation: "Run 'az login' to refresh your credentials.",
+			Remediation: "Run 'azd auth login' to refresh your credentials.",
 		}
 	}
 

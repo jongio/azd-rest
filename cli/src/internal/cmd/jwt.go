@@ -24,7 +24,7 @@ and expiry. With --format json it prints the full set of decoded claims.
 
 The signature is not verified and no network request is made. The raw token is
 never written to output. This is useful for inspecting a token from
-'az account get-access-token', an Authorization header, or a teammate.`,
+'azd auth token', an Authorization header, or a teammate.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runJWT(args[0], outputFormat, cmd.OutOrStdout())

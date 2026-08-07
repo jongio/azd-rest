@@ -58,7 +58,7 @@ That's it. The extension detects the correct OAuth scope, acquires tokens, handl
 <td width="50%">
 
 ### 🔐 Automatic Authentication
-Uses your Azure CLI credentials with automatic OAuth scope detection for 20+ Azure services — Management API, Graph, Key Vault, Storage, Cosmos DB, and more.
+Uses your azd credentials and reads the hostname to pick the right OAuth scope: Management API, Graph, Key Vault, Storage, Cosmos DB, and more.
 
 ### 🛡️ Security Hardened
 SSRF protection with DNS resolution validation, blocked CIDR ranges, rate limiting, header sanitization, and response size limits. [See security architecture →](https://jongio.github.io/azd-rest/security/)
@@ -111,7 +111,7 @@ azd rest graph --query-file resources.kql
 azd rest whoami
 
 # Decode a token you already have and print its claims
-azd rest jwt "$(az account get-access-token --query accessToken -o tsv)"
+azd rest jwt "$(azd auth token --output json | jq -r .token)"
 
 # Public API (no auth)
 azd rest get https://api.github.com/repos/Azure/azure-dev --no-auth

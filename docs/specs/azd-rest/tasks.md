@@ -176,7 +176,7 @@ tags: [rest, planning, tasks]
 - [ ] `cli/tests/integration/storage_test.go`: Storage API calls (require storage account)
 - [ ] `cli/tests/integration/keyvault_test.go`: Key Vault API calls (require vault)
 - [ ] All tests tagged with `//go:build integration`
-- [ ] Tests skip if not authenticated (`az login` required)
+- [ ] Tests skip if not authenticated (`azd auth login` required)
 - [ ] Run with `mage testIntegration` or `go test -tags=integration ./tests/...`
 - [ ] CI runs integration tests on main branch only (not PRs)
 - [ ] Tests clean up resources after execution

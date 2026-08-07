@@ -67,7 +67,7 @@ Use `azd rest scope <url>` to preview the detected OAuth scope and auth mode for
 
 ## Automatic Scope Detection
 
-azd-rest detects the correct OAuth scope for 20+ Azure services based on the URL hostname:
+azd-rest detects the correct OAuth scope from the URL hostname. Common services:
 
 | Service | Hostname Pattern | Scope |
 |---------|------------------|-------|
@@ -83,15 +83,16 @@ azd-rest detects the correct OAuth scope for 20+ Azure services based on the URL
 | Kusto | `*.kusto.windows.net` | `https://{hostname}/.default` |
 | Service Bus | `*.servicebus.windows.net` | `https://servicebus.azure.net/.default` |
 
-For non-Azure endpoints, use `--scope` to provide a custom scope or `--no-auth` to skip auth.
+For non-Azure endpoints, use `--scope` to provide a custom scope or `--no-auth` to skip auth. Run `azd rest scopes` for the full list, or `azd rest scope <url>` to preview the scope for a specific URL.
 
 ## Authentication
 
-Uses the same credential chain as azd and Azure CLI:
-1. Azure CLI (`az login`)
-2. Managed Identity
-3. Service Principal (`AZURE_CLIENT_ID`/`SECRET`/`TENANT_ID`)
-4. VS Code authentication
+Uses your azd credentials. The chain tries, in order:
+1. Azure Developer CLI (`azd auth login`)
+2. Azure CLI (`az login`)
+3. Service Principal (`AZURE_CLIENT_ID`/`AZURE_CLIENT_SECRET`/`AZURE_TENANT_ID`)
+4. Workload Identity
+5. Managed Identity
 
 Tokens are automatically cached and reused.
 
