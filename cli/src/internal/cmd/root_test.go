@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/spf13/cobra"
@@ -87,6 +88,15 @@ func resetGlobalFlags() {
 	redactFile = ""
 	noBody = false
 	limit = 0
+}
+
+func buildRequestOptionsForTest(t *testing.T, method, url string) (client.RequestOptions, error) {
+	t.Helper()
+	opts, cleanup, err := getRequestService().BuildRequestOptions(snapshotConfig(), method, url)
+	if cleanup != nil {
+		t.Cleanup(cleanup)
+	}
+	return opts, err
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -241,7 +251,7 @@ func TestBuildRequestOptions_Headers(t *testing.T) {
 	headers = []string{"X-Custom: value1", "Authorization: Bearer token"}
 	noAuth = true // Skip auth to avoid credential issues
 
-	opts, err := buildRequestOptions("GET", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://example.com")
 
 	require.NoError(t, err)
 	assert.Equal(t, "GET", opts.Method)
@@ -255,7 +265,7 @@ func TestBuildRequestOptions_InvalidHeader(t *testing.T) {
 	headers = []string{"InvalidHeader"}
 	noAuth = true
 
-	_, err := buildRequestOptions("GET", "https://example.com")
+	_, err := buildRequestOptionsForTest(t, "GET", "https://example.com")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid header format")
@@ -272,7 +282,7 @@ func TestBuildRequestOptions_DataFile(t *testing.T) {
 	dataFile = tmpFile
 	noAuth = true
 
-	opts, err := buildRequestOptions("POST", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "POST", "https://example.com")
 
 	require.NoError(t, err)
 	assert.NotNil(t, opts.Body)
@@ -299,7 +309,7 @@ func TestBuildRequestOptions_DataFileWithAtPrefix(t *testing.T) {
 	dataFile = "@" + tmpFile
 	noAuth = true
 
-	opts, err := buildRequestOptions("POST", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "POST", "https://example.com")
 
 	require.NoError(t, err)
 	assert.NotNil(t, opts.Body)
@@ -313,7 +323,7 @@ func TestBuildRequestOptions_DataFileNotFound(t *testing.T) {
 	dataFile = "/nonexistent/file.json"
 	noAuth = true
 
-	_, err := buildRequestOptions("POST", "https://example.com")
+	_, err := buildRequestOptionsForTest(t, "POST", "https://example.com")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to open data file")
@@ -324,7 +334,7 @@ func TestBuildRequestOptions_DataString(t *testing.T) {
 	data = `{"test": "data"}`
 	noAuth = true
 
-	opts, err := buildRequestOptions("POST", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "POST", "https://example.com")
 
 	require.NoError(t, err)
 	assert.NotNil(t, opts.Body)
@@ -341,7 +351,7 @@ func TestBuildRequestOptions_ScopeDetection(t *testing.T) {
 	noAuth = false
 	// Note: This will try to create a token provider, which may fail in test environment
 	// So we'll just verify the scope detection logic works
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	// May error if credentials not available, but scope should be detected
 	if err == nil {
@@ -357,7 +367,7 @@ func TestBuildRequestOptions_CustomScope(t *testing.T) {
 	scope = "https://custom.scope/.default"
 	noAuth = false
 	// May error if credentials not available
-	opts, err := buildRequestOptions("GET", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://example.com")
 
 	if err == nil {
 		assert.Equal(t, "https://custom.scope/.default", opts.Scope)
@@ -368,7 +378,7 @@ func TestBuildRequestOptions_NoAuth(t *testing.T) {
 	resetGlobalFlags()
 	noAuth = true
 
-	opts, err := buildRequestOptions("GET", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://example.com")
 
 	require.NoError(t, err)
 	assert.True(t, opts.SkipAuth)
@@ -378,7 +388,7 @@ func TestBuildRequestOptions_HTTPURLSkipsAuth(t *testing.T) {
 	resetGlobalFlags()
 	noAuth = false
 
-	opts, err := buildRequestOptions("GET", "http://example.com")
+	opts, err := buildRequestOptionsForTest(t, "GET", "http://example.com")
 
 	require.NoError(t, err)
 	assert.True(t, opts.SkipAuth, "HTTP URLs should skip auth by default")
@@ -389,7 +399,7 @@ func TestBuildRequestOptions_APIVersionAddsQueryParameter(t *testing.T) {
 	noAuth = true
 	apiVersion = "2024-01-01"
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01", opts.URL)
@@ -400,7 +410,7 @@ func TestBuildRequestOptions_APIVersionPreservesExistingQueryAndFragment(t *test
 	noAuth = true
 	apiVersion = "2024-01-01"
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions?filter=active#top")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions?filter=active#top")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01&filter=active#top", opts.URL)
@@ -411,7 +421,7 @@ func TestBuildRequestOptions_APIVersionReplacesExistingValue(t *testing.T) {
 	noAuth = true
 	apiVersion = "2024-01-01"
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions?api-version=2020-01-01")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions?api-version=2020-01-01")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?api-version=2024-01-01", opts.URL)
@@ -422,7 +432,7 @@ func TestBuildRequestOptions_ClientRequestIDSetsHeader(t *testing.T) {
 	noAuth = true
 	clientRequestID = "my-correlation-id"
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	require.NoError(t, err)
 	assert.Equal(t, "my-correlation-id", opts.Headers[testCRIDHeader])
@@ -434,7 +444,7 @@ func TestBuildRequestOptions_ClientRequestIDOverridesHeaderFlag(t *testing.T) {
 	clientRequestID = "flag-id"
 	headers = []string{"x-ms-client-request-id: header-id"}
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	require.NoError(t, err)
 	assert.Equal(t, "flag-id", opts.Headers[testCRIDHeader])
@@ -444,7 +454,7 @@ func TestBuildRequestOptions_NoClientRequestIDByDefault(t *testing.T) {
 	resetGlobalFlags()
 	noAuth = true
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	require.NoError(t, err)
 	_, ok := opts.Headers[testCRIDHeader]
@@ -456,7 +466,7 @@ func TestBuildRequestOptions_URLParamAddsQueryParameter(t *testing.T) {
 	noAuth = true
 	urlParams = []string{"$top=10"}
 
-	opts, err := buildRequestOptions("GET", "https://management.azure.com/subscriptions")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://management.azure.com/subscriptions")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://management.azure.com/subscriptions?%24top=10", opts.URL)
@@ -467,7 +477,7 @@ func TestBuildRequestOptions_URLParamReplacesExistingValue(t *testing.T) {
 	noAuth = true
 	urlParams = []string{"filter=active"}
 
-	opts, err := buildRequestOptions("GET", "https://api.example.com/items?filter=all")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://api.example.com/items?filter=all")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/items?filter=active", opts.URL)
@@ -478,7 +488,7 @@ func TestBuildRequestOptions_URLParamRepeatedKeyAppends(t *testing.T) {
 	noAuth = true
 	urlParams = []string{"tag=a", "tag=b"}
 
-	opts, err := buildRequestOptions("GET", "https://api.example.com/items")
+	opts, err := buildRequestOptionsForTest(t, "GET", "https://api.example.com/items")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/items?tag=a&tag=b", opts.URL)
@@ -489,7 +499,7 @@ func TestBuildRequestOptions_URLParamInvalidFormat(t *testing.T) {
 	noAuth = true
 	urlParams = []string{"no-equals-sign"}
 
-	_, err := buildRequestOptions("GET", "https://api.example.com/items")
+	_, err := buildRequestOptionsForTest(t, "GET", "https://api.example.com/items")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid --url-param format")
@@ -515,7 +525,7 @@ func TestBuildRequestOptions_AllFlags(t *testing.T) {
 	followRedirects = false
 	maxRedirects = 5
 
-	opts, err := buildRequestOptions("POST", "https://example.com")
+	opts, err := buildRequestOptionsForTest(t, "POST", "https://example.com")
 
 	require.NoError(t, err)
 	assert.Equal(t, "POST", opts.Method)
@@ -681,7 +691,7 @@ func TestBuildRequestOptions_AzureHostWarning(t *testing.T) {
 
 	// Use a URL that looks like Azure but doesn't match any known pattern
 	// Note: We can't easily capture stderr in unit tests, so we just verify it doesn't crash
-	_, err := buildRequestOptions("GET", "https://unknown.azure.com/resource")
+	_, err := buildRequestOptionsForTest(t, "GET", "https://unknown.azure.com/resource")
 
 	// May error if credentials not available, but that's okay
 	_ = err
@@ -692,7 +702,7 @@ func TestBuildRequestOptions_ScopeDetectionError(t *testing.T) {
 	noAuth = false
 
 	// Invalid URL should cause scope detection to fail
-	_, err := buildRequestOptions("GET", "://invalid-url")
+	_, err := buildRequestOptionsForTest(t, "GET", "://invalid-url")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to detect scope")

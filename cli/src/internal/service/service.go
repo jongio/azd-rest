@@ -1194,9 +1194,3 @@ func dumpResponseHeaders(path string, resp *client.Response) error {
 	}
 	return nil
 }
-
-// RedactSensitiveHeader re-exports from client for MCP use.
-var RedactSensitiveHeader = client.RedactSensitiveHeader
-
-// NewFormatter re-exports from client.
-var NewFormatter = client.NewFormatter

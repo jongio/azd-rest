@@ -31,7 +31,7 @@ examples:
 
   - name: post
     description: Execute a POST request with a JSON body
-    usage: "azd rest post <url> --body '{\"key\": \"value\"}'"
+    usage: "azd rest post <url> --data '{\"key\": \"value\"}'"
 
   - name: version
     description: Display extension version
