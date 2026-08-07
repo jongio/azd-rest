@@ -44,7 +44,7 @@ func resetGlobalFlags() {
 	headerEnv = []string{}
 	data = ""
 	dataFile = ""
-	dataFormat = "json"
+	dataFormat = defaults.DataFormat
 	query = ""
 	formFields = []string{}
 	jsonFields = []string{}

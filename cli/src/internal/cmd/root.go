@@ -260,7 +260,7 @@ Examples:
 	rootCmd.PersistentFlags().StringArrayVar(&headerEnv, "header-env", []string{}, "Read a header value from an environment variable (repeatable, format: Key=ENV_VAR). -H overrides on conflict.")
 	rootCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "Request body (JSON string)")
 	rootCmd.PersistentFlags().StringVar(&dataFile, "data-file", "", "Read request body from file (also accepts @{file} shorthand)")
-	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", "json", "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
+	rootCmd.PersistentFlags().StringVar(&dataFormat, "data-format", defaults.DataFormat, "Interpret --data / --data-file as this format before sending: json or yaml. YAML is converted to a JSON body.")
 	rootCmd.PersistentFlags().StringVarP(&query, "query", "q", "", "JMESPath query to apply to JSON responses")
 	rootCmd.PersistentFlags().StringVar(&tmpl, "template", "", "Render the JSON response through a Go text/template (use @file to load from a file). Applies after --query and takes precedence over --format. Cannot be combined with --count or --no-body. Helpers: json, upper, lower, join.")
 	rootCmd.PersistentFlags().BoolVar(&count, "count", false, "Print the number of records in a JSON response and nothing else: the array length, the ARM value[] length, 1 for a single object, and 0 for null. Runs after --query. Cannot be combined with --template or --no-body. A non-JSON response reports an error.")
