@@ -10,8 +10,6 @@ import (
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/google/uuid"
-	"github.com/jongio/azd-core/auth"
-	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/jongio/azd-rest/src/internal/skills"
@@ -446,21 +444,6 @@ func getRequestService() *service.RequestService {
 	return requestService
 }
 
-// buildRequestOptions constructs RequestOptions from global flags and method-specific args.
-// Delegates to the service layer (#42) after snapshotting config (#80).
-func buildRequestOptions(method string, url string) (client.RequestOptions, error) {
-	cfg := snapshotConfig()
-	svc := getRequestService()
-	opts, cleanup, err := svc.BuildRequestOptions(cfg, method, url)
-	if err != nil {
-		return opts, err
-	}
-	// For backward compatibility with tests that call buildRequestOptions directly,
-	// we don't call cleanup here - the caller (executeRequest) handles it.
-	_ = cleanup
-	return opts, nil
-}
-
 // executeRequest executes an HTTP request and handles the response.
 // It snapshots global flags into a Config (#80), then delegates to the
 // service layer (#42) which receives dependencies via injection (#43).
@@ -476,6 +459,3 @@ func executeRequest(cmd *cobra.Command, method string, url string) error {
 
 	return svc.Execute(ctx, cfg, method, url)
 }
-
-// Ensure imports are used.
-var _ = auth.DetectScope
