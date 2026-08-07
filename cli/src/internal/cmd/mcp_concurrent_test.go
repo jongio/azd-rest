@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jongio/azd-core/auth"
+	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,4 +150,44 @@ func TestGetOrCreateTokenProvider_NoRaceCondition(t *testing.T) { //nolint:tpara
 			assert.NotNil(t, tp, "Subtest %d should get a provider", i)
 		})
 	}
+}
+
+func TestGetOrCreateHTTPClient_ConcurrentAuthIsolation(t *testing.T) {
+	httpClientMu.Lock()
+	originalAuthenticated := cachedAuthenticatedHTTPClient
+	originalAnonymous := cachedAnonymousHTTPClient
+	cachedAuthenticatedHTTPClient = nil
+	cachedAnonymousHTTPClient = nil
+	httpClientMu.Unlock()
+	t.Cleanup(func() {
+		httpClientMu.Lock()
+		cachedAuthenticatedHTTPClient = originalAuthenticated
+		cachedAnonymousHTTPClient = originalAnonymous
+		httpClientMu.Unlock()
+	})
+
+	const goroutines = 50
+	authProvider := &auth.MockTokenProvider{Token: "concurrent-token"}
+	authenticated := make([]*client.Client, goroutines/2)
+	anonymous := make([]*client.Client, goroutines/2)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := range goroutines {
+		go func(index int) {
+			defer wg.Done()
+			if index%2 == 0 {
+				anonymous[index/2] = getOrCreateHTTPClient(nil, mcpDefaultTimeout)
+				return
+			}
+			authenticated[index/2] = getOrCreateHTTPClient(authProvider, mcpDefaultTimeout)
+		}(i)
+	}
+	wg.Wait()
+
+	for i := 1; i < len(anonymous); i++ {
+		assert.Same(t, anonymous[0], anonymous[i])
+		assert.Same(t, authenticated[0], authenticated[i])
+	}
+	assert.NotSame(t, anonymous[0], authenticated[0])
 }

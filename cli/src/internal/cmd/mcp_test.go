@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-core/auth"
@@ -200,6 +201,43 @@ func TestGetOrCreateTokenProvider_ReturnsSameInstance(t *testing.T) {
 	for _, tp := range results {
 		assert.Equal(t, mock, tp)
 	}
+}
+
+func TestGetOrCreateHTTPClient_SeparatesAuthenticationState(t *testing.T) {
+	httpClientMu.Lock()
+	originalAuthenticated := cachedAuthenticatedHTTPClient
+	originalAnonymous := cachedAnonymousHTTPClient
+	cachedAuthenticatedHTTPClient = nil
+	cachedAnonymousHTTPClient = nil
+	httpClientMu.Unlock()
+	t.Cleanup(func() {
+		httpClientMu.Lock()
+		cachedAuthenticatedHTTPClient = originalAuthenticated
+		cachedAnonymousHTTPClient = originalAnonymous
+		httpClientMu.Unlock()
+	})
+
+	anonymous := getOrCreateHTTPClient(nil, mcpDefaultTimeout)
+	authenticated := getOrCreateHTTPClient(
+		&auth.MockTokenProvider{Token: "test-token"},
+		mcpDefaultTimeout,
+	)
+
+	assert.NotSame(t, anonymous, authenticated)
+	assert.Same(t, anonymous, getOrCreateHTTPClient(nil, mcpDefaultTimeout))
+	assert.Same(t, authenticated, getOrCreateHTTPClient(
+		&auth.MockTokenProvider{Token: "other-token"},
+		mcpDefaultTimeout,
+	))
+}
+
+func TestGetOrCreateHTTPClient_CustomTimeoutIsNotCached(t *testing.T) {
+	timeout := mcpDefaultTimeout + time.Second
+
+	first := getOrCreateHTTPClient(nil, timeout)
+	second := getOrCreateHTTPClient(nil, timeout)
+
+	assert.NotSame(t, first, second)
 }
 
 // ---------------------------------------------------------------------------
