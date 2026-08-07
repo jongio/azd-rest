@@ -82,6 +82,7 @@ type Config struct {
 // Defaults returns a Config populated with the default flag values.
 func Defaults() Config {
 	return Config{
+		DataFormat:      "json",
 		OutputFormat:    "auto",
 		Retry:           3,
 		Timeout:         30 * time.Second,
