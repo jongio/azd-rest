@@ -95,7 +95,7 @@ if (-not $env:EXTENSION_VERSION) {
     if (Test-Path "extension.yaml") {
         $yamlContent = Get-Content "extension.yaml" -Raw
         if ($yamlContent -match 'version:\s*(\S+)') {
-            $env:EXTENSION_VERSION = $matches[1]
+            $env:EXTENSION_VERSION = $matches[1].Trim("'`"")
         } else {
             $env:EXTENSION_VERSION = "0.0.0-dev"
         }

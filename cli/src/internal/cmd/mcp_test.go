@@ -698,9 +698,7 @@ func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// Temporarily disable security policy for httptest loopback.
-	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
-	defer resetSecurityPolicyForTest()
+	policy := azdext.NewMCPSecurityPolicy()
 
 	// Pre-cache a mock token provider so we don't need Azure creds.
 	tokenProviderMu.Lock()
@@ -713,7 +711,9 @@ func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
+	resp, err := executeMCPRequestWithPolicy(
+		context.Background(), policy, "GET", srv.URL+"/api/test", "", "", nil,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Body, `"result":"ok"`)
@@ -730,9 +730,7 @@ func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	resetSecurityPolicyForTest()
-	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
-	defer resetSecurityPolicyForTest()
+	policy := azdext.NewMCPSecurityPolicy()
 
 	tokenProviderMu.Lock()
 	origProvider := cachedTokenProvider
@@ -744,7 +742,9 @@ func TestExecuteMCPRequest_PostWithBody(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "POST", srv.URL+"/api/resource", "", "", nil)
+	resp, err := executeMCPRequestWithPolicy(
+		context.Background(), policy, "POST", srv.URL+"/api/resource", "", "", nil,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	assert.Equal(t, "POST", receivedMethod)
@@ -760,8 +760,7 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
-	defer resetSecurityPolicyForTest()
+	policy := azdext.NewMCPSecurityPolicy()
 
 	// Clear cached token provider to verify no auth is attempted.
 	tokenProviderMu.Lock()
@@ -774,7 +773,9 @@ func TestExecuteMCPRequest_SkipAuthForHTTP(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
+	resp, err := executeMCPRequestWithPolicy(
+		context.Background(), policy, "GET", srv.URL+"/api/test", "", "", nil,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -788,14 +789,15 @@ func TestExecuteMCPRequest_CustomControlsSetRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
-	defer resetSecurityPolicyForTest()
+	policy := azdext.NewMCPSecurityPolicy()
 
 	controls := defaultMCPRequestControls()
 	controls.Retry = 1
 	controls.NoAuth = true
 
-	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil, controls)
+	resp, err := executeMCPRequestWithPolicy(
+		context.Background(), policy, "GET", srv.URL+"/api/test", "", "", nil, controls,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, 2, attemptCount)
@@ -812,8 +814,7 @@ func TestExecuteMCPRequest_RedactsSensitiveResponseHeaders(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	setSecurityPolicyForTest(azdext.NewMCPSecurityPolicy())
-	defer resetSecurityPolicyForTest()
+	policy := azdext.NewMCPSecurityPolicy()
 
 	tokenProviderMu.Lock()
 	origProvider := cachedTokenProvider
@@ -825,7 +826,9 @@ func TestExecuteMCPRequest_RedactsSensitiveResponseHeaders(t *testing.T) {
 		tokenProviderMu.Unlock()
 	}()
 
-	resp, err := executeMCPRequest(context.Background(), "GET", srv.URL+"/api/test", "", "", nil)
+	resp, err := executeMCPRequestWithPolicy(
+		context.Background(), policy, "GET", srv.URL+"/api/test", "", "", nil,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
