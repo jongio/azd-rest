@@ -13,6 +13,7 @@ import (
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -545,15 +546,22 @@ func getVersion() (string, error) {
 		return "", fmt.Errorf("failed to read %s: %w", extensionFile, err)
 	}
 
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "version:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				return strings.TrimSpace(parts[1]), nil
-			}
-		}
+	version, err := parseExtensionVersion(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse %s: %w", extensionFile, err)
 	}
+	return version, nil
+}
 
-	return "", fmt.Errorf("version not found in %s", extensionFile)
+func parseExtensionVersion(data []byte) (string, error) {
+	var manifest struct {
+		Version string `yaml:"version"`
+	}
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return "", err
+	}
+	if manifest.Version == "" {
+		return "", fmt.Errorf("version is required")
+	}
+	return manifest.Version, nil
 }

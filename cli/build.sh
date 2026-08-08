@@ -84,7 +84,7 @@ BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # Read version from extension.yaml if EXTENSION_VERSION not set
 if [ -z "$EXTENSION_VERSION" ]; then
     if [ -f "extension.yaml" ]; then
-        EXTENSION_VERSION=$(grep -E '^version:' extension.yaml | awk '{print $2}' | tr -d '[:space:]')
+        EXTENSION_VERSION=$(grep -E '^version:' extension.yaml | awk '{print $2}' | tr -d '[:space:]' | tr -d "\"'")
         if [ -z "$EXTENSION_VERSION" ]; then
             EXTENSION_VERSION="0.0.0-dev"
         fi

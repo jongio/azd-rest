@@ -179,37 +179,11 @@ func parseMCPRequestControls(args azdext.ToolArgs) (mcpRequestControls, error) {
 	return controls, nil
 }
 
-// securityPolicy is the shared security policy for MCP tools.
-// Initialized via securityPolicyOnce for thread-safe lazy init.
-var (
-	securityPolicy     *azdext.MCPSecurityPolicy
-	securityPolicyOnce sync.Once
-)
+var defaultMCPSecurityPolicy = azdext.DefaultMCPSecurityPolicy().
+	RedactHeaders("Host", "Proxy-Authorization")
 
 func getMCPSecurityPolicy() *azdext.MCPSecurityPolicy {
-	securityPolicyOnce.Do(func() {
-		securityPolicy = azdext.DefaultMCPSecurityPolicy().
-			RedactHeaders("Host", "Proxy-Authorization")
-	})
-	return securityPolicy
-}
-
-// resetSecurityPolicyForTest resets the security policy singleton so tests
-// can inject a custom policy (e.g. to allow httptest loopback addresses).
-// This must only be called from tests.
-func resetSecurityPolicyForTest() {
-	securityPolicyOnce = sync.Once{}
-	securityPolicy = nil
-}
-
-// setSecurityPolicyForTest replaces the security policy singleton with a
-// custom policy for testing. It resets the sync.Once and immediately marks
-// it as consumed so getMCPSecurityPolicy() returns the injected policy.
-func setSecurityPolicyForTest(p *azdext.MCPSecurityPolicy) {
-	securityPolicyOnce = sync.Once{}
-	securityPolicyOnce.Do(func() {
-		securityPolicy = p
-	})
+	return defaultMCPSecurityPolicy
 }
 
 // executeMCPRequest performs an authenticated HTTP request for MCP tools.
@@ -219,12 +193,30 @@ func executeMCPRequest(
 	customHeaders map[string]string,
 	controlOverrides ...mcpRequestControls,
 ) (*mcpResponse, error) {
+	return executeMCPRequestWithPolicy(
+		ctx,
+		getMCPSecurityPolicy(),
+		method,
+		reqURL,
+		body,
+		scopeOverride,
+		customHeaders,
+		controlOverrides...,
+	)
+}
+
+func executeMCPRequestWithPolicy(
+	ctx context.Context,
+	policy *azdext.MCPSecurityPolicy,
+	method, reqURL, body, scopeOverride string,
+	customHeaders map[string]string,
+	controlOverrides ...mcpRequestControls,
+) (*mcpResponse, error) {
 	controls := defaultMCPRequestControls()
 	if len(controlOverrides) > 0 {
 		controls = controlOverrides[0]
 	}
 
-	policy := getMCPSecurityPolicy()
 	if err := policy.CheckURL(reqURL); err != nil {
 		return nil, fmt.Errorf("requests to cloud metadata endpoints are blocked: %w", err)
 	}
