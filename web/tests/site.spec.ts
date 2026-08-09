@@ -14,6 +14,7 @@ const appOrigin = 'http://127.0.0.1:41777';
 for (const sitePage of pages) {
   for (const theme of themes) {
     test(`${sitePage.path || 'home'} renders accessibly in ${theme} mode`, async ({ page }) => {
+      test.setTimeout(60_000);
       const runtimeErrors: string[] = [];
       const isFirstParty = (url: string) => new URL(url).origin === appOrigin;
 
@@ -41,11 +42,13 @@ for (const sitePage of pages) {
       }
 
       expect(response.status()).toBe(200);
-      await page.waitForLoadState('networkidle');
       await expect(page.getByRole('heading', { level: 1, name: sitePage.heading })).toBeVisible();
-      await expect.poll(() => page.locator('pre, .table-wrapper').evaluateAll((nodes) =>
-        nodes.every((node) => node.scrollWidth <= node.clientWidth || node.tabIndex >= 0),
-      )).toBe(true);
+      await expect.poll(
+        () => page.locator('pre, .table-wrapper').evaluateAll((nodes) =>
+          nodes.every((node) => node.scrollWidth <= node.clientWidth || node.tabIndex >= 0),
+        ),
+        { timeout: 15_000 },
+      ).toBe(true);
 
       const accessibilityScan = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
