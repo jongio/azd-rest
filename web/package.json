@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "playwright test --reporter=line"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.5",
@@ -14,6 +15,8 @@
     "astro-expressive-code": "^0.44.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.2",
     "tailwindcss": "^4.3.3",
