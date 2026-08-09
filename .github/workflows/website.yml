@@ -10,6 +10,9 @@ on:
       - main
     paths:
       - 'web/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/website.yml'
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -49,6 +52,14 @@ jobs:
         run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      - name: Test website
+        working-directory: web
+        run: pnpm test
 
       - name: Build website (Production)
         if: github.event_name != 'pull_request'

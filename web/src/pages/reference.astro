@@ -438,12 +438,42 @@ azd rest get https://api.example.com/resource --format raw`} language="bash" />
   </div>
 </Layout>
 
+<script>
+  const updateScrollableTables = () => {
+    document.querySelectorAll('.table-wrapper').forEach((wrapper) => {
+      if (!(wrapper instanceof HTMLElement)) return;
+      if (wrapper.scrollWidth > wrapper.clientWidth) {
+        wrapper.tabIndex = 0;
+      } else {
+        wrapper.removeAttribute('tabindex');
+      }
+    });
+  };
+
+  updateScrollableTables();
+  const tableResizeObserver = new ResizeObserver(updateScrollableTables);
+  document.querySelectorAll('.table-wrapper').forEach((wrapper) => {
+    tableResizeObserver.observe(wrapper);
+    if (wrapper.firstElementChild) {
+      tableResizeObserver.observe(wrapper.firstElementChild);
+    }
+  });
+  document.fonts.ready.then(updateScrollableTables);
+  window.addEventListener('load', updateScrollableTables);
+  window.addEventListener('resize', updateScrollableTables);
+</script>
+
 <style>
   @import '../styles/pages.css';
 
   .table-wrapper {
     overflow-x: auto;
     margin: 1rem 0 1.5rem;
+  }
+
+  .table-wrapper:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
   }
 
   table {

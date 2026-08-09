@@ -65,6 +65,11 @@
   color: var(--color-text-secondary);
 }
 
+.section a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .section code {
   background-color: var(--color-bg-tertiary);
   padding: 0.125rem 0.375rem;

@@ -96,20 +96,11 @@ cd web
 # Run all tests
 pnpm test
 
-# Run with browser UI
-pnpm test:headed
-
-# Debug mode
-pnpm test:debug
-
-# View test report
-pnpm test:report
-
 # Run specific test file
-pnpm exec playwright test homepage.spec.ts
+pnpm exec playwright test tests/site.spec.ts --reporter=line
 
 # Run specific browser
-pnpm exec playwright test --project=chromium
+pnpm exec playwright test --project=chromium --reporter=line
 ```
 
 ## Prerequisites
@@ -119,8 +110,8 @@ pnpm exec playwright test --project=chromium
 - Optional: `golangci-lint` for linting
 
 ### Web Tests
-- Node.js 20 or later
-- pnpm 9 or later
+- Node.js 22 or later
+- pnpm 10 or later
 - Playwright browsers (install with `pnpm exec playwright install`)
 
 ## Test Coverage

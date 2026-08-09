@@ -120,7 +120,7 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
 
       <div class="flex flex-col gap-[var(--space-12)]">
         <div class="flex gap-[var(--space-8)]">
-          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">1</div>
+          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold" style="background-color: var(--color-primary); color: var(--color-text-inverse);">1</div>
           <div class="min-w-0 flex-1">
             <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Install Extension</h3>
             <InstallTabs />
@@ -128,7 +128,7 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
         </div>
 
         <div class="flex gap-[var(--space-8)]">
-          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">2</div>
+          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold" style="background-color: var(--color-primary); color: var(--color-text-inverse);">2</div>
           <div class="min-w-0 flex-1">
             <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Verify Installation</h3>
             <CodeBlock code={`azd rest version`} language="bash" />
@@ -136,7 +136,7 @@ const description = "azd rest - Make authenticated Azure REST API calls with aut
         </div>
 
         <div class="flex gap-[var(--space-8)]">
-          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white" style="background-color: var(--color-primary);">3</div>
+          <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold" style="background-color: var(--color-primary); color: var(--color-text-inverse);">3</div>
           <div class="min-w-0 flex-1">
             <h3 class="mb-[var(--space-4)]" style="font-size: var(--azd-text-lg);">Make Your First Request</h3>
             <CodeBlock code={`# List your Azure subscriptions
@@ -192,7 +192,7 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01`}
       <a
         href={`${base}getting-started`}
         class="inline-flex items-center rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold transition-all duration-200 hover:no-underline"
-        style="background-color: var(--color-primary); color: #ffffff !important; box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 25%, transparent);"
+        style="background-color: var(--color-primary); color: var(--color-text-inverse) !important; box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 25%, transparent);"
       >
         Get Started Now
       </a>
