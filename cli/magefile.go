@@ -173,6 +173,18 @@ func TestAll() error {
 
 // TestCoverage runs tests with coverage report.
 func TestCoverage() error {
+	return testCoverage(false)
+}
+
+// testCoverage writes the coverage profile. race selects whether the profile is
+// produced by a race-enabled run.
+//
+// This distinction is not cosmetic. The race detector changes which lines
+// execute, so a baseline recorded without it does not describe the profile CI
+// gates against, and the ratchet drifts in whichever direction the difference
+// happens to fall. CI gates a race run on ubuntu, so CoverageRecord uses one
+// too and the two numbers stay comparable.
+func testCoverage(race bool) error {
 	fmt.Println("Running tests with coverage...")
 
 	cwd, err := os.Getwd()
@@ -190,7 +202,11 @@ func TestCoverage() error {
 	coverageOut := filepath.Join(absCoverageDir, "coverage.out")
 	coverageHTML := filepath.Join(absCoverageDir, "coverage.html")
 
-	args := []string{"test", "-short", "-covermode=atomic", "-coverprofile=" + coverageOut, "./src/..."}
+	args := []string{"test", "-short", "-covermode=atomic", "-coverprofile=" + coverageOut}
+	if race {
+		args = append(args, "-race")
+	}
+	args = append(args, "./src/...")
 	if err := sh.RunV("go", args...); err != nil {
 		return fmt.Errorf("tests failed: %w", err)
 	}
@@ -257,7 +273,7 @@ func Coverage() error {
 // Run this only when a coverage change is deliberate, and say why in the
 // commit message.
 func CoverageRecord() error {
-	if err := TestCoverage(); err != nil {
+	if err := testCoverage(true); err != nil {
 		return err
 	}
 	fmt.Println("==> Recording a new coverage baseline...")
