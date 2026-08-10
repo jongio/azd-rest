@@ -1,14 +1,15 @@
 {
-  "total": 85.8,
+  "total": 86.1,
   "packages": {
     "github.com/jongio/azd-rest/src/cmd/rest": 0,
     "github.com/jongio/azd-rest/src/internal/client": 100,
-    "github.com/jongio/azd-rest/src/internal/cmd": 87.9,
+    "github.com/jongio/azd-rest/src/internal/cmd": 88,
     "github.com/jongio/azd-rest/src/internal/config": 100,
-    "github.com/jongio/azd-rest/src/internal/service": 85,
+    "github.com/jongio/azd-rest/src/internal/service": 85.4,
     "github.com/jongio/azd-rest/src/internal/skills": 100,
     "github.com/jongio/azd-rest/src/internal/version": 100
   },
   "mode": "atomic",
-  "note": "recorded by mage coverageRecord"
+  "os": "linux",
+  "note": "recorded on ubuntu under -race, the platform and mode the CI gate uses"
 }
