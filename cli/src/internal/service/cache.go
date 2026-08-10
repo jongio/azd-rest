@@ -239,7 +239,8 @@ func writeCache(dir, key string, resp *client.Response) error {
 	if err := validateCacheDir(dir); err != nil {
 		return err
 	}
-	if err := os.Chmod(dir, 0o700); err != nil { // #nosec G302 -- directories require execute permission.
+	// #nosec G302 -- 0o700 is correct for a directory; it needs the execute bit to be traversable.
+	if err := os.Chmod(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to protect cache directory: %w", err)
 	}
 	env := cacheEnvelope{
