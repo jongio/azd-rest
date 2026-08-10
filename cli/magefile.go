@@ -307,7 +307,7 @@ func verifyNoLocalReplace() error {
 			continue
 		}
 		return fmt.Errorf(
-			"go.mod still replaces azd-core with a local path:\n  %s\n"+
+			"go.mod still replaces azd-core:\n  %s\n"+
 				"Remove the replace and pin a released azd-core version before shipping", line)
 	}
 	return nil

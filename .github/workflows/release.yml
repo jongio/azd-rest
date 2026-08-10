@@ -66,6 +66,9 @@ jobs:
           azd extension source add azd --location https://aka.ms/azd/extensions/registry --type url 2>/dev/null || true
           azd extension install microsoft.azd.extensions --source azd
 
+      - name: Verify azd-core is not replaced
+        run: go run github.com/magefile/mage verifyNoLocalReplace
+
       - name: Format check
         run: |
           if [ -n "$(gofmt -l ./src/)" ]; then
