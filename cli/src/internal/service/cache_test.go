@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/client"
 	"github.com/jongio/azd-rest/src/internal/config"
-	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,7 +68,7 @@ func TestParseCacheTTL(t *testing.T) {
 				require.Error(t, err)
 				var usageErr *azdext.LocalError
 				require.True(t, errors.As(err, &usageErr), "error should be a structured usage error")
-	assert.Equal(t, ErrCodeCacheConfig, usageErr.Code)
+				assert.Equal(t, ErrCodeCacheConfig, usageErr.Code)
 				return
 			}
 			require.NoError(t, err)

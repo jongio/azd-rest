@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
+	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -173,7 +173,7 @@ func TestExecute_TemplateRejectsOtherTerminalOutputModes(t *testing.T) {
 
 			err := newTestService().Execute(context.Background(), cfg, "GET", "https://example.com")
 			require.EqualError(t, err, tt.wantErr)
-	var usageErr *azdext.LocalError
+			var usageErr *azdext.LocalError
 			require.True(t, errors.As(err, &usageErr))
 			assert.Equal(t, ErrCodeTemplateConfig, usageErr.Code)
 		})

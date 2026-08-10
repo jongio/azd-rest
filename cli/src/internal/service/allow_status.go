@@ -64,4 +64,3 @@ func parseHTTPStatus(value string) (int, error) {
 	}
 	return status, nil
 }
-

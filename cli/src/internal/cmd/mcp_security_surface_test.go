@@ -188,9 +188,6 @@ func TestBodyArgumentIsNotFileExpanded(t *testing.T) {
 // to rewrite in a way that silently drops BlockPrivateNetworks or
 // RequireHTTPS, since neither has a visible call site afterwards.
 func TestSecurityPolicyKeepsDefaultHardening(t *testing.T) {
-	resetSecurityPolicyForTest()
-	t.Cleanup(resetSecurityPolicyForTest)
-
 	policy := getMCPSecurityPolicy()
 
 	for _, probe := range blockedURLProbes {

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
+	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
