@@ -2,17 +2,11 @@ module github.com/jongio/azd-rest
 
 go 1.26.5
 
-// azd-core is temporarily replaced with a pseudo-version built from the
-// azdext-alignment work, because the APIs this module needs are not in any
-// released azd-core yet. A pseudo-version is used rather than a local path so
-// CI can resolve it. Replace it with the real v0.6.0 once that is tagged; the
-// release path refuses to ship while any replace is present.
-
 require (
 	github.com/azure/azure-dev/cli/azd v1.29.0
 	github.com/google/uuid v1.6.0
 	github.com/jmespath-community/go-jmespath v1.1.1
-	github.com/jongio/azd-core v0.5.7
+	github.com/jongio/azd-core v0.6.0
 	github.com/magefile/mage v1.17.2
 	github.com/mark3labs/mcp-go v0.57.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
@@ -118,5 +112,3 @@ require (
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace github.com/jongio/azd-core => github.com/jongio/azd-core v0.5.8-0.20260808190154-f1189c6e3eea

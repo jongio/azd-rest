@@ -242,15 +242,23 @@ func testCoverage(race bool) error {
 //
 // COVERAGE_PROFILE overrides the profile path so CI can gate the profile it
 // already produced instead of running the suite a second time.
+//
+// SkipOnForeignOS keeps local development usable off the recording platform.
+// Coverage is a per-platform measurement: code behind a GOOS branch is
+// unreachable elsewhere, so it reports as uncovered rather than absent. The
+// baseline is recorded on linux because that is where CI gates. The skip
+// prints a visible notice and drops enforcement only, never the report, and
+// CI keeps enforcement on because it runs on the recording platform.
 func coverageConfig() covergate.Config {
 	profile := os.Getenv("COVERAGE_PROFILE")
 	if profile == "" {
 		profile = filepath.Join(coverageDir, "coverage.out")
 	}
 	return covergate.Config{
-		Profile:      profile,
-		BaselineFile: "coverage-baseline.json",
-		Check:        covergate.CheckOptions{Tolerance: 0.5},
+		Profile:         profile,
+		BaselineFile:    "coverage-baseline.json",
+		SkipOnForeignOS: true,
+		Check:           covergate.CheckOptions{Tolerance: 0.5},
 	}
 }
 
