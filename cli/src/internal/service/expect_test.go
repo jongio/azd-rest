@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,27 +101,28 @@ func TestEvaluateExpectations_MultipleStopAtFirstFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), `--expect "b=99" failed`)
 }
 
-func TestEvaluateExpectations_UsageErrorsExit2(t *testing.T) {
-	var coder exitCoder
+func TestEvaluateExpectations_UsageErrorsAreStructured(t *testing.T) {
+	var localErr *azdext.LocalError
 
 	// Non-JSON body.
 	err := evaluateExpectations([]byte("plain text"), "text/plain", []string{"a"})
 	require.Error(t, err)
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	require.True(t, errors.As(err, &localErr))
+	assert.Equal(t, ErrCodeExpectUsage, localErr.Code)
+	assert.Equal(t, azdext.LocalErrorCategoryValidation, localErr.Category)
 	assert.Contains(t, err.Error(), "requires a JSON response")
 
 	// Invalid JMESPath expression.
 	err = evaluateExpectations([]byte(`{"a":1}`), "application/json", []string{"a[["})
 	require.Error(t, err)
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	require.True(t, errors.As(err, &localErr))
+	assert.Equal(t, ErrCodeExpectUsage, localErr.Code)
 
 	// Empty expression.
 	err = evaluateExpectations([]byte(`{"a":1}`), "application/json", []string{"=x"})
 	require.Error(t, err)
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	require.True(t, errors.As(err, &localErr))
+	assert.Equal(t, ErrCodeExpectUsage, localErr.Code)
 }
 
 func TestEvaluateExpectations_NoExpectsIsNoOp(t *testing.T) {
@@ -150,9 +152,10 @@ func TestExecute_Expect_FailureReturnsExit1AndStillPrints(t *testing.T) {
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL)
 	require.Error(t, err)
 
-	// An assertion failure is a plain error, so it exits 1, not 2 (usage).
-	var coder exitCoder
-	assert.False(t, errors.As(err, &coder), "assertion failure should not be an ExitCoder")
+	// An assertion failure means the request worked and the response was wrong.
+	// That is not a usage error, so it must not be reported as one.
+	var localErr *azdext.LocalError
+	assert.False(t, errors.As(err, &localErr), "assertion failure should not be a usage error")
 
 	// The body is written before the assertion is checked.
 	out, readErr := os.ReadFile(cfg.OutputFile)

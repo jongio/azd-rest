@@ -6,13 +6,6 @@ import (
 	"fmt"
 )
 
-type countUsageError struct{ msg string }
-
-func (e *countUsageError) Error() string { return e.msg }
-
-// ExitCode returns 2 for invalid --count usage.
-func (e *countUsageError) ExitCode() int { return 2 }
-
 // countRecords returns the number of records in a JSON response body. A JSON
 // array counts its elements, an ARM value[] wrapper counts the value array, a
 // null counts as zero, and any other single value counts as one. A body that is

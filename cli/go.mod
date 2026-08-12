@@ -1,14 +1,12 @@
 module github.com/jongio/azd-rest
 
-go 1.26.4
-
-toolchain go1.26.5
+go 1.26.5
 
 require (
 	github.com/azure/azure-dev/cli/azd v1.29.0
 	github.com/google/uuid v1.6.0
 	github.com/jmespath-community/go-jmespath v1.1.1
-	github.com/jongio/azd-core v0.5.7
+	github.com/jongio/azd-core v0.6.0
 	github.com/magefile/mage v1.17.2
 	github.com/mark3labs/mcp-go v0.57.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
@@ -86,7 +84,6 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect

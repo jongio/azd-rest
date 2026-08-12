@@ -102,10 +102,15 @@ jobs:
         run: |
           mkdir -p ../coverage
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            go test -short -v -coverprofile=../coverage/coverage.out ./src/...
+            go test -short -v -covermode=atomic -coverprofile=../coverage/coverage.out ./src/...
           else
-            go test -short -v -race -coverprofile=../coverage/coverage.out ./src/...
+            go test -short -v -race -covermode=atomic -coverprofile=../coverage/coverage.out ./src/...
           fi
+
+      - name: Enforce coverage ratchet
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: cli
+        run: go run github.com/jongio/azd-core/covergate/cmd/covergate -profile ../coverage/coverage.out
 
       - name: Upload coverage to Codecov
         if: github.repository == 'jongio/azd-rest'

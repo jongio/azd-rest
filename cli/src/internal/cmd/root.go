@@ -10,6 +10,7 @@ import (
 
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/google/uuid"
+	coreversion "github.com/jongio/azd-core/version"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/jongio/azd-rest/src/internal/service"
 	"github.com/jongio/azd-rest/src/internal/skills"
@@ -223,7 +224,7 @@ Examples:
 			}
 		}
 		// Apply AZD_REST_<FLAG> environment defaults before any request runs, so
-		// an invalid value fails fast with exit code 2 (#172).
+		// an invalid value fails fast with a structured validation error (#172).
 		if err := applyEnvDefaults(cmd.Flags(), extensionFlagNames, os.LookupEnv); err != nil {
 			return err
 		}
@@ -274,11 +275,11 @@ Examples:
 	rootCmd.PersistentFlags().BoolVar(&flatten, "flatten", false, "Flatten a JSON response into a single-level object keyed by dotted paths (e.g. properties.state, value[0].name)")
 	rootCmd.PersistentFlags().IntVar(&retry, "retry", defaults.Retry, "Retry attempts with exponential backoff for transient errors")
 	rootCmd.PersistentFlags().BoolVar(&binary, "binary", false, "Stream request/response as binary without transformation")
-	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe — do not use in production)")
+	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Skip TLS certificate verification (unsafe, do not use in production)")
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Suppress non-error diagnostic messages on stderr (warnings and notices)")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", defaults.Timeout, "Request timeout")
 	rootCmd.PersistentFlags().DurationVar(&maxTime, "max-time", defaults.MaxTime, "Overall time budget across retries and pagination (0 disables the limit)")
-	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail with exit code 28 when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
+	rootCmd.PersistentFlags().StringVar(&maxLatency, "max-latency", "", "Fail when a completed response took longer than this duration (e.g. 500ms, 2s). The body is still printed. Empty disables the check.")
 	rootCmd.PersistentFlags().BoolVar(&followRedirects, "follow-redirects", defaults.FollowRedirects, "Follow HTTP redirects")
 	rootCmd.PersistentFlags().IntVar(&maxRedirects, "max-redirects", defaults.MaxRedirects, "Maximum redirect hops")
 	rootCmd.PersistentFlags().IntVar(&maxPages, "max-pages", defaults.MaxPages, "Maximum number of pages to fetch when paginating")
@@ -338,8 +339,23 @@ Examples:
 		NewRequestCommand(),
 		NewScopeCommand(),
 		NewScopesCommand(),
-		azdext.NewVersionCommand("jongio.azd.rest", version.Version, &outputFormat),
-		azdext.NewMetadataCommand("1.0", "jongio.azd.rest", NewRootCmd),
+		// -q is already bound to --query on the root, so the version command
+		// must not claim it. cobra panics on a shorthand collision at parse
+		// time, which would crash every azd rest invocation.
+		//
+		// WithOutputFlag("") because this extension drives output from its own
+		// --format flag, which is what outputFormat is bound to, and --format
+		// carries a wider vocabulary (auto, raw, table, jsonl, yaml, csv, xml)
+		// than the version command understands. Declaring allowed values on
+		// --output would constrain a flag the command never reads.
+		coreversion.NewCommand(version.Info, &outputFormat,
+			coreversion.WithQuietShorthand(""), coreversion.WithOutputFlag("")),
+		// Rebuilt around GenerateExtensionMetadata rather than
+		// azdext.NewMetadataCommand so the Configuration field survives; the
+		// SDK helper marshals immediately and offers no hook for it.
+		// configFlagNames is shared with the config command so the published
+		// environment variables and the reported ones cannot disagree.
+		NewMetadataCommand(NewRootCmd, configFlagNames),
 		azdext.NewListenCommand(nil),
 		NewMCPCommand(),
 		NewDoctorCommand(),

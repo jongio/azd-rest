@@ -11,17 +11,6 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 )
 
-// diffUsageError signals invalid --diff usage: a missing or unreadable baseline
-// file, a baseline that is not JSON, or a non-JSON response. It reports exit
-// code 2 through the ExitCoder contract so main can tell it apart from a drift
-// result, which is a plain error (exit 1).
-type diffUsageError struct{ msg string }
-
-func (e *diffUsageError) Error() string { return e.msg }
-
-// ExitCode returns 2 for invalid --diff usage.
-func (e *diffUsageError) ExitCode() int { return 2 }
-
 // diffAgainstBaseline compares the JSON response against a saved baseline file.
 // Both sides are canonicalized (parsed as JSON and re-encoded with sorted keys
 // and indentation) so key order and whitespace do not produce false diffs.
@@ -29,24 +18,24 @@ func (e *diffUsageError) ExitCode() int { return 2 }
 // When they match it prints nothing and returns nil. When they differ it writes
 // a unified diff to out and returns a plain error so the command exits non-zero.
 // A missing or unreadable baseline, a non-JSON baseline, or a non-JSON response
-// returns a diffUsageError (exit 2).
+// is invalid usage and returns a structured usage error instead.
 func diffAgainstBaseline(out io.Writer, body []byte, baselinePath string) error {
 	baselineRaw, err := os.ReadFile(baselinePath) // #nosec G304 -- User-specified baseline path via --diff flag is intentional.
 	if err != nil {
-		return &diffUsageError{msg: fmt.Sprintf("failed to read --diff baseline %q: %v", baselinePath, err)}
+		return newDiffUsageError(fmt.Sprintf("failed to read --diff baseline %q: %v", baselinePath, err))
 	}
 
 	if !client.IsJSON(body) {
-		return &diffUsageError{msg: "--diff requires a JSON response"}
+		return newDiffUsageError("--diff requires a JSON response")
 	}
 
 	responseCanon, err := canonicalizeJSON(body)
 	if err != nil {
-		return &diffUsageError{msg: fmt.Sprintf("failed to parse JSON response for --diff: %v", err)}
+		return newDiffUsageError(fmt.Sprintf("failed to parse JSON response for --diff: %v", err))
 	}
 	baselineCanon, err := canonicalizeJSON(baselineRaw)
 	if err != nil {
-		return &diffUsageError{msg: fmt.Sprintf("--diff baseline %q is not valid JSON: %v", baselinePath, err)}
+		return newDiffUsageError(fmt.Sprintf("--diff baseline %q is not valid JSON: %v", baselinePath, err))
 	}
 
 	if bytes.Equal(responseCanon, baselineCanon) {

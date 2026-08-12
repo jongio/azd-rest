@@ -6,16 +6,6 @@ import (
 	"strings"
 )
 
-// rawOutputUsageError signals that --raw-output was used without --query. It
-// reports exit code 2 (the invalid-configuration code) through the ExitCoder
-// contract so main can distinguish it from a request failure.
-type rawOutputUsageError struct{ msg string }
-
-func (e *rawOutputUsageError) Error() string { return e.msg }
-
-// ExitCode returns 2 for invalid --raw-output usage.
-func (e *rawOutputUsageError) ExitCode() int { return 2 }
-
 // rawOutputText renders a --query result for --raw-output (#234), mirroring
 // jq -r. A JSON string is returned unquoted with a trailing newline, and an
 // array of strings is returned as one value per line. Any other shape (object,

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,8 +118,7 @@ func TestExecute_CountAndNoBodyAreMutuallyExclusive(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", "https://example.com")
 	require.EqualError(t, err, "--count and --no-body cannot be used together")
-
-	var coder interface{ ExitCode() int }
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeCountUsage, usageErr.Code)
 }

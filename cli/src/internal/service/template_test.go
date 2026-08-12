@@ -10,14 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// templateCoder mirrors the structural exit-code contract used by main so the
-// tests can assert the exit code without importing the cmd package.
-type templateCoder interface{ ExitCode() int }
 
 func TestRenderTemplate_ARMValueNames(t *testing.T) {
 	body := []byte(`{"value":[{"name":"a"},{"name":"b"},{"name":"c"}]}`)
@@ -49,13 +46,12 @@ func TestRenderTemplate_Helpers(t *testing.T) {
 	}
 }
 
-func TestRenderTemplate_InvalidSyntaxExits2(t *testing.T) {
+func TestRenderTemplate_InvalidSyntaxIsUsageError(t *testing.T) {
 	_, err := renderTemplate(`{{range .value}}`, []byte(`{}`))
 	require.Error(t, err)
-
-	var coder templateCoder
-	require.True(t, errors.As(err, &coder), "invalid syntax should carry an exit code")
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr), "invalid syntax should be a structured usage error")
+	assert.Equal(t, ErrCodeTemplateConfig, usageErr.Code)
 }
 
 func TestRenderTemplate_NonJSONReportsError(t *testing.T) {
@@ -64,13 +60,12 @@ func TestRenderTemplate_NonJSONReportsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "JSON")
 }
 
-func TestParseTemplate_MissingFileExits2(t *testing.T) {
+func TestParseTemplate_MissingFileIsUsageError(t *testing.T) {
 	_, err := parseTemplate("@" + filepath.Join(t.TempDir(), "missing.tmpl"))
 	require.Error(t, err)
-
-	var coder templateCoder
-	require.True(t, errors.As(err, &coder), "missing file should carry an exit code")
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr), "missing file should be a structured usage error")
+	assert.Equal(t, ErrCodeTemplateConfig, usageErr.Code)
 }
 
 func TestRenderTemplate_FromFile(t *testing.T) {
@@ -146,10 +141,9 @@ func TestExecute_Template_InvalidExitsBeforeRequest(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/never")
 	require.Error(t, err)
-
-	var coder templateCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeTemplateConfig, usageErr.Code)
 	assert.False(t, called, "no request should be made when the template is invalid")
 }
 
@@ -179,10 +173,9 @@ func TestExecute_TemplateRejectsOtherTerminalOutputModes(t *testing.T) {
 
 			err := newTestService().Execute(context.Background(), cfg, "GET", "https://example.com")
 			require.EqualError(t, err, tt.wantErr)
-
-			var coder templateCoder
-			require.True(t, errors.As(err, &coder))
-			assert.Equal(t, 2, coder.ExitCode())
+			var usageErr *azdext.LocalError
+			require.True(t, errors.As(err, &usageErr))
+			assert.Equal(t, ErrCodeTemplateConfig, usageErr.Code)
 		})
 	}
 }

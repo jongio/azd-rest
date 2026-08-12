@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/config"
 	"github.com/stretchr/testify/require"
 )
@@ -23,10 +24,9 @@ func TestParseAllowedStatuses(t *testing.T) {
 func TestParseAllowedStatusesInvalid(t *testing.T) {
 	_, err := parseAllowedStatuses("204-200")
 	require.Error(t, err)
-
-	var usage interface{ ExitCode() int }
-	require.True(t, errors.As(err, &usage))
-	require.Equal(t, 2, usage.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	require.Equal(t, ErrCodeAllowStatus, usageErr.Code)
 }
 
 func TestExecute_FailAllowsConfiguredStatus(t *testing.T) {
@@ -51,8 +51,9 @@ func TestExecute_FailRejectsDisallowedStatus(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/conflict")
 	require.Error(t, err)
-	var failErr *httpFailError
+	var failErr *azdext.ServiceError
 	require.True(t, errors.As(err, &failErr))
+	require.Equal(t, ErrCodeHTTPFail, failErr.ErrorCode)
 }
 
 func TestExecute_InvalidAllowedStatusFailsBeforeRequest(t *testing.T) {
@@ -70,8 +71,8 @@ func TestExecute_InvalidAllowedStatusFailsBeforeRequest(t *testing.T) {
 
 	err := newTestService().Execute(context.Background(), cfg, "GET", srv.URL+"/missing")
 	require.Error(t, err)
-	var usage interface{ ExitCode() int }
-	require.True(t, errors.As(err, &usage))
-	require.Equal(t, 2, usage.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	require.Equal(t, ErrCodeAllowStatus, usageErr.Code)
 	require.False(t, called)
 }

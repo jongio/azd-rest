@@ -9,17 +9,6 @@ import (
 	"text/template"
 )
 
-// templateConfigError signals that the --template value could not be loaded or
-// parsed (a bad @file path or invalid template syntax). It reports exit code 2
-// (invalid configuration) through the ExitCoder contract so main exits before,
-// or independent of, any response handling.
-type templateConfigError struct{ msg string }
-
-func (e *templateConfigError) Error() string { return e.msg }
-
-// ExitCode returns 2 for an invalid --template value.
-func (e *templateConfigError) ExitCode() int { return 2 }
-
 // templateFuncs are the helper functions exposed to --template templates. They
 // cover the common shaping needs (embedding JSON, changing case, joining a
 // list) without pulling in a large templating dependency.
@@ -69,7 +58,7 @@ func resolveTemplateText(value string) (string, error) {
 	path := value[1:]
 	data, err := os.ReadFile(path) // #nosec G304 -- User-specified template file path via --template @file is intentional.
 	if err != nil {
-		return "", &templateConfigError{msg: fmt.Sprintf("could not read --template file %q: %v", path, err)}
+		return "", newTemplateConfigError(fmt.Sprintf("could not read --template file %q: %v", path, err))
 	}
 	return string(data), nil
 }
@@ -84,7 +73,7 @@ func parseTemplate(value string) (*template.Template, error) {
 	}
 	tmpl, err := template.New("response").Funcs(templateFuncs).Parse(text)
 	if err != nil {
-		return nil, &templateConfigError{msg: fmt.Sprintf("invalid --template syntax: %v", err)}
+		return nil, newTemplateConfigError(fmt.Sprintf("invalid --template syntax: %v", err))
 	}
 	return tmpl, nil
 }

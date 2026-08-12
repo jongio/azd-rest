@@ -66,16 +66,6 @@ func newCacheContext(ctx context.Context, opts *client.RequestOptions) (cacheCon
 	return cacheContext{dir: dir, key: cacheKey(*opts, identity)}, nil
 }
 
-// cacheConfigError signals that --cache-ttl was given an invalid duration. It
-// reports exit code 2 (the invalid-configuration code) through the ExitCoder
-// contract so main can distinguish it from a request failure.
-type cacheConfigError struct{ err error }
-
-func (e *cacheConfigError) Error() string { return e.err.Error() }
-
-// ExitCode returns 2 for an invalid --cache-ttl value.
-func (e *cacheConfigError) ExitCode() int { return 2 }
-
 // cacheEnvelope is the on-disk representation of a cached response. Only the
 // fields needed to reconstruct output are stored; timing is intentionally
 // dropped because it describes the original request, not the cached read.
@@ -88,8 +78,8 @@ type cacheEnvelope struct {
 
 // parseCacheTTL interprets the raw --cache-ttl value. An empty value or "0"
 // means caching is off. Any other value must be a positive Go duration
-// (for example 30s, 5m, 1h). A malformed or negative value is a configuration
-// error that exits with code 2.
+// (for example 30s, 5m, 1h). A malformed or negative value is a structured
+// configuration error.
 func parseCacheTTL(raw string) (time.Duration, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" || trimmed == "0" {
@@ -97,10 +87,10 @@ func parseCacheTTL(raw string) (time.Duration, error) {
 	}
 	ttl, err := time.ParseDuration(trimmed)
 	if err != nil {
-		return 0, &cacheConfigError{fmt.Errorf("invalid --cache-ttl %q: %w", raw, err)}
+		return 0, newCacheConfigError(fmt.Sprintf("invalid --cache-ttl %q: %v", raw, err))
 	}
 	if ttl < 0 {
-		return 0, &cacheConfigError{fmt.Errorf("invalid --cache-ttl %q: duration must not be negative", raw)}
+		return 0, newCacheConfigError(fmt.Sprintf("invalid --cache-ttl %q: duration must not be negative", raw))
 	}
 	return ttl, nil
 }
@@ -249,7 +239,8 @@ func writeCache(dir, key string, resp *client.Response) error {
 	if err := validateCacheDir(dir); err != nil {
 		return err
 	}
-	if err := os.Chmod(dir, 0o700); err != nil { // #nosec G302 -- directories require execute permission.
+	// #nosec G302 -- 0o700 is correct for a directory; it needs the execute bit to be traversable.
+	if err := os.Chmod(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to protect cache directory: %w", err)
 	}
 	env := cacheEnvelope{

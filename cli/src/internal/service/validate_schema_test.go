@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,8 +50,8 @@ func TestValidateResponseSchema_NonConformingPrintsErrorsAndReturnsError(t *test
 	require.Error(t, err)
 
 	// A conformance failure is a plain error (exit 1), not a usage error.
-	var coder exitCoder
-	assert.False(t, errors.As(err, &coder), "conformance failure should not carry a usage exit code")
+	var usageErr *azdext.LocalError
+	assert.False(t, errors.As(err, &usageErr), "conformance failure should not be a usage error")
 	assert.Contains(t, err.Error(), "does not conform")
 
 	printed := errOut.String()
@@ -62,9 +63,9 @@ func TestValidateResponseSchema_MissingSchemaReturnsUsageError(t *testing.T) {
 	err := validateResponseSchema(&errOut, []byte(`{"name":"rg1","age":3}`), filepath.Join(t.TempDir(), "nope.json"))
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeValidateSchemaUsage, usageErr.Code)
 	assert.Empty(t, errOut.String())
 }
 
@@ -75,9 +76,9 @@ func TestValidateResponseSchema_InvalidSchemaJSONReturnsUsageError(t *testing.T)
 	err := validateResponseSchema(&errOut, []byte(`{"name":"rg1","age":3}`), schema)
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeValidateSchemaUsage, usageErr.Code)
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 
@@ -88,9 +89,9 @@ func TestValidateResponseSchema_NonJSONResponseReturnsUsageError(t *testing.T) {
 	err := validateResponseSchema(&errOut, []byte("plain text body"), schema)
 	require.Error(t, err)
 
-	var coder exitCoder
-	require.True(t, errors.As(err, &coder))
-	assert.Equal(t, 2, coder.ExitCode())
+	var usageErr *azdext.LocalError
+	require.True(t, errors.As(err, &usageErr))
+	assert.Equal(t, ErrCodeValidateSchemaUsage, usageErr.Code)
 	assert.Contains(t, err.Error(), "requires a JSON response")
 }
 

@@ -27,7 +27,7 @@ func parseAllowedStatuses(spec string) (allowedStatusRanges, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			return nil, &allowStatusError{err: fmt.Errorf("--allow-status contains an empty item")}
+			return nil, newAllowStatusError("--allow-status contains an empty item")
 		}
 
 		startText, endText, isRange := strings.Cut(part, "-")
@@ -42,7 +42,7 @@ func parseAllowedStatuses(spec string) (allowedStatusRanges, error) {
 				return nil, err
 			}
 			if end < start {
-				return nil, &allowStatusError{err: fmt.Errorf("--allow-status range %q ends before it starts", part)}
+				return nil, newAllowStatusError(fmt.Sprintf("--allow-status range %q ends before it starts", part))
 			}
 		}
 		ranges = append(ranges, [2]int{start, end})
@@ -53,25 +53,14 @@ func parseAllowedStatuses(spec string) (allowedStatusRanges, error) {
 func parseHTTPStatus(value string) (int, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return 0, &allowStatusError{err: fmt.Errorf("--allow-status contains an empty status code")}
+		return 0, newAllowStatusError("--allow-status contains an empty status code")
 	}
 	status, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, &allowStatusError{err: fmt.Errorf("--allow-status value %q is not a number", value)}
+		return 0, newAllowStatusError(fmt.Sprintf("--allow-status value %q is not a number", value))
 	}
 	if status < 100 || status > 599 {
-		return 0, &allowStatusError{err: fmt.Errorf("--allow-status value %d is outside 100-599", status)}
+		return 0, newAllowStatusError(fmt.Sprintf("--allow-status value %d is outside 100-599", status))
 	}
 	return status, nil
 }
-
-type allowStatusError struct{ err error }
-
-// Error returns the invalid --allow-status message.
-func (e *allowStatusError) Error() string { return e.err.Error() }
-
-// Unwrap exposes the wrapped error.
-func (e *allowStatusError) Unwrap() error { return e.err }
-
-// ExitCode returns 2 to mark invalid flag input as a usage error.
-func (e *allowStatusError) ExitCode() int { return 2 }

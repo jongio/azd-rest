@@ -930,6 +930,14 @@ azd rest get https://example.com --follow-redirects=false
 azd rest get https://example.com --max-redirects=5
 ```
 
+**Redirect targets are checked.** A redirect is chosen by the server, not by
+you, so the target is refused when it downgrades HTTPS to HTTP, points at a
+cloud metadata endpoint such as `169.254.169.254`, points at the local machine,
+or names a host that does not resolve.
+
+The one exception is a request you aimed at localhost yourself. Running against
+a local API server is a normal workflow, so localhost keeps redirecting freely.
+
 ---
 
 ## Timeouts
@@ -953,7 +961,18 @@ azd rest get https://api.example.com/resource --timeout 1h
 
 ## Retries
 
-`azd rest` automatically retries failed requests with exponential backoff for transient errors (5xx, network errors).
+`azd rest` automatically retries transient failures with exponential backoff.
+
+Retried: network errors, `408 Request Timeout`, `429 Too Many Requests`,
+`500`, `502`, `503`, and `504`. Not retried: `501 Not Implemented` and
+`505 HTTP Version Not Supported`, since both describe a permanent property of
+the server.
+
+When a response carries `Retry-After`, `retry-after-ms`, or
+`x-ms-retry-after-ms`, that delay is used instead of the computed backoff, up
+to a two minute ceiling. Otherwise the delay doubles from one second, stops
+growing at thirty seconds, and is jittered so that many clients throttled by
+the same service do not all retry at the same instant.
 
 **Configure retries:**
 
@@ -1009,8 +1028,26 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | Request failed (HTTP error, network error, etc.) |
-| 2 | Invalid arguments or configuration |
+| 1 | Any failure |
+
+`azd` normalizes every extension failure to exit code 1. It does not propagate an
+extension's own process exit code to your shell, so `azd rest` cannot signal
+different failure classes through the exit status.
+
+Instead, failures are reported as structured errors that `azd` renders with a
+stable code and a suggested fix. The codes you may see:
+
+| Error code | Meaning |
+|------------|---------|
+| `invalid_data_format` | Unknown `--data-format` value, a conflict with the field-body flags, or a body that will not parse as YAML |
+| `invalid_expect_usage` | Malformed `--expect` argument, an invalid JMESPath expression, or a response that is not JSON |
+| `invalid_max_latency` | `--max-latency` is not a positive duration |
+| `invalid_raw_output_usage` | `--raw-output` used without `--query` |
+| `http_status_failure` | `--fail` is set and the response status is 400 or higher |
+| `max_latency_exceeded` | The response completed but overran the `--max-latency` budget |
+
+An `--expect` assertion that simply does not hold is a plain error, not one of the
+codes above: the request succeeded and the response was wrong.
 
 ---
 

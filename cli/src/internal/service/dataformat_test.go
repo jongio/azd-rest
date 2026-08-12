@@ -7,12 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/jongio/azd-rest/src/internal/config"
 )
-
-// dataFormatExitCoder is a local structural interface used to assert the exit
-// code carried by --data-format failures without importing the cmd package.
-type dataFormatExitCoder interface{ ExitCode() int }
 
 func TestYamlToJSON(t *testing.T) {
 	in := []byte("name: alpha\ncount: 3\nnested:\n  enabled: true\ntags:\n  - a\n  - b\n")
@@ -182,11 +179,14 @@ func assertDataFormatExit2(t *testing.T, err error) {
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
-	var coder dataFormatExitCoder
-	if !errors.As(err, &coder) {
-		t.Fatalf("error %v does not carry an exit code", err)
+	var localErr *azdext.LocalError
+	if !errors.As(err, &localErr) {
+		t.Fatalf("error %v is not a structured local error", err)
 	}
-	if coder.ExitCode() != 2 {
-		t.Fatalf("exit code = %d, want 2", coder.ExitCode())
+	if localErr.Code != ErrCodeInvalidDataFormat {
+		t.Fatalf("code = %q, want %q", localErr.Code, ErrCodeInvalidDataFormat)
+	}
+	if localErr.Category != azdext.LocalErrorCategoryValidation {
+		t.Fatalf("category = %q, want %q", localErr.Category, azdext.LocalErrorCategoryValidation)
 	}
 }

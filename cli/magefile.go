@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jongio/azd-core/covergate"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"gopkg.in/yaml.v3"
@@ -125,7 +126,9 @@ func Publish() error {
 // Setup runs Build + Pack + Publish + Install in sequence.
 func Setup() error {
 	fmt.Println("Setting up extension for local development...")
-	mg.Deps(Build, Pack, Publish)
+	// Serial, not mg.Deps: mg.Deps runs its arguments in parallel, so packing
+	// could start before the build finished.
+	mg.SerialDeps(Build, Pack, Publish)
 
 	fmt.Println("\n✅ Setup complete! Extension is ready for local testing.")
 	fmt.Println("   Install with: azd extension install jongio.azd.rest --source local")
@@ -170,6 +173,18 @@ func TestAll() error {
 
 // TestCoverage runs tests with coverage report.
 func TestCoverage() error {
+	return testCoverage(false)
+}
+
+// testCoverage writes the coverage profile. race selects whether the profile is
+// produced by a race-enabled run.
+//
+// This distinction is not cosmetic. The race detector changes which lines
+// execute, so a baseline recorded without it does not describe the profile CI
+// gates against, and the ratchet drifts in whichever direction the difference
+// happens to fall. CI gates a race run on ubuntu, so CoverageRecord uses one
+// too and the two numbers stay comparable.
+func testCoverage(race bool) error {
 	fmt.Println("Running tests with coverage...")
 
 	cwd, err := os.Getwd()
@@ -187,7 +202,11 @@ func TestCoverage() error {
 	coverageOut := filepath.Join(absCoverageDir, "coverage.out")
 	coverageHTML := filepath.Join(absCoverageDir, "coverage.html")
 
-	args := []string{"test", "-short", "-coverprofile=" + coverageOut, "./src/..."}
+	args := []string{"test", "-short", "-covermode=atomic", "-coverprofile=" + coverageOut}
+	if race {
+		args = append(args, "-race")
+	}
+	args = append(args, "./src/...")
 	if err := sh.RunV("go", args...); err != nil {
 		return fmt.Errorf("tests failed: %w", err)
 	}
@@ -214,6 +233,98 @@ func TestCoverage() error {
 		}
 	}
 
+	return nil
+}
+
+// coverageConfig is the repository's coverage ratchet. Coverage may rise
+// freely but may not fall below the recorded baseline. The profile is the one
+// TestCoverage writes, so the gate never re-runs the suite.
+//
+// COVERAGE_PROFILE overrides the profile path so CI can gate the profile it
+// already produced instead of running the suite a second time.
+//
+// SkipOnForeignOS keeps local development usable off the recording platform.
+// Coverage is a per-platform measurement: code behind a GOOS branch is
+// unreachable elsewhere, so it reports as uncovered rather than absent. The
+// baseline is recorded on linux because that is where CI gates. The skip
+// prints a visible notice and drops enforcement only, never the report, and
+// CI keeps enforcement on because it runs on the recording platform.
+func coverageConfig() covergate.Config {
+	profile := os.Getenv("COVERAGE_PROFILE")
+	if profile == "" {
+		profile = filepath.Join(coverageDir, "coverage.out")
+	}
+	return covergate.Config{
+		Profile:         profile,
+		BaselineFile:    "coverage-baseline.json",
+		SkipOnForeignOS: true,
+		Check:           covergate.CheckOptions{Tolerance: 0.5},
+	}
+}
+
+// CoverageGate checks an existing coverage profile against the baseline without
+// running the tests. CI uses this after its own test step.
+func CoverageGate() error {
+	return covergate.Gate(coverageConfig())
+}
+
+// Coverage runs the tests and fails if coverage dropped below the baseline.
+func Coverage() error {
+	if err := TestCoverage(); err != nil {
+		return err
+	}
+	fmt.Println("==> Checking coverage against the baseline...")
+	return covergate.Gate(coverageConfig())
+}
+
+// CoverageRecord re-records the coverage baseline from the current profile.
+// Run this only when a coverage change is deliberate, and say why in the
+// commit message.
+func CoverageRecord() error {
+	if err := testCoverage(true); err != nil {
+		return err
+	}
+	fmt.Println("==> Recording a new coverage baseline...")
+	return covergate.Record(coverageConfig(), "recorded by mage coverageRecord")
+}
+
+// coveragePreflight gates coverage during preflight. TestCoverage has already
+// written the profile by this point, so it does not re-run the tests.
+func coveragePreflight() error {
+	return covergate.Gate(coverageConfig())
+}
+
+// VerifyNoLocalReplace fails if go.mod still points azd-core at a local path.
+// A local replace is fine during coordinated development, but shipping one
+// produces a module nobody else can build, so the release path must reject it.
+func VerifyNoLocalReplace() error {
+	return verifyNoLocalReplace()
+}
+
+func verifyNoLocalReplace() error {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return fmt.Errorf("failed to read go.mod: %w", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "//") || !strings.Contains(line, "jongio/azd-core") {
+			continue
+		}
+		// The arrow is the only token common to all four legal spellings. Inside
+		// a replace ( ... ) block the grammar is
+		// <module-path> [version] => <replacement> [version], so a
+		// version-qualified left-hand side starts with neither "replace " nor
+		// the bare module path. Testing for the prefixes let
+		// "github.com/jongio/azd-core v0.6.0 => ..." through, and the release
+		// then shipped with azd-core still replaced.
+		if !strings.Contains(line, "=>") {
+			continue
+		}
+		return fmt.Errorf(
+			"go.mod still replaces azd-core:\n  %s\n"+
+				"Remove the replace and pin a released azd-core version before shipping", line)
+	}
 	return nil
 }
 
@@ -269,6 +380,7 @@ func Preflight() error {
 		{"Running security scan", preflightGosec},
 		{"Checking for known vulnerabilities", preflightVulncheck},
 		{"Running tests with coverage", TestCoverage},
+		{"Checking coverage against the baseline", coveragePreflight},
 
 		// Spell check
 		{"Running spell check", preflightSpellCheck},
