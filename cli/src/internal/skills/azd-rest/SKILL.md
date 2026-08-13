@@ -12,7 +12,7 @@ description: |
 
 azd-rest is an Azure Developer CLI extension that makes authenticated REST API calls
 to Azure services with automatic scope detection, retry logic, and JSON formatting.
-No manual token management — just point at a URL and go.
+No manual token management: just point at a URL and go.
 
 ## When to Use
 

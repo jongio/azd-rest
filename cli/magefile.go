@@ -419,7 +419,7 @@ func preflightCheckGitIgnore() error {
 func preflightCheckGitAttributes() error {
 	gitattributesPath := filepath.Join("..", ".gitattributes")
 	if _, err := os.Stat(gitattributesPath); os.IsNotExist(err) {
-		return fmt.Errorf(".gitattributes file not found — required for proper line ending configuration")
+		return fmt.Errorf(".gitattributes file not found; it is required for proper line ending configuration")
 	}
 	fmt.Println("   ✅ .gitattributes exists")
 	return nil
@@ -447,7 +447,7 @@ func preflightModTidy() error {
 
 	env := os.Environ()
 	if _, err := os.Stat("../go.work"); err == nil {
-		fmt.Println("   (workspace detected — running with GOWORK=off)")
+		fmt.Println("   (workspace detected, running with GOWORK=off)")
 		env = append(env, "GOWORK=off")
 	}
 
@@ -469,7 +469,7 @@ func preflightModTidy() error {
 	}
 
 	if goModBefore != goModAfter || goSumBefore != goSumAfter {
-		return fmt.Errorf("go.mod or go.sum changed after running go mod tidy — please commit the changes")
+		return fmt.Errorf("go.mod or go.sum changed after running go mod tidy; please commit the changes")
 	}
 
 	fmt.Println("   ✅ go.mod and go.sum are tidy")
@@ -481,7 +481,7 @@ func preflightSpellCheck() error {
 	if _, err := exec.LookPath("cspell"); err != nil {
 		// Try via npx
 		if _, err := exec.LookPath("npx"); err != nil {
-			fmt.Println("   ⚠️  cspell not available — skipping spell check")
+			fmt.Println("   ⚠️  cspell not available, skipping spell check")
 			return nil
 		}
 		if err := sh.RunV("npx", "cspell", "**/*.{go,md,yaml,yml}", "--config", "../cspell.json", "--no-progress"); err != nil {
@@ -549,7 +549,7 @@ func preflightFmtCheck() error {
 // preflightGofumpt checks that all Go files are formatted with gofumpt (stricter than gofmt).
 func preflightGofumpt() error {
 	if _, err := exec.LookPath("gofumpt"); err != nil {
-		fmt.Println("   ⚠️  gofumpt not installed — skipping strict format check")
+		fmt.Println("   ⚠️  gofumpt not installed, skipping strict format check")
 		fmt.Println("      Install with: go install mvdan.cc/gofumpt@latest")
 		return nil
 	}
@@ -571,7 +571,7 @@ func preflightGofumpt() error {
 // preflightDeadcode checks for unreachable functions using golang.org/x/tools deadcode analyzer.
 func preflightDeadcode() error {
 	if _, err := exec.LookPath("deadcode"); err != nil {
-		fmt.Println("   ⚠️  deadcode not installed — skipping dead code check")
+		fmt.Println("   ⚠️  deadcode not installed, skipping dead code check")
 		fmt.Println("      Install with: go install golang.org/x/tools/cmd/deadcode@latest")
 		return nil
 	}
@@ -579,7 +579,7 @@ func preflightDeadcode() error {
 	if err != nil {
 		fmt.Println("   ⚠️  Dead code found:")
 		fmt.Println(output)
-		// Non-fatal for now — report but don't fail
+		// Non-fatal for now: report but don't fail
 		fmt.Println("   ⚠️  Dead code check completed with findings (non-fatal)")
 		return nil
 	}
@@ -595,7 +595,7 @@ func preflightDeadcode() error {
 // preflightGosec runs a security scan using gosec if available.
 func preflightGosec() error {
 	if _, err := exec.LookPath("gosec"); err != nil {
-		fmt.Println("   ⚠️  gosec not installed — skipping security scan")
+		fmt.Println("   ⚠️  gosec not installed, skipping security scan")
 		fmt.Println("      Install with: go install github.com/securego/gosec/v2/cmd/gosec@latest")
 		return nil
 	}
@@ -610,7 +610,7 @@ func preflightGosec() error {
 // preflightVulncheck checks for known vulnerabilities using govulncheck if available.
 func preflightVulncheck() error {
 	if _, err := exec.LookPath("govulncheck"); err != nil {
-		fmt.Println("   ⚠️  govulncheck not installed — skipping vulnerability check")
+		fmt.Println("   ⚠️  govulncheck not installed, skipping vulnerability check")
 		fmt.Println("      Install with: go install golang.org/x/vuln/cmd/govulncheck@latest")
 		return nil
 	}

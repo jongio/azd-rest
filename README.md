@@ -4,7 +4,7 @@
 
 ### **Authenticated Azure REST Calls**
 
-Make REST API calls with automatic Azure authentication and scope detection — no manual token management.
+Make REST API calls with automatic Azure authentication and scope detection, no manual token management.
 
 [![CI](https://github.com/jongio/azd-rest/actions/workflows/ci.yml/badge.svg)](https://github.com/jongio/azd-rest/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -226,11 +226,11 @@ See the [Security Architecture](https://jongio.github.io/azd-rest/security/) pag
 
 ## 📚 Documentation
 
-- [**Website**](https://jongio.github.io/azd-rest/) — Full documentation and guided tour
-- [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/) — Complete command and flag reference
-- [Security Architecture](https://jongio.github.io/azd-rest/security/) — Threat model and security hardening
-- [Troubleshooting](docs/troubleshooting.md) — Common error scenarios and solutions
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
+- [**Website**](https://jongio.github.io/azd-rest/): Full documentation and guided tour
+- [CLI Reference](https://jongio.github.io/azd-rest/reference/cli/): Complete command and flag reference
+- [Security Architecture](https://jongio.github.io/azd-rest/security/): Threat model and security hardening
+- [Troubleshooting](docs/troubleshooting.md): Common error scenarios and solutions
+- [CONTRIBUTING.md](CONTRIBUTING.md): Contribution guidelines
 
 ## 🔗 azd Extensions
 
@@ -248,8 +248,8 @@ retired and being archived; it still resolves for existing installs but is no lo
 maintained. **azd exec** is no longer needed at all, because `azd exec` shipped as a
 built-in azd command in v1.25.1.
 
-🌐 **Extension Hub**: [jongio.github.io/azd-extensions](https://jongio.github.io/azd-extensions/) — Browse all extensions, quick install, and registry info.
+🌐 **Extension Hub**: [jongio.github.io/azd-extensions](https://jongio.github.io/azd-extensions/). Browse all extensions, quick install, and registry info.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+MIT, see [LICENSE](LICENSE) for details.

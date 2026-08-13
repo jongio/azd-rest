@@ -342,14 +342,14 @@ github.com/jongio/azd-core v0.5.2    # Azure auth utilities - maintained
 1. **Unbounded Token Cache** (Low)
    - **Location**: `auth/auth.go`
    - **Description**: Token cache grows with number of unique scopes
-   - **Impact**: Memory usage (minimal in practice — typical usage involves < 10 scopes)
+   - **Impact**: Memory usage (minimal in practice, since typical usage involves < 10 scopes)
    - **Recommendation**: Monitor, consider LRU cache if needed
    - **Status**: Acceptable for current use case
 
 2. **SSRF Risk** (Mitigated in MCP server)
    - **Location**: `client/client.go`, `cmd/mcp.go`
    - **Description**: CLI allows users to specify any URL (by design); MCP server has comprehensive SSRF protections
-   - **CLI**: Users explicitly provide URLs — inherent to the tool's purpose
+   - **CLI**: Users explicitly provide URLs, which is inherent to the tool's purpose
    - **MCP server**: Blocked CIDR ranges (private IPs, link-local, loopback), blocked hosts (cloud metadata endpoints), DNS resolution validation, rate limiting, disabled redirects
    - **Status**: MCP server fully protected; CLI trusts user input by design
 

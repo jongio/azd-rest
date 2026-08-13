@@ -23,7 +23,7 @@ const (
 	mcpDefaultTimeout      = 30 * time.Second
 	mcpDefaultMaxRedirects = 10
 	mcpDefaultRetry        = 3
-	mcpMaxResponseSize     = 10 * 1024 * 1024 // 10MB — smaller limit for MCP tool responses
+	mcpMaxResponseSize     = 10 * 1024 * 1024 // 10MB, a smaller limit for MCP tool responses
 	mcpMaxTimeoutSeconds   = 600
 	mcpMaxRetry            = 10
 	mcpMaxResponseSizeCap  = 50 * 1024 * 1024
@@ -99,7 +99,7 @@ func getOrCreateHTTPClient(tp auth.TokenProvider, timeout time.Duration) *client
 // management.azure.com allows sub.management.azure.com). Cross-domain Azure
 // scope mappings (e.g., storage.azure.com scope for *.blob.core.windows.net)
 // are handled by the auto-detection path in auth.DetectScope and do not go
-// through this validation — this function only checks explicit scope overrides.
+// through this validation; this function only checks explicit scope overrides.
 //
 // Security note: subdomain matching has a theoretical risk where an attacker
 // controlling a subdomain (e.g., evil.example.com) could receive tokens scoped
