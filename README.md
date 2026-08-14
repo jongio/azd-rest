@@ -4,7 +4,7 @@
 
 ### **Authenticated Azure REST Calls**
 
-Make REST API calls with automatic Azure authentication and scope detection, no manual token management.
+Make REST API calls with automatic Azure authentication and scope detection. No manual token management.
 
 [![CI](https://github.com/jongio/azd-rest/actions/workflows/ci.yml/badge.svg)](https://github.com/jongio/azd-rest/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -252,4 +252,4 @@ built-in azd command in v1.25.1.
 
 ## License
 
-MIT, see [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE) for details.
