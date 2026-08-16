@@ -736,7 +736,7 @@ func TestExecuteRequest_FormatError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// executeRequest — success paths with httptest server
+// executeRequest: success paths with httptest server
 // ---------------------------------------------------------------------------
 
 func TestExecuteRequest_SuccessPath_JSON(t *testing.T) {
@@ -754,7 +754,7 @@ func TestExecuteRequest_SuccessPath_JSON(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
-	// Verify the request completes without error — the formatter writes to os.Stdout directly.
+	// Verify the request completes without error; the formatter writes to os.Stdout directly.
 	err := executeRequest(cmd, "GET", srv.URL+"/api/test")
 	require.NoError(t, err)
 }

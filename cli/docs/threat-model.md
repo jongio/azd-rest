@@ -433,7 +433,7 @@ azd rest get https://management.azure.com/subscriptions?api-version=2020-01-01
 | Attack Vector | Likelihood | Impact | Risk Level | Mitigated? |
 |--------------|------------|--------|------------|------------|
 | SSRF - Internal Network (MCP) | LOW | **CRITICAL** | 🟢 LOW | ✅ **YES** (blocked CIDRs, DNS validation) |
-| SSRF - Internal Network (CLI) | **HIGH** | **CRITICAL** | 🔴 CRITICAL | ❌ No (by design — user-controlled) |
+| SSRF - Internal Network (CLI) | **HIGH** | **CRITICAL** | 🔴 CRITICAL | ❌ No (by design, user-controlled) |
 | SSRF - Cloud Metadata (MCP) | LOW | **CRITICAL** | 🟢 LOW | ✅ **YES** (blocked hosts) |
 | SSRF - Cloud Metadata (CLI) | **HIGH** | **CRITICAL** | 🔴 CRITICAL | ❌ No (by design) |
 | SSRF - Internal Services (MCP) | LOW | HIGH | 🟢 LOW | ✅ **YES** (blocked CIDRs) |
@@ -589,7 +589,7 @@ type RequestTelemetry struct {
 - Token redaction in verbose output
 
 ❌ **Design Security**: SSRF partially mitigated
-- **CLI mode**: Users explicitly provide URLs (by design) — SSRF inherent
+- **CLI mode**: Users explicitly provide URLs (by design), so SSRF is inherent
 - **MCP server**: Comprehensive SSRF protections implemented:
   - Blocked CIDR ranges (private IPs, loopback, link-local)
   - Blocked hosts (cloud metadata endpoints: 169.254.169.254, etc.)

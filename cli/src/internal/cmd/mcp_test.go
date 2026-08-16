@@ -112,14 +112,14 @@ func TestNewMCPServer_ToolsExposeRequestControls(t *testing.T) {
 }
 
 func TestValidateScopeURLMatch(t *testing.T) {
-	// Matching domain — should succeed
+	// Matching domain; should succeed
 	err := validateScopeURLMatch(
 		"https://management.azure.com/.default",
 		"https://management.azure.com/subscriptions",
 	)
 	assert.NoError(t, err)
 
-	// Mismatched domain — should fail
+	// Mismatched domain; should fail
 	err = validateScopeURLMatch(
 		"https://management.azure.com/.default",
 		"https://attacker.com/exfil",
@@ -241,7 +241,7 @@ func TestGetOrCreateHTTPClient_CustomTimeoutIsNotCached(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// validateScopeURLMatch — additional edge cases
+// validateScopeURLMatch: additional edge cases
 // ---------------------------------------------------------------------------
 
 func TestValidateScopeURLMatch_EdgeCases(t *testing.T) {
@@ -353,7 +353,7 @@ func TestValidateScopeURLMatch_EdgeCases(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// parseHeaders — additional edge cases
+// parseHeaders: additional edge cases
 // ---------------------------------------------------------------------------
 
 func TestParseHeaders_EmptyHeadersMap(t *testing.T) {
@@ -420,7 +420,7 @@ func TestParseHeaders_BlockedHeaderCaseInsensitive(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// formatResponse — additional edge cases
+// formatResponse: additional edge cases
 // ---------------------------------------------------------------------------
 
 func TestFormatResponse_EmptyBody(t *testing.T) {
@@ -476,20 +476,20 @@ func TestExecuteMCPRequest_ScopeMismatch(t *testing.T) {
 
 func TestExecuteMCPRequest_CustomHeaders(t *testing.T) {
 	// Test that custom headers are passed through.
-	// May succeed or fail depending on auth state — we only verify no panic.
+	// May succeed or fail depending on auth state; we only verify no panic.
 	_, _ = executeMCPRequest(context.Background(), "POST",
 		"https://management.azure.com/test", `{"key":"val"}`, "", map[string]string{"X-Custom": "value"})
 }
 
 func TestExecuteMCPRequest_WithBody(t *testing.T) {
 	// Test body path through executeMCPRequest.
-	// May succeed or fail depending on auth state — we only verify no panic.
+	// May succeed or fail depending on auth state; we only verify no panic.
 	_, _ = executeMCPRequest(context.Background(), "POST",
 		"https://management.azure.com/test", `{"data":true}`, "", nil)
 }
 
 func TestExecuteMCPRequest_InvalidScopeURL(t *testing.T) {
-	// URL with no known scope and no override — scope detection returns empty.
+	// URL with no known scope and no override, so scope detection returns empty.
 	_, err := executeMCPRequest(context.Background(), "GET", "https://unknown-host-no-scope.example.com/path", "", "", nil)
 	require.Error(t, err) // Will fail at auth since scope is empty
 }
@@ -594,7 +594,7 @@ func TestHandleHead_BlockedHeader(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// newMCPServer — tool registration
+// newMCPServer: tool registration
 // ---------------------------------------------------------------------------
 
 func TestNewMCPServer_RegistersAllTools(t *testing.T) {
@@ -686,7 +686,7 @@ func TestSecurityPolicy_BlocksPrivateNetworks(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// executeMCPRequest — full success path with httptest server
+// executeMCPRequest: full success path with httptest server
 // ---------------------------------------------------------------------------
 
 func TestExecuteMCPRequest_SuccessPath(t *testing.T) {
@@ -832,7 +832,7 @@ func TestExecuteMCPRequest_RedactsSensitiveResponseHeaders(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Set-Cookie is sensitive — should be redacted (not the raw value).
+	// Set-Cookie is sensitive; should be redacted (not the raw value).
 	cookie := resp.Headers["Set-Cookie"]
 	assert.NotEqual(t, "session=super-secret-value-1234567890", cookie, "Set-Cookie should be redacted")
 	assert.NotEmpty(t, cookie, "Set-Cookie should still be present (redacted)")
