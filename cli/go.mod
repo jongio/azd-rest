@@ -3,7 +3,7 @@ module github.com/jongio/azd-rest
 go 1.26.6
 
 require (
-	github.com/azure/azure-dev/cli/azd v1.29.0
+	github.com/azure/azure-dev/cli/azd v1.32.0
 	github.com/google/uuid v1.6.0
 	github.com/jmespath-community/go-jmespath v1.1.1
 	github.com/jongio/azd-core v0.6.0
