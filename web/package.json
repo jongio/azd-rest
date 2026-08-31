@@ -9,7 +9,7 @@
     "test": "playwright test --reporter=line"
   },
   "dependencies": {
-    "@astrojs/mdx": "^7.0.5",
+    "@astrojs/mdx": "^7.0.8",
     "@jongio/azd-web-core": "^3.0.0",
     "astro": "^7.1.6",
     "astro-expressive-code": "^0.44.1"
