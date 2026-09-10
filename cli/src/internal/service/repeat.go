@@ -143,7 +143,8 @@ func writeRepeatSummary(w io.Writer, stats repeatStats) {
 		sorted := make([]time.Duration, len(stats.durations))
 		copy(sorted, stats.durations)
 		sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
-		fmt.Fprintf(w, "  Latency: min %s  mean %s  p50 %s  p95 %s  p99 %s  max %s\n",
+		fmt.Fprintf(
+			w, "  Latency: min %s  mean %s  p50 %s  p95 %s  p99 %s  max %s\n",
 			formatDuration(sorted[0]),
 			formatDuration(meanDuration(sorted)),
 			formatDuration(percentile(sorted, 50)),

@@ -323,7 +323,8 @@ func verifyNoLocalReplace() error {
 		}
 		return fmt.Errorf(
 			"go.mod still replaces azd-core:\n  %s\n"+
-				"Remove the replace and pin a released azd-core version before shipping", line)
+				"Remove the replace and pin a released azd-core version before shipping", line,
+		)
 	}
 	return nil
 }
@@ -337,7 +338,7 @@ func Fmt() error {
 // Lint runs golangci-lint.
 func Lint() error {
 	fmt.Println("Running linter...")
-	return sh.RunV("golangci-lint", "run", "--timeout=5m")
+	return sh.RunV("golangci-lint", "run", "--timeout=10m")
 }
 
 // Clean removes build artifacts.
@@ -501,12 +502,12 @@ func preflightSpellCheck() error {
 // preflightWebsiteBuild installs web dependencies and builds the Astro site.
 func preflightWebsiteBuild() error {
 	fmt.Println("   Installing website dependencies...")
-	if err := sh.RunV("pnpm", "install", "--dir", websiteDir); err != nil {
+	if err := sh.RunV("corepack", "pnpm", "install", "--dir", websiteDir); err != nil {
 		return fmt.Errorf("pnpm install failed for website: %w", err)
 	}
 
 	fmt.Println("   Building Astro site (includes CLI reference generation)...")
-	if err := sh.RunV("pnpm", "--dir", websiteDir, "run", "build"); err != nil {
+	if err := sh.RunV("corepack", "pnpm", "--dir", websiteDir, "run", "build"); err != nil {
 		return fmt.Errorf("website build failed: %w", err)
 	}
 
