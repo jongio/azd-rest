@@ -3,7 +3,7 @@ module github.com/jongio/azd-rest
 go 1.26.6
 
 require (
-	github.com/azure/azure-dev/cli/azd v1.29.0
+	github.com/azure/azure-dev/cli/azd v1.34.0
 	github.com/google/uuid v1.6.0
 	github.com/jmespath-community/go-jmespath v1.1.1
 	github.com/jongio/azd-core v0.6.0
@@ -109,6 +109,6 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
-	google.golang.org/grpc v1.83.0 // indirect
+	google.golang.org/grpc v1.83.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
