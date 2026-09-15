@@ -15,9 +15,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 41777',
+    command: 'node node_modules/astro/bin/astro.mjs preview --host 127.0.0.1 --port 41777',
     url: baseURL,
     reuseExistingServer: false,
+    timeout: 300_000,
   },
   projects: [
     {

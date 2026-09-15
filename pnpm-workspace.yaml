@@ -4,8 +4,15 @@ packages:
 allowBuilds:
   esbuild: true
 
+minimumReleaseAgeExclude:
+  - '@napi-rs/wasm-runtime@1.2.4'
+  - 'zod@4.6.1'
+
 overrides:
   esbuild@>=0.27.3 <0.28.1: '>=0.28.1'
+  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2'
+  nanoid@<3.3.18: '>=3.3.18'
+  svgo@>=4.0.0 <4.1.0: '>=4.1.0'
   yaml@>=2.0.0 <2.8.3: '>=2.8.3'
   # @napi-rs/wasm-runtime widened its peer range to '^1.7.1 || ^2.0.0-alpha.3',
   # so pnpm auto-installs the 2.0.0 alpha. Hold the stable 1.x line.

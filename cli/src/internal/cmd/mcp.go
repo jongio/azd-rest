@@ -316,7 +316,8 @@ func mcpRequestControlToolOptions() []mcp.ToolOption {
 func mcpNoBodyToolOptions() []mcp.ToolOption {
 	control := mcpRequestControlToolOptions()
 	opts := make([]mcp.ToolOption, 0, 3+len(control))
-	opts = append(opts,
+	opts = append(
+		opts,
 		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
 		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
 		mcp.WithObject("headers", mcp.Description("Custom HTTP headers as key-value pairs")),
@@ -327,7 +328,8 @@ func mcpNoBodyToolOptions() []mcp.ToolOption {
 func mcpBodyToolOptions() []mcp.ToolOption {
 	control := mcpRequestControlToolOptions()
 	opts := make([]mcp.ToolOption, 0, 4+len(control))
-	opts = append(opts,
+	opts = append(
+		opts,
 		mcp.WithString("url", mcp.Required(), mcp.Description("The request URL")),
 		mcp.WithString("body", mcp.Description("Request body (JSON string)")),
 		mcp.WithString("scope", mcp.Description("OAuth scope override (auto-detected if omitted)")),
@@ -454,7 +456,8 @@ func newMCPServer(readOnly bool) *server.MCPServer {
 	// at the tool surface, not merely guarded at call time (#170).
 	if !readOnly {
 		// POST
-		builder.AddTool("rest_post", handleBodyMethod("POST"),
+		builder.AddTool(
+			"rest_post", handleBodyMethod("POST"),
 			azdext.MCPToolOptions{
 				Description: "Execute an authenticated POST request against an Azure or REST API endpoint",
 				Destructive: true,
@@ -463,7 +466,8 @@ func newMCPServer(readOnly bool) *server.MCPServer {
 		)
 
 		// PUT
-		builder.AddTool("rest_put", handleBodyMethod("PUT"),
+		builder.AddTool(
+			"rest_put", handleBodyMethod("PUT"),
 			azdext.MCPToolOptions{
 				Description: "Execute an authenticated PUT request against an Azure or REST API endpoint",
 				Idempotent:  true,
@@ -472,7 +476,8 @@ func newMCPServer(readOnly bool) *server.MCPServer {
 		)
 
 		// PATCH
-		builder.AddTool("rest_patch", handleBodyMethod("PATCH"),
+		builder.AddTool(
+			"rest_patch", handleBodyMethod("PATCH"),
 			azdext.MCPToolOptions{
 				Description: "Execute an authenticated PATCH request against an Azure or REST API endpoint",
 				Destructive: true,
@@ -481,7 +486,8 @@ func newMCPServer(readOnly bool) *server.MCPServer {
 		)
 
 		// DELETE - destructive
-		builder.AddTool("rest_delete", handleNoBodyMethod("DELETE"),
+		builder.AddTool(
+			"rest_delete", handleNoBodyMethod("DELETE"),
 			azdext.MCPToolOptions{
 				Description: "Execute an authenticated DELETE request against an Azure or REST API endpoint",
 				Destructive: true,

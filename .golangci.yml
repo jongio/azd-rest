@@ -1,7 +1,9 @@
 version: "2"
 
 run:
-  timeout: 5m
+  timeout: 10m
+  concurrency: 2
+  allow-parallel-runners: true
   tests: true
   build-tags:
     - integration

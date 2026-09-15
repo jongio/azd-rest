@@ -3,6 +3,7 @@
   "version": "0.4.6",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "test": "pnpm run test:cli",
     "test:cli": "pnpm run test:cli:unit && pnpm run test:cli:integration",

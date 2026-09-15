@@ -11,5 +11,6 @@
     "resolveJsonModule": true,
     "allowJs": true
   },
-  "include": ["src/**/*"]
+  "include": [".astro/types.d.ts", "src/**/*", "tests/**/*.ts", "*.ts"],
+  "exclude": ["dist"]
 }
