@@ -12,7 +12,12 @@ export default defineConfig({
     mdx()
   ],
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        '@lucide/astro/icons/book-marked': '@lucide/astro/icons/book-bookmark'
+      }
+    }
   },
   output: 'static'
 });
