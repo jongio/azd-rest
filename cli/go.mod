@@ -1,6 +1,6 @@
 module github.com/jongio/azd-rest
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/azure/azure-dev/cli/azd v1.37.2
